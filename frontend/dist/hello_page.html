@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#062e3f">
+    <meta name="Description" content="Laptop Borrowing Kiosk">
+
+    <!-- Google Font: Work Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/all.min.css" />
+    <link rel="shortcut icon" type="image/png" href="/assets/img/macbook-favicon.png"/>
+
+    <title>Laptop Kiosk</title>
+
+    <style>
+        body {
+            font-family:monospace;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-family:monospace;
+            font-size: 100px;
+            color: #ffffff;
+        }
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+        .button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #007BFF;
+            color: white;
+            font-size: 3.5rem;
+            font-family:monospace;
+            font-weight: bold;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            height: 180px;
+        }
+        .button i {
+            margin-right: 15px;
+            font-size: 2rem;
+        }
+        .button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        .button.return {
+            background-color: #e74c3c;
+        }
+        .button.return:hover {
+            background-color: #c0392b;
+        }
+        .bg {
+            animation:slide 3s ease-in-out infinite alternate;
+            background-image: linear-gradient(-60deg, #6c3 50%, #09f 50%);
+            bottom:0;
+            left:-50%;
+            opacity:.5;
+            position:fixed;
+            right:-50%;
+            top:0;
+            z-index:-1;
+        }
+
+        .bg2 {
+          animation-direction:alternate-reverse;
+          animation-duration:4s;
+        }
+
+        .bg3 {
+          animation-duration:5s;
+        }
+
+        @keyframes slide {
+          0% {
+            transform:translateX(-25%);
+          }
+          100% {
+            transform:translateX(25%);
+          }
+        }
+    </style>
+</head>
+
+<body>
+<div class="bg"></div>
+<div class="bg bg2"></div>
+<div class="bg bg3"></div>
+    <div id="header">
+        <h1>MacBook Kiosk</h1>
+    </div>
+
+    <div class="buttons">
+        <button class="button take" onclick="handleTake()">
+            <i class="fas fa-laptop"></i> Check Out a MacBook
+        </button>
+        <button class="button return" onclick="handleReturn()">
+            <i class="fas fa-undo-alt"></i> Return a MacBook
+        </button>
+    </div>
+
+    <script>
+        let inactivityTimer;
+        const UI_TEXT = {
+            noDevicesTitle: 'Нет доступных устройств / No devices available',
+            noDevicesText: 'Сейчас все MacBook уже выданы. / All MacBooks are currently checked out.',
+            statusCheckFailedTitle: 'Ошибка проверки статуса / Status check failed',
+            statusCheckFailedText: 'Не удалось проверить доступность устройств. / Unable to check device availability right now.',
+            noDevicesToReturnTitle: 'Нет устройств для возврата / No devices to return',
+            returnCheckFailedTitle: 'Ошибка проверки возврата / Return check failed',
+            returnCheckFailedText: 'Не удалось проверить выданные устройства. / Unable to check borrowed devices right now.'
+        };
+
+        function showToast(icon, title, text) {
+            Swal.fire({
+                icon,
+                title,
+                text,
+                timer: 5000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        }
+
+        // Function to reset the inactivity timer
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(function() {
+                fetch('/clear_session', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = "/";
+                        }
+                    });
+            }, 5000);
+        }
+
+        // Call resetInactivityTimer on page load
+        window.onload = resetInactivityTimer;
+
+        function handleTake() {
+            resetInactivityTimer();
+
+    // Fetch the available laptop count from the server
+    fetch('/get_laptop_status')
+        .then(response => response.json())
+        .then(data => {
+            const availableLaptops = data.laptop_count.split('/')[0]; // Get available laptops from "X/Total"
+
+            if (parseInt(availableLaptops) > 0) {
+                // If there are laptops available, proceed with the redirection
+                fetch('/send_arduino_signal', { method: 'POST' });
+                const uid = '';
+                localStorage.setItem('selectedUID', uid);
+                window.location.href = "/scan_page";
+            } else {
+                Swal.fire({
+                    icon: 'info',
+                    title: UI_TEXT.noDevicesTitle,
+                    text: UI_TEXT.noDevicesText,
+                    showCancelButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching laptop status:', error);
+            showToast('error', UI_TEXT.statusCheckFailedTitle, UI_TEXT.statusCheckFailedText);
+        });
+}
+
+
+        function handleReturn() {
+            resetInactivityTimer();
+        // Send a request to the server to check if the user has borrowed any laptops
+        fetch('/check_user_laptops', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                fetch('/send_arduino_signal', { method: 'POST' });
+                window.location.href = "/return_page";
+            } else {
+                showToast('info', UI_TEXT.noDevicesToReturnTitle, data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking user laptops:', error);
+            showToast('error', UI_TEXT.returnCheckFailedTitle, UI_TEXT.returnCheckFailedText);
+        });
+    }
+        window.onmousemove = resetInactivityTimer;
+        window.onkeypress = resetInactivityTimer;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+</html>

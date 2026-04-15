@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#062e3f">
+    <meta name="Description" content="Laptop Return Page">
+
+    <!-- Google Font: Work Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome for basic icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/all.min.css" integrity="sha256-46r060N2LrChLLb5zowXQ72/iKKNiw/lAmygmHExk/o=" crossorigin="anonymous" />
+
+    <link rel="shortcut icon" type="image/png" href="/assets/img/macbook-favicon.png"/>
+    <link rel="stylesheet" href="/assets/css/main-second.css">
+
+    <title>Return Laptops</title>
+    <style>
+        .bg {
+          animation:slide 3s ease-in-out infinite alternate;
+          background-image: linear-gradient(-60deg, #6c3 50%, #09f 50%);
+          bottom:0;
+          left:-50%;
+          opacity:.5;
+          position:fixed;
+          right:-50%;
+          top:0;
+          z-index:-1;
+        }
+
+        .bg2 {
+          animation-direction:alternate-reverse;
+          animation-duration:4s;
+        }
+
+        .bg3 {
+          animation-duration:5s;
+        }
+
+        @keyframes slide {
+          0% {
+            transform:translateX(-25%);
+          }
+          100% {
+            transform:translateX(25%);
+          }
+        }
+    </style>
+
+</head>
+
+<body id="returnPage">
+    <div class="bg"></div>
+    <div class="bg bg2"></div>
+    <div class="bg bg3"></div>
+    <div id="header">
+        <h1 id="title">MacBook Return<div id="border"></div></h1>
+    </div>
+
+    <!-- Input form to scan laptop barcodes for return -->
+    <div id="form">
+        <form>
+            <input type="text" id="stylish-input" placeholder="Scan a barcode to return a device" autofocus>
+            <div class="modern-element">
+                <span class="arrow-down"></span>
+            </div>
+        </form>
+    </div>
+
+    <!-- Display the list of scanned barcodes -->
+    <div class="dynamic-adding-list">
+        <h2>Devices to Return</h2>
+        <ul id="barcodeList"></ul>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="/assets/js/return_page.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+</html>

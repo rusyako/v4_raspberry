@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual env
+venv/
+
+# OS / IDE
+.DS_Store
+.idea/
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Logs
+logs/
+app.log
+app.log.*
+server.log

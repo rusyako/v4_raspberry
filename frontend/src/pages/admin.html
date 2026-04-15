@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#062e3f">
+    <meta name="description" content="Smart Box Admin Panel">
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="shortcut icon" type="image/png" href="/assets/img/macbook-favicon.png"/>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <title>Smart Box Admin</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Work Sans', sans-serif;
+            background: linear-gradient(135deg, #091a24, #12384b);
+            color: #eaf2f8;
+            min-height: 100vh;
+        }
+
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 20px 40px;
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: 42px;
+        }
+
+        .hero p {
+            margin: 6px 0 0;
+            color: #b8d1df;
+        }
+
+        .panel,
+        .login-panel {
+            background: rgba(8, 20, 28, 0.82);
+            border: 1px solid rgba(143, 197, 224, 0.18);
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 16px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .login-wrap {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-panel {
+            width: min(460px, 100%);
+        }
+
+        .login-panel h1 {
+            margin-top: 0;
+            font-size: 34px;
+        }
+
+        .login-panel p {
+            color: #bdd5e5;
+            line-height: 1.5;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .field label {
+            font-size: 14px;
+            color: #cfe3ef;
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            border: 1px solid rgba(200, 221, 233, 0.18);
+            background: #102734;
+            color: #f5fbff;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 16px;
+        }
+
+        .field.checkbox {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .field.checkbox input {
+            width: auto;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            border-radius: 12px;
+            padding: 12px 18px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .primary-btn {
+            background: #17a2ff;
+            color: white;
+        }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.08);
+            color: #eaf2f8;
+        }
+
+        .danger-btn {
+            background: #d9534f;
+            color: white;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section-title h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .list {
+            display: grid;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+
+        .item-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .item-meta small {
+            color: #bdd5e5;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.admin {
+            background: rgba(255, 196, 0, 0.18);
+            color: #ffd24d;
+        }
+
+        .badge.available {
+            background: rgba(80, 200, 120, 0.16);
+            color: #70ea97;
+        }
+
+        .badge.unavailable {
+            background: rgba(217, 83, 79, 0.18);
+            color: #ff8a86;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-wrap" id="loginView">
+        <div class="login-panel">
+            <h1>Admin Access</h1>
+            <p>Введите PIN-код администратора. / Enter the administrator PIN code.</p>
+            <form id="adminLoginForm">
+                <div class="field">
+                    <label for="adminPin">PIN</label>
+                    <input id="adminPin" type="password" inputmode="numeric" autocomplete="off" placeholder="1234">
+                </div>
+                <div class="actions">
+                    <button class="primary-btn" type="submit">Unlock Admin</button>
+                    <button class="secondary-btn" type="button" id="backHomeButton">Back Home</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="page hidden" id="adminView">
+        <div class="hero">
+            <div>
+                <h1>Smart Box Admin</h1>
+                <p>UID management, MacBook inventory, and quick station control.</p>
+            </div>
+            <div class="actions">
+                <button class="secondary-btn" id="refreshButton" type="button">Refresh</button>
+                <button class="danger-btn" id="logoutButton" type="button">Logout</button>
+            </div>
+        </div>
+
+        <div class="admin-grid">
+            <section class="panel">
+                <div class="section-title">
+                    <h2>Users / UID</h2>
+                </div>
+                <form id="userForm">
+                    <div class="field">
+                        <label for="userUid">UID</label>
+                        <input id="userUid" type="text" placeholder="UID-100">
+                    </div>
+                    <div class="field">
+                        <label for="userName">Name</label>
+                        <input id="userName" type="text" placeholder="Operator">
+                    </div>
+                    <label class="field checkbox">
+                        <input id="userIsAdmin" type="checkbox">
+                        <span>Admin card / Карта администратора</span>
+                    </label>
+                    <div class="actions">
+                        <button class="primary-btn" type="submit">Add User</button>
+                    </div>
+                </form>
+                <div class="list" id="usersList"></div>
+            </section>
+
+            <section class="panel">
+                <div class="section-title">
+                    <h2>MacBooks</h2>
+                </div>
+                <form id="laptopForm">
+                    <div class="field">
+                        <label for="laptopName">Device name</label>
+                        <input id="laptopName" type="text" placeholder="MB-001">
+                    </div>
+                    <div class="field">
+                        <label for="laptopBarcode">Barcode</label>
+                        <input id="laptopBarcode" type="text" placeholder="BC-0001">
+                    </div>
+                    <div class="field">
+                        <label for="laptopStatus">Status</label>
+                        <select id="laptopStatus">
+                            <option value="available">Available</option>
+                            <option value="unavailable">Unavailable</option>
+                        </select>
+                    </div>
+                    <div class="actions">
+                        <button class="primary-btn" type="submit">Add Device</button>
+                    </div>
+                </form>
+                <div class="list" id="laptopsList"></div>
+            </section>
+        </div>
+    </div>
+
+    <script src="/assets/js/admin_page.js"></script>
+</body>
+</html>

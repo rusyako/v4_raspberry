@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#062e3f">
+    <meta name="Description" content="A dynamic and aesthetic To-Do List WebApp.">
+
+    <!-- Google Font: Quick Sand -->
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300&display=swap" rel="stylesheet">
+
+    <!-- font awesome (https://fontawesome.com) for basic icons; source: https://cdnjs.com/libraries/font-awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/all.min.css" integrity="sha256-46r060N2LrChLLb5zowXQ72/iKKNiw/lAmygmHExk/o=" crossorigin="anonymous" />
+
+    <link rel="shortcut icon" type="image/png" href="/assets/img/macbook-favicon.png"/>
+    <link rel="stylesheet" href="/assets/css/main.css">
+<!--    <link rel="stylesheet" href="css/main.css">-->
+<!--    <link rel="stylesheet" href="css/corner.css">-->
+    <title>HTA</title>
+    <style>
+        .bg {
+          animation: slide 3s ease-in-out infinite alternate;
+          background-image: linear-gradient(-60deg, #6c3 50%, #09f 50%);
+          bottom: 0;
+          left: -50%;
+          opacity: .5;
+          position: fixed;
+          right: -50%;
+          top: 0;
+          z-index: -1;
+        }
+
+        .bg1 {
+          animation-direction: alternate-reverse;
+          animation-duration: 4s;
+        }
+
+        .bg2 {
+          animation-duration: 5s;
+        }
+
+        .bg3 {
+          animation-duration: 6s;
+        }
+
+        @keyframes slide {
+          0% {
+            transform: translateX(-25%);
+          }
+          100% {
+            transform: translateX(25%);
+          }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg bg1"></div>
+    <div class="bg bg2"></div>
+    <div class="bg bg3"></div>
+    <div class="language-switcher" aria-label="Language switcher">
+        <button class="language-flag active" type="button" data-language="en" aria-label="English">
+            <img src="/assets/img/flags/flag-en.png" alt="English">
+        </button>
+        <button class="language-flag" type="button" data-language="ru" aria-label="Russian">
+            <img src="/assets/img/flags/flag-ru.png" alt="Russian">
+        </button>
+        <button class="language-flag" type="button" data-language="kz" aria-label="Kazakh">
+            <img src="/assets/img/flags/flag-kz.png" alt="Kazakh">
+        </button>
+    </div>
+    <div id = "header">
+        <h1 id="title" class="hero-title">SmartBox<div id="border"></div></h1>
+    </div>
+
+
+<!--  
+  <div id="form">
+        <form>
+            <input class="todo-input" type="text" placeholder="Add a task.">
+            <button class="todo-btn" type="submit">I Got This!</button>
+        </form>
+    </div>
+-->
+    <!-- div for top left corner -->
+     
+    <!-- <p><span id="datetime"></span></p>
+        <script src="JS/time.js"></script>  -->
+       
+   
+
+
+<!--  
+<div id="myUnOrdList">
+        <ul class="todo-list">
+             (Basic Format)
+            <div class="todo">
+                items added to this list:
+                <li></li>
+                <button>delete</button>
+                <button>check</button>
+            
+        </ul>
+    </div>
+-->
+
+    <main>
+        <div class="card">
+            <div class="card__header">
+                <div class="img-card"><img src="/assets/img/kiosk-logo.png" alt=""></div>
+                <h1 class="card__header-title" data-i18n="cardTitle">Information</h1>
+            </div>
+            <!-- <div class="card__desc">
+                <p class="card__desc-par" id="card__desc-par-lang">Obtain devices at conveniently located stations powered by our SKD integration</p>
+            </div> -->
+            
+            <div class="amount__info">
+
+
+
+
+                <p class="amount__info-para" data-i18n="availableLabel">Available:</p>
+                <h1 class="amount__info-live" id="amount__info-id">0/0</h1>
+                <p class="amount__info-overall"></p>
+            </div>
+            <div class="card__button">
+                <p data-i18n="accessMessage">Use your access card to open the station</p>
+            </div>
+        </div>
+        <div class="photo">
+            
+          </div>
+    </main>
+    <script src="/assets/js/get_laptop_status.js"></script>
+    <script src="/assets/js/index_i18n.js"></script>
+</body>
+</html>

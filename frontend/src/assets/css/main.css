@@ -1,0 +1,574 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    /* #363532, rgb(88, 111, 112) */
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Work Sans', sans-serif;
+    min-height: 100vh;
+    background-image: linear-gradient(100deg, #575656, #062e3f);
+    color: #ffdfdb;
+    overflow :hidden;
+}
+
+/* Body light or darker themes */
+.standard {
+    background-image: linear-gradient(100deg, #575656, #062e3f);
+    color: #ffdfdb;
+    transition: 0.3s linear;
+    overflow: hidden;
+}
+
+.light {
+    background-image: linear-gradient(100deg, #d4f1ff, #ffffff);
+    color: #1a150e;
+    transition: 0.3s linear;
+}
+
+.darker {
+    background-image: linear-gradient(100deg, #001214, #001f29);
+    color: white;
+    transition: 0.3s linear;
+}
+
+#header, #form, #datetime {
+    margin: 0 1rem;
+    min-height: 10vh;
+    width: 100%;
+}
+
+
+#header {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    font-size: 3.3rem;
+    min-height: 25vh;
+    width: 100%;
+}
+
+.language-switcher {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+}
+
+.language-flag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    background: rgba(7, 18, 28, 0.34);
+    padding: 0;
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.language-flag:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.7);
+    background: rgba(7, 18, 28, 0.5);
+}
+
+.language-flag.active {
+    border-color: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.language-flag img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    border-radius: 999px;
+}
+
+/* Theme buttons div */
+.flexrow-container {
+    align-items: center;
+    align-self: flex-end;
+    display: flex;
+    justify-content: space-around;
+    margin-right: 7%;
+}
+
+.language-picker{
+    align-items: center;
+    align-self: flex-end;
+    display: flex;
+    justify-content: space-around;
+}
+
+.language-button{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.language-button img{
+    width: 1.3em;
+    padding-right: 0.3em;
+}
+
+.theme-selector {
+    border: 1px solid #d1dae3;
+    border-radius: 100%;
+    height: 35px;
+    margin: 0 8px;
+    transition: tranform 150ms ease-in-out, box-shadow 200ms ease-in-out;
+    width: 35px;
+}
+
+.theme-selector:hover { 
+    box-shadow: white 0 0 8px;
+    cursor: pointer;
+}
+
+.theme-selector:active {
+    transform: scale(0.95);
+}
+
+.standard-theme {
+    background-image: linear-gradient(100deg, #575656, #062e3f);
+}
+
+.light-theme {
+    background-image: linear-gradient(100deg, #d4f1ff, #ffffff);
+}
+
+.darker-theme {
+    background-image: linear-gradient(100deg, #001214, #001f29);
+}
+
+#title {
+    letter-spacing: 0.2rem;
+    margin-bottom: 20px;
+    max-width: 480px;
+}
+
+.hero-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+    animation: smartbox-reveal 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes smartbox-reveal {
+    0% {
+        opacity: 0;
+        transform: translateY(18px) scale(0.96);
+        letter-spacing: 0.45rem;
+        filter: blur(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        letter-spacing: 0.2rem;
+        filter: blur(0);
+    }
+}
+
+form {
+    display: flex;
+    font-size: 1.7rem;
+    justify-content: center;
+    margin: 15px 0;
+    padding: 0.8rem;
+    width: 100%;
+}
+
+form input {
+    padding: 10px;
+    font-size: 17px;
+    border: none;
+    outline: none;
+    /* border-radius: 15; */
+    border-top-left-radius: 17px;
+    border-bottom-left-radius: 17px;
+    max-width: 500px;
+    transition: background-color 200ms ease-in-out;
+    width: 100%;
+}
+
+/* Input themes */
+form input.standard-input {
+    background-color: #181a1a;
+    color: rgb(247, 226, 223);
+}
+
+
+form input.light-input {
+    background-color: #AEB1B4;
+    color: #1a150e;
+}
+
+form input.light-input::placeholder {
+    color: #1a150e;
+    opacity: 0.7;
+}
+
+form input.darker-input {
+    background-color: #01394c;
+    color: white;
+}
+
+form input.darker-input::placeholder {
+    color: white;
+    opacity: 0.7;
+}
+
+form input:hover {
+    cursor: text;
+}
+
+form input.standard-input:hover {
+    background-color: rgb(0, 0, 0);
+}
+
+form input.light-input:hover {
+    background-color: #919699;
+}
+
+form input.darker-input:hover {
+    background-color: #013141;
+}
+
+button {
+    border: none;
+    outline: none; 
+    transition: box-shadow 200ms ease, background-color 200ms ease-in-out;
+}
+
+button:hover {
+    cursor: pointer;
+}
+
+/* Button themes */
+button.standard-button{
+    background-color: rgb(247, 226, 223);
+    color: rgb(0, 0, 0);
+}
+
+button.standard-button:hover{
+    background-color: white;
+    box-shadow: #fff8 0 0 10px;
+}
+
+button.light-button .language-button{
+    background-color: white;
+    color: #1a150e;
+}
+
+button.light-button:hover{
+    background-color: #f0f0f0;
+}
+
+button.darker-button {
+    background-color: #002837;
+    color: white;
+}
+
+button.darker-button:hover {
+    background-color: #001f29;
+}
+
+button.language-button{
+    border-radius: 5%;
+    margin-right: 1rem;
+}
+
+button.language-button:hover{
+    background-color: white;
+    box-shadow: #fff8 0 0 10px;
+}
+
+form button {
+    padding: 10px;
+    font-size: 27px;
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+    min-width: 100px;
+}
+
+#myUnOrdList {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 1200px;
+}
+
+.todo-list {
+    min-width: 25%;
+
+    /* To remove the bullets of unordered list */
+    list-style: none;
+}
+
+.todo {
+    margin: 1rem;
+    /* background: rgb(247, 226, 223); */
+    /* color: black; */
+    font-size: 19px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25em 0.5em;
+    border-radius: 30px;
+    transition: background-color 200ms ease-in-out;
+}
+
+/* Items themes */
+.standard-todo {
+    background-color: rgb(26, 27, 27);
+}
+
+.light-todo {
+    background-color:#AEB1B4;
+}
+
+.darker-todo {
+    background-color: #01394c;
+}
+
+.todo li{
+    padding: 7px;
+    /* word-wrap: break-word; */
+    /* flex-wrap: wrap; */
+    font-size: 20px;
+    flex: 1; /* To push the trash and the check button to the right */
+    border-radius: 30px;
+
+    /* wraps the links */
+    overflow-wrap: anywhere;
+}
+
+.check-btn, .delete-btn {
+    font-size: 19px;
+    cursor: pointer;
+    width: 2em;
+    height: 2em;
+    border-radius: 80%;
+    margin: 0 5px;
+}
+
+.todo-item {
+    padding: 0rem 0.5rem;
+}
+
+.fa-trash, .fa-check { 
+    pointer-events: none;
+}
+
+
+.completed {
+    transition: 0.2s;
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.fall {
+    transition: 0.5s;
+    transform: translateY(45rem) rotateZ(45deg);
+    opacity: 0;
+}
+
+/* Responsive design */
+@media only screen and (max-width: 1000px) {
+    .flexrow-container {
+        align-self: unset;
+        margin-right: 0;
+    }
+}
+
+@media only screen and (max-width: 800px) {
+    #header {
+        font-size: 2rem;
+    }
+
+    #title {
+        animation: 
+            animated-text 3s steps(16,end) 0.5s 1 normal both,
+            animated-cursor 750ms steps(16,end) infinite;
+        margin-bottom: 10px;
+        margin-top: 30px;
+        max-width: 330px;
+    }
+}
+
+@media only screen and (max-width: 400px) {
+    #header {
+        font-size: 1.5rem;
+    }
+
+    #title {
+        animation: 
+            animated-text 3.5s steps(16,end) 0.5s 1 normal both,
+            animated-cursor 750ms steps(16,end) infinite;
+        max-width: 255px;
+    }
+}
+
+@media only screen and (max-width: 400px) {
+    form {
+        align-items: center;
+        flex-direction: column;
+    }
+
+    form input {
+        border-radius: 17px;
+    }
+
+    form button {
+        border-radius: 15px;
+        margin-top: 15px;
+        width: 50%;
+    }
+    form > button.light-button {
+        box-shadow: 0 0 5px lightgray;
+    }
+}
+
+
+img{
+    max-width: 100%;
+    height: auto;
+}
+
+main{
+    margin: 0 auto;
+    margin-top: 2em;
+    width: 50%;
+    
+}
+
+.container {
+    display: flex;
+}
+
+.photo{
+    box-shadow: #fff8 0 0 10px;
+}
+
+.photo img{
+    max-width: 100%;
+    height: auto;
+    border: 2px solid rgb(250, 250, 250);
+    border-bottom-right-radius: 1rem;
+    border-bottom-left-radius: 1rem;
+    overflow: hidden; /* Обрезаем лишнее содержимое за границами */
+}
+.card{
+    background-color: rgb(250, 250, 250);
+    color: rgb(0, 0, 0);
+    box-shadow: #fff8 0 0 10px;
+    border-top-right-radius: 1rem;
+    border-top-left-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 2em;
+    padding: 1em;
+}
+
+.card__header{
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 1.3em;
+    justify-content: center;
+    width: 100%;
+}
+
+h1.card__header-title { 
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-weight:700;
+    font-size: 2.5em;
+    
+}
+
+.img-card img{
+    width: 6em;
+}
+
+.card__desc{
+    width: 100%;
+    font-size: 1.7em;
+}
+
+
+
+.amount__info{
+    width: 100%;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em;
+    gap: 0.3em;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.amount__info-para{
+    margin-left: -0.8em;
+}
+
+.arrow-icon {
+    width: 2em; /* Adjust width and height as needed */
+    height: 2em;
+    fill: rgba(84,84,85,255); /* Arrow color */
+}
+
+.feature_list{
+    width: 100%;
+    font-size: 2em;
+    margin-top: -1em;
+    gap: 0.3em;
+}
+
+.feature_list-row{
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+}
+
+.feature_list-par{  
+    margin-left: -0.4em;
+}
+
+.card__button {
+    display: inline-block;
+    width: 80%;
+    padding: 1em 0;
+} 
+
+.card__button button {
+    background-color: #0075ff; /* Button background color */
+    color: #fff; /* Text color */
+    border: none;
+    width: 100%;
+    padding: 20px 0; /* Adjust padding as needed */
+    font-size: 1.4em;
+    border-radius: 5px; /* Rounded corners */
+    cursor: pointer;
+    transition: background-color 0.3s ease; /* Smooth transition for hover effect */
+}
+
+.card__button button:hover {
+    background-color: #0056b3; /* Darker background color on hover */
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); /* Optional: Add a subtle shadow on hover */
+}
