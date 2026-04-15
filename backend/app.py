@@ -109,6 +109,16 @@ def normalize_barcodes(raw_barcodes):
     return normalized
 
 
+def extract_uid_from_serial_data(data):
+    if data.startswith('UID:'):
+        return data[4:]
+
+    if data.isalnum() and '/' not in data:
+        return data
+
+    return None
+
+
 def build_home_state():
     return {
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
@@ -421,8 +431,8 @@ def arduino_thread():
                     data = data.decode().replace(' ', '').upper()
                     print('Received:', data)
 
-                    if data.startswith('UID:'):
-                        uid = data[4:]
+                    uid = extract_uid_from_serial_data(data)
+                    if uid:
                         last_detected_uid = uid
                         print('Received UID:', uid)
 
