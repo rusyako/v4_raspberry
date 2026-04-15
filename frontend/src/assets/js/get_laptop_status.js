@@ -54,6 +54,11 @@ async function updateHomeState() {
             laptopCountElement.textContent = data.laptop_count;
         }
 
+        if (data.admin_redirect) {
+            window.location.href = '/admin';
+            return;
+        }
+
         if (data.redirect) {
             window.location.href = '/hello_page';
         }
