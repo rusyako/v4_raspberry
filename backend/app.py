@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, session
 import atexit
 import hashlib
 import json
@@ -32,6 +32,7 @@ SERIAL_TIMEOUT = float(os.getenv('SERIAL_TIMEOUT', '0.5'))
 FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
 FLASK_PORT = int(os.getenv('FLASK_PORT', '5000'))
 FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY', os.urandom(32).hex())
 ENABLE_WEBVIEW = os.getenv('ENABLE_WEBVIEW', 'false').lower() == 'true'
 START_ARDUINO_THREAD = os.getenv('START_ARDUINO_THREAD', 'true').lower() == 'true'
 ADMIN_PIN = os.getenv('ADMIN_PIN', '1234')
@@ -60,6 +61,7 @@ logging.getLogger('werkzeug').setLevel(logging.WARNING)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 
 app = Flask(__name__)
+app.secret_key = FLASK_SECRET_KEY
 
 try:
     ser = serial.Serial(SERIAL_PORT, SERIAL_BAUDRATE, timeout=SERIAL_TIMEOUT)
@@ -68,13 +70,9 @@ except serial.SerialException as error:
     ser = None
 
 redirect_to_scan_page = False
-redirect_to_hello_page = False
-redirect_to_admin_page = False
-current_user_uid = None
 laptop_status = '0/0'
-admin_session_token = None
-admin_session_expires_at = 0
 last_detected_uid = None
+pending_uid_scan = None
 
 GENERIC_ERROR_MESSAGE = 'Что-то пошло не так. Попробуйте снова. / Something went wrong. Please try again.'
 SCAN_CARD_MESSAGE = 'Сначала приложите карту доступа. / Please scan your access card first.'
@@ -113,8 +111,8 @@ def normalize_barcodes(raw_barcodes):
 
 def build_home_state():
     return {
-        'admin_redirect': redirect_to_admin_page,
-        'redirect': redirect_to_hello_page,
+        'admin_redirect': bool(session.get('redirect_to_admin_page')),
+        'redirect': bool(session.get('redirect_to_hello_page')),
         'laptop_count': laptop_status,
         'last_detected_uid': last_detected_uid
     }
@@ -129,11 +127,12 @@ def generate_admin_session_token():
 
 
 def is_admin_session_active(token=None):
-    global admin_session_token, admin_session_expires_at
+    admin_session_token = session.get('admin_session_token')
+    admin_session_expires_at = session.get('admin_session_expires_at', 0)
 
     if not admin_session_token or time.time() > admin_session_expires_at:
-        admin_session_token = None
-        admin_session_expires_at = 0
+        session.pop('admin_session_token', None)
+        session.pop('admin_session_expires_at', None)
         return False
 
     if token is None:
@@ -143,19 +142,38 @@ def is_admin_session_active(token=None):
 
 
 def create_admin_session():
-    global admin_session_token, admin_session_expires_at
-
     admin_session_token = generate_admin_session_token()
-    admin_session_expires_at = time.time() + ADMIN_SESSION_TIMEOUT_SECONDS
+    session['admin_session_token'] = admin_session_token
+    session['admin_session_expires_at'] = time.time() + ADMIN_SESSION_TIMEOUT_SECONDS
     return admin_session_token
 
 
 def clear_admin_session():
-    global admin_session_token, admin_session_expires_at, redirect_to_admin_page
+    session.pop('admin_session_token', None)
+    session.pop('admin_session_expires_at', None)
+    session.pop('redirect_to_admin_page', None)
 
-    admin_session_token = None
-    admin_session_expires_at = 0
-    redirect_to_admin_page = False
+
+def clear_user_session():
+    session.pop('current_user_uid', None)
+    session.pop('redirect_to_hello_page', None)
+
+
+def activate_user_session(uid, is_admin):
+    current_user_uid = session.get('current_user_uid')
+
+    if current_user_uid is not None and current_user_uid != uid:
+        return False, 'Сессия уже активна. / A session is already active.'
+
+    session['current_user_uid'] = uid
+
+    if is_admin:
+        create_admin_session()
+        session['redirect_to_admin_page'] = True
+        return True, 'Администратор распознан. / Administrator recognized.'
+
+    session['redirect_to_hello_page'] = True
+    return True, 'Пользователь распознан. / User recognized.'
 
 
 def get_user_by_uid(uid):
@@ -182,8 +200,8 @@ def is_local_request():
     return remote_addr in {'127.0.0.1', '::1', '::ffff:127.0.0.1'}
 
 
-def apply_uid_scan(uid):
-    global current_user_uid, redirect_to_hello_page, redirect_to_admin_page, last_detected_uid
+def queue_uid_scan(uid):
+    global last_detected_uid, pending_uid_scan
 
     user = get_user_by_uid(uid)
     last_detected_uid = uid
@@ -191,18 +209,33 @@ def apply_uid_scan(uid):
     if not user:
         return False, 'Карта не найдена в системе. / Card was not found in the system.'
 
-    if current_user_uid is not None and current_user_uid != uid:
-        return False, 'Сессия уже активна. / A session is already active.'
-
-    current_user_uid = uid
-
+    pending_uid_scan = {'uid': uid, 'is_admin': bool(user.get('is_admin'))}
     if user.get('is_admin'):
-        create_admin_session()
-        redirect_to_admin_page = True
         return True, 'Администратор распознан. / Administrator recognized.'
-
-    redirect_to_hello_page = True
     return True, 'Пользователь распознан. / User recognized.'
+
+
+def apply_uid_scan_for_request(uid):
+    global last_detected_uid
+
+    user = get_user_by_uid(uid)
+    last_detected_uid = uid
+
+    if not user:
+        return False, 'Карта не найдена в системе. / Card was not found in the system.'
+
+    return activate_user_session(uid, bool(user.get('is_admin')))
+
+
+def consume_pending_uid_scan():
+    global pending_uid_scan
+
+    if not pending_uid_scan:
+        return
+
+    queued_scan = pending_uid_scan
+    pending_uid_scan = None
+    activate_user_session(queued_scan['uid'], queued_scan['is_admin'])
 
 
 def require_admin():
@@ -378,7 +411,7 @@ def serve_frontend_page(filename):
 
 
 def arduino_thread():
-    global current_user_uid, redirect_to_scan_page, redirect_to_hello_page, redirect_to_admin_page, laptop_status, ser, last_detected_uid
+    global redirect_to_scan_page, laptop_status, ser, last_detected_uid
 
     while not stop_event.is_set():
         try:
@@ -396,7 +429,7 @@ def arduino_thread():
                         user = get_user_by_uid(uid)
 
                         if user:
-                            success, message = apply_uid_scan(uid)
+                            success, message = queue_uid_scan(uid)
                             if not success:
                                 print(message)
                         else:
@@ -424,7 +457,7 @@ def frontend_assets(filename):
 
 @app.route('/submit_scan', methods=['POST'])
 def submit_scan():
-    global current_user_uid, redirect_to_hello_page
+    current_user_uid = session.get('current_user_uid')
 
     if not current_user_uid:
         return error_response(SCAN_CARD_MESSAGE)
@@ -469,8 +502,7 @@ def submit_scan():
 
         recompute_laptop_status(connection)
         connection.commit()
-        current_user_uid = None
-        redirect_to_hello_page = False
+        clear_user_session()
         return success_response(
             'Устройства успешно выданы. / Devices checked out successfully.',
             redirect_url='/'
@@ -485,10 +517,7 @@ def submit_scan():
 
 @app.route('/clear_session', methods=['POST'])
 def clear_session():
-    global current_user_uid, redirect_to_hello_page
-
-    current_user_uid = None
-    redirect_to_hello_page = False
+    clear_user_session()
     return success_response('Сессия очищена. / Session cleared.')
 
 
@@ -525,6 +554,7 @@ def get_laptop_status():
 
 @app.route('/home_state', methods=['GET'])
 def home_state():
+    consume_pending_uid_scan()
     recompute_laptop_status()
     return jsonify(build_home_state())
 
@@ -532,7 +562,7 @@ def home_state():
 @app.route('/admin_state', methods=['GET'])
 def admin_state():
     return jsonify({
-        'admin_redirect': redirect_to_admin_page,
+        'admin_redirect': bool(session.get('redirect_to_admin_page')),
         'admin_session_active': is_admin_session_active(),
         'last_detected_uid': last_detected_uid
     })
@@ -557,34 +587,34 @@ def debug_scan_uid():
     if not uid:
         return error_response('Введите UID для симуляции. / Enter a UID to simulate.')
 
-    success, message = apply_uid_scan(uid)
+    success, message = apply_uid_scan_for_request(uid)
     if not success:
         return error_response(message, 400)
 
     return success_response(
         message,
-        redirect_admin=redirect_to_admin_page,
-        redirect_user=redirect_to_hello_page,
+        redirect_admin=bool(session.get('redirect_to_admin_page')),
+        redirect_user=bool(session.get('redirect_to_hello_page')),
         last_detected_uid=last_detected_uid
     )
 
 
 @app.route('/')
 def index():
-    global current_user_uid, redirect_to_scan_page, redirect_to_hello_page, redirect_to_admin_page
+    global redirect_to_scan_page
 
+    consume_pending_uid_scan()
     recompute_laptop_status()
-    if redirect_to_admin_page:
-        redirect_to_admin_page = False
+    if session.get('redirect_to_admin_page'):
         return send_from_directory(FRONTEND_DIST_DIR, 'admin.html')
     if redirect_to_scan_page:
         redirect_to_scan_page = False
         return send_from_directory(FRONTEND_DIST_DIR, 'scan_page.html')
-    if redirect_to_hello_page:
-        redirect_to_hello_page = False
+    if session.get('redirect_to_hello_page'):
         return send_from_directory(FRONTEND_DIST_DIR, 'hello_page.html')
 
-    current_user_uid = None
+    clear_user_session()
+    session.pop('redirect_to_admin_page', None)
     return serve_frontend_page('index.html')
 
 
@@ -595,6 +625,7 @@ def scan_page():
 
 @app.route('/hello_page')
 def hello_page():
+    session.pop('redirect_to_hello_page', None)
     return serve_frontend_page('hello_page.html')
 
 
@@ -605,11 +636,15 @@ def return_page():
 
 @app.route('/check-redirect')
 def check_redirect():
-    return jsonify({'redirect': redirect_to_hello_page, 'admin_redirect': redirect_to_admin_page})
+    return jsonify({
+        'redirect': bool(session.get('redirect_to_hello_page')),
+        'admin_redirect': bool(session.get('redirect_to_admin_page'))
+    })
 
 
 @app.route('/admin')
 def admin_page():
+    session.pop('redirect_to_admin_page', None)
     return serve_frontend_page('admin.html')
 
 
@@ -744,7 +779,7 @@ def admin_delete_laptop(name):
 
 @app.route('/check_user_laptops', methods=['POST'])
 def check_user_laptops():
-    global current_user_uid
+    current_user_uid = session.get('current_user_uid')
 
     if not current_user_uid:
         return error_response(SCAN_CARD_MESSAGE)
@@ -771,7 +806,7 @@ def check_user_laptops():
 
 @app.route('/return_laptops', methods=['POST'])
 def return_laptops():
-    global current_user_uid, redirect_to_hello_page
+    current_user_uid = session.get('current_user_uid')
 
     if not current_user_uid:
         return error_response(SCAN_CARD_MESSAGE)
@@ -819,7 +854,7 @@ def return_laptops():
 
         recompute_laptop_status(connection)
         connection.commit()
-        redirect_to_hello_page = False
+        clear_user_session()
         return success_response('Устройства успешно возвращены. / Devices returned successfully.')
     except Exception as error:
         connection.rollback()

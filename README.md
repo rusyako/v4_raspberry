@@ -53,7 +53,7 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 
 Important vars:
 
-- `FLASK_HOST`, `FLASK_PORT`, `FLASK_DEBUG`
+- `FLASK_HOST`, `FLASK_PORT`, `FLASK_DEBUG`, `FLASK_SECRET_KEY`
 - `DATA_DIR`, `SQLITE_PATH`, `SEED_PATH`
 - `LOG_DIR`, `LOG_FILE`, `LOG_LEVEL`, `LOG_BACKUP_DAYS`
 - `ADMIN_PIN`, `ADMIN_SESSION_TIMEOUT_SECONDS`
