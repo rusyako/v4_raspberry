@@ -122,6 +122,17 @@ def extract_uid_from_serial_data(data):
     return None
 
 
+def normalize_uid_for_lookup(uid):
+    normalized_uid = str(uid or '').strip().upper()
+    if not normalized_uid:
+        return ''
+
+    if all(character in '0123456789ABCDEF' for character in normalized_uid):
+        return str(int(normalized_uid, 16))
+
+    return normalized_uid
+
+
 def build_home_state():
     return {
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
@@ -436,6 +447,7 @@ def arduino_thread():
 
                     uid = extract_uid_from_serial_data(data)
                     if uid:
+                        uid = normalize_uid_for_lookup(uid)
                         last_detected_uid = uid
                         print('Received UID:', uid)
 
