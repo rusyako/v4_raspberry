@@ -110,6 +110,9 @@ def normalize_barcodes(raw_barcodes):
 
 
 def extract_uid_from_serial_data(data):
+    if data.startswith('CARDUID:'):
+        return data[8:]
+
     if data.startswith('UID:'):
         return data[4:]
 
