@@ -1,12 +1,18 @@
 # Frontend Build and Deploy
 
-This frontend is a static multi-page app (no React runtime).
+This frontend is a Vite + React app with two runtime pages:
+
+- `/` - kiosk app (home + action + checkout + return flow in one page)
+- `/admin` - admin panel
 
 ## Project structure
 
-- `src/pages` - HTML source files
-- `src/assets` - CSS, JS and image assets
-- `dist` - generated build output used by backend runtime
+- `index.html` - kiosk entry page
+- `admin.html` - admin entry page
+- `src/react/pages` - React page components
+- `src/react/shared` - shared helpers/components
+- `src/react/styles` - modular CSS styles
+- `dist` - production build output used by backend runtime
 
 ## Build locally
 
@@ -23,8 +29,9 @@ The command generates `frontend/dist`.
 
 Backend serves:
 
-- pages from `frontend/dist/*.html`
-- assets from `/assets/*` mapped to `frontend/dist/assets/*`
+- `frontend/dist/index.html` for `/`
+- `frontend/dist/admin.html` for `/admin`
+- built assets from `/assets/*` mapped to `frontend/dist/assets/*`
 
 ## Raspberry deploy flow (recommended)
 

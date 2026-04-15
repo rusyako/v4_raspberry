@@ -125,7 +125,8 @@ def extract_uid_from_serial_data(data):
 def build_home_state():
     return {
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
-        'redirect': bool(session.get('redirect_to_hello_page')),
+        'redirect': bool(session.get('current_user_uid')),
+        'user_session_active': bool(session.get('current_user_uid')),
         'laptop_count': laptop_status,
         'last_detected_uid': last_detected_uid
     }
@@ -614,43 +615,31 @@ def debug_scan_uid():
 
 @app.route('/')
 def index():
-    global redirect_to_scan_page
-
     consume_pending_uid_scan()
     recompute_laptop_status()
-    if session.get('redirect_to_admin_page'):
-        return send_from_directory(FRONTEND_DIST_DIR, 'admin.html')
-    if redirect_to_scan_page:
-        redirect_to_scan_page = False
-        return send_from_directory(FRONTEND_DIST_DIR, 'scan_page.html')
-    if session.get('redirect_to_hello_page'):
-        return send_from_directory(FRONTEND_DIST_DIR, 'hello_page.html')
-
-    clear_user_session()
-    session.pop('redirect_to_admin_page', None)
     return serve_frontend_page('index.html')
 
 
 @app.route('/scan_page')
 def scan_page():
-    return serve_frontend_page('scan_page.html')
+    return serve_frontend_page('index.html')
 
 
 @app.route('/hello_page')
 def hello_page():
-    session.pop('redirect_to_hello_page', None)
-    return serve_frontend_page('hello_page.html')
+    return serve_frontend_page('index.html')
 
 
 @app.route('/return_page')
 def return_page():
-    return serve_frontend_page('return_page.html')
+    return serve_frontend_page('index.html')
 
 
 @app.route('/check-redirect')
 def check_redirect():
     return jsonify({
-        'redirect': bool(session.get('redirect_to_hello_page')),
+        'redirect': bool(session.get('current_user_uid')),
+        'user_session_active': bool(session.get('current_user_uid')),
         'admin_redirect': bool(session.get('redirect_to_admin_page'))
     })
 
