@@ -580,9 +580,13 @@ def arduino_thread():
     while not stop_event.is_set():
         try:
             if ser and ser.is_open:
-                data = ser.readline().strip()
-                if data:
-                    data = data.decode().replace(' ', '').upper()
+                raw_data = ser.readline()
+                if raw_data:
+                    data = raw_data.decode('utf-8', errors='ignore').strip().replace(' ', '').upper()
+                    if not data:
+                        time.sleep(0.1)
+                        continue
+
                     print('Received:', data)
 
                     uid = extract_uid_from_serial_data(data)
