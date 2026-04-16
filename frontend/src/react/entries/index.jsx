@@ -1,11 +1,12 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { KioskPage } from '../pages/kiosk-page';
+import { AppRoot } from '../pages/app-root';
 import '../styles/base.css';
 import '../styles/kiosk.css';
+import '../styles/admin.css';
 
-const kioskNode = <KioskPage />;
+const appNode = <AppRoot />;
 
 createRoot(document.getElementById('root')).render(
-  import.meta.env.DEV ? <React.StrictMode>{kioskNode}</React.StrictMode> : kioskNode
+  import.meta.env.DEV ? <React.StrictMode>{appNode}</React.StrictMode> : appNode
 );

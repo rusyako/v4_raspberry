@@ -69,8 +69,6 @@ nano .env
 Минимально проверь:
 
 - `FLASK_SECRET_KEY` (замени `change-me`)
-- `ADMIN_PIN` (по умолчанию `5005`)
-- `ADMIN_PIN_REQUIRED` (`false` если хочешь открывать админку без PIN)
 - `SERIAL_PORT` (обычно `/dev/ttyACM0`)
 - `START_ARDUINO_THREAD=true`
 - `ENABLE_LOCAL_DEBUG_SDK=false` (для прод/киоска)
@@ -112,19 +110,19 @@ docker compose up --build -d
 
 ```bash
 docker exec smart-box python manage_db.py init-db
-docker exec smart-box python manage_db.py add-user --uid "F015ACDA" --name "Ruslan" --admin
+docker exec smart-box python manage_db.py add-user --uid "F015ACDA" --name "Ruslan" --email "ruslan@company.kz" --admin
 docker exec smart-box python manage_db.py add-user --uid "E02560DB" --name "Operator"
-docker exec smart-box python manage_db.py add-laptop --name "MB-001" --barcode "BC-001" --status available
+docker exec smart-box python manage_db.py add-laptop --name "MB-001" --barcode "BC-001" --device-number "2000000188706" --status available
 docker exec smart-box python manage_db.py list-users
 docker exec smart-box python manage_db.py list-laptops
+docker exec smart-box python manage_db.py list-borrow-records
 ```
 
 Важно: UID в системе хранится в HEX-формате (например `F015ACDA`).
 
 ## 6.1) Логика доступа в админку
 
-- Переход по ссылке `/admin` требует PIN (по умолчанию `5005`).
-- Если сначала отсканирована admin UID-карта, `/admin` открывается без ручного ввода PIN.
+- Переход по ссылке `/admin` открывает админку сразу, без PIN.
 
 ## 7) Проверка Arduino
 

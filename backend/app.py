@@ -35,8 +35,6 @@ FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY', os.urandom(32).hex())
 ENABLE_WEBVIEW = os.getenv('ENABLE_WEBVIEW', 'false').lower() == 'true'
 START_ARDUINO_THREAD = os.getenv('START_ARDUINO_THREAD', 'true').lower() == 'true'
-ADMIN_PIN = os.getenv('ADMIN_PIN', '1234')
-ADMIN_PIN_REQUIRED = os.getenv('ADMIN_PIN_REQUIRED', 'true').lower() == 'true'
 ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv('ADMIN_SESSION_TIMEOUT_SECONDS', '1800'))
 ENABLE_LOCAL_DEBUG_SDK = os.getenv('ENABLE_LOCAL_DEBUG_SDK', 'true').lower() == 'true'
 
@@ -123,10 +121,11 @@ def extract_uid_from_serial_data(data):
     return None
 
 
-def build_home_state():
+def build_home_state(user_actions_redirect=False):
     return {
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
-        'redirect': bool(session.get('current_user_uid')),
+        'redirect': bool(user_actions_redirect),
+        'user_actions_redirect': bool(user_actions_redirect),
         'user_session_active': bool(session.get('current_user_uid')),
         'laptop_count': laptop_status,
         'last_detected_uid': last_detected_uid
@@ -179,6 +178,14 @@ def clear_admin_session():
 def clear_user_session():
     session.pop('current_user_uid', None)
     session.pop('redirect_to_hello_page', None)
+    session.pop('user_actions_redirect', None)
+
+
+def consume_user_actions_redirect():
+    should_open_actions = bool(session.get('user_actions_redirect'))
+    if should_open_actions:
+        session.pop('user_actions_redirect', None)
+    return should_open_actions
 
 
 def activate_user_session(uid, is_admin):
@@ -195,7 +202,9 @@ def activate_user_session(uid, is_admin):
         session['redirect_to_admin_page'] = True
         return True, 'Администратор распознан. / Administrator recognized.'
 
+    session.pop('redirect_to_admin_page', None)
     session['redirect_to_hello_page'] = True
+    session['user_actions_redirect'] = True
     return True, 'Пользователь распознан. / User recognized.'
 
 
@@ -203,7 +212,7 @@ def get_user_by_uid(uid):
     connection = get_db_connection()
     try:
         cursor = connection.cursor()
-        cursor.execute('SELECT uid, name, role, is_admin FROM users WHERE uid = ? LIMIT 1;', (uid,))
+        cursor.execute('SELECT uid, name, email, role, is_admin FROM users WHERE uid = ? LIMIT 1;', (uid,))
         row = cursor.fetchone()
         return dict(row) if row else None
     except sqlite3.Error as error:
@@ -262,13 +271,7 @@ def consume_pending_uid_scan():
 
 
 def require_admin():
-    if not ADMIN_PIN_REQUIRED:
-        ensure_admin_session()
-        return None
-
-    token = request.headers.get('X-Admin-Token', '').strip()
-    if not is_admin_session_active(token):
-        return error_response('Требуется вход администратора. / Admin login required.', 401)
+    ensure_admin_session()
     return None
 
 
@@ -276,11 +279,30 @@ def fetch_admin_dashboard_data():
     connection = get_db_connection()
     try:
         cursor = connection.cursor()
-        cursor.execute('SELECT uid, name, role, is_admin FROM users ORDER BY name, uid;')
+        cursor.execute('SELECT uid, name, email, role, is_admin FROM users ORDER BY name, uid;')
         users = [dict(row) for row in cursor.fetchall()]
-        cursor.execute('SELECT name, barcode, status FROM laptops ORDER BY name;')
+        cursor.execute('SELECT name, barcode, device_number, status FROM laptops ORDER BY name;')
         laptops = [dict(row) for row in cursor.fetchall()]
-        return users, laptops
+        cursor.execute(
+            '''
+            SELECT
+                id,
+                employee_uid,
+                employee_name,
+                employee_email,
+                device_number,
+                device_name,
+                barcode,
+                taken_at,
+                returned_at,
+                status
+            FROM borrow_records
+            ORDER BY id DESC
+            LIMIT 200;
+            '''
+        )
+        borrow_records = [dict(row) for row in cursor.fetchall()]
+        return users, laptops, borrow_records
     finally:
         connection.close()
 
@@ -330,14 +352,15 @@ def seed_database(connection):
         for user in seed_data.get('users', []):
             uid = (user.get('uid') or '').strip()
             name = (user.get('name') or '').strip() or uid
+            email = (user.get('email') or '').strip()
             role = (user.get('role') or 'user').strip().lower()
             is_admin = 1 if user.get('is_admin', False) or role == 'admin' else 0
             if role not in {'user', 'admin'}:
                 role = 'admin' if is_admin else 'user'
             if uid:
-                users.append((uid, name, role, is_admin))
+                users.append((uid, name, email, role, is_admin))
         if users:
-            cursor.executemany('INSERT INTO users (uid, name, role, is_admin) VALUES (?, ?, ?, ?);', users)
+            cursor.executemany('INSERT INTO users (uid, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?);', users)
 
     cursor.execute('SELECT COUNT(*) FROM laptops;')
     if cursor.fetchone()[0] == 0:
@@ -350,13 +373,16 @@ def seed_database(connection):
             else:
                 name = (laptop.get('name') or '').strip()
                 barcode = (laptop.get('barcode') or name).strip()
+                device_number = (laptop.get('device_number') or barcode or name).strip()
                 status = (laptop.get('status') or 'available').strip().lower()
                 if status not in {'available', 'unavailable'}:
                     status = 'available'
+            if isinstance(laptop, str):
+                device_number = barcode
             if name:
-                laptops.append((name, barcode or name, status))
+                laptops.append((name, barcode or name, device_number or barcode or name, status))
         if laptops:
-            cursor.executemany('INSERT INTO laptops (name, barcode, status) VALUES (?, ?, ?);', laptops)
+            cursor.executemany('INSERT INTO laptops (name, barcode, device_number, status) VALUES (?, ?, ?, ?);', laptops)
 
 
 def init_db():
@@ -368,6 +394,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 uid TEXT PRIMARY KEY,
                 name TEXT,
+                email TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
                 is_admin INTEGER NOT NULL DEFAULT 0
             );
@@ -381,16 +408,25 @@ def init_db():
     except sqlite3.OperationalError:
         pass
     try:
+        cursor.execute('ALTER TABLE users ADD COLUMN email TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS laptops (
                 name TEXT PRIMARY KEY,
                 barcode TEXT UNIQUE,
+                device_number TEXT UNIQUE,
                 status TEXT NOT NULL CHECK(status IN ('available', 'unavailable'))
             );
             '''
         )
         cursor.execute('ALTER TABLE laptops ADD COLUMN barcode TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE laptops ADD COLUMN device_number TEXT;')
     except sqlite3.OperationalError:
         pass
     try:
@@ -417,9 +453,35 @@ def init_db():
             );
             '''
         )
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS borrow_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_uid TEXT NOT NULL,
+                employee_name TEXT NOT NULL,
+                employee_email TEXT,
+                device_number TEXT NOT NULL,
+                device_name TEXT,
+                barcode TEXT,
+                taken_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                returned_at TIMESTAMP,
+                status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'returned'))
+            );
+            '''
+        )
+        cursor.execute(
+            'CREATE INDEX IF NOT EXISTS idx_borrow_records_uid_status ON borrow_records (employee_uid, status);'
+        )
+        cursor.execute(
+            'CREATE INDEX IF NOT EXISTS idx_borrow_records_device_status ON borrow_records (device_number, status);'
+        )
+        cursor.execute(
+            'CREATE INDEX IF NOT EXISTS idx_borrow_records_taken_at ON borrow_records (taken_at);'
+        )
         seed_database(connection)
         cursor.execute("UPDATE users SET is_admin = CASE WHEN role = 'admin' THEN 1 ELSE is_admin END;")
         cursor.execute("UPDATE laptops SET barcode = name WHERE barcode IS NULL OR TRIM(barcode) = '';" )
+        cursor.execute("UPDATE laptops SET device_number = barcode WHERE device_number IS NULL OR TRIM(device_number) = '';" )
         connection.commit()
         recompute_laptop_status(connection)
     finally:
@@ -498,7 +560,7 @@ def submit_scan():
     try:
         cursor = connection.cursor()
         placeholders = ', '.join('?' for _ in barcodes)
-        cursor.execute(f'SELECT name, barcode, status FROM laptops WHERE barcode IN ({placeholders});', barcodes)
+        cursor.execute(f'SELECT name, barcode, device_number, status FROM laptops WHERE barcode IN ({placeholders});', barcodes)
         laptop_rows = cursor.fetchall()
         laptops_by_barcode = {row['barcode']: dict(row) for row in laptop_rows}
 
@@ -521,6 +583,38 @@ def submit_scan():
         cursor.executemany(
             'INSERT INTO laptop_bookings (uid, laptop_name) VALUES (?, ?);',
             [(current_user_uid, device_name) for device_name in device_names]
+        )
+        user = get_user_by_uid(current_user_uid) or {}
+        employee_name = (user.get('name') or current_user_uid).strip()
+        employee_email = (user.get('email') or '').strip()
+        borrow_record_rows = []
+        for barcode in barcodes:
+            laptop = laptops_by_barcode[barcode]
+            device_number = (laptop.get('device_number') or laptop.get('barcode') or laptop.get('name') or '').strip()
+            borrow_record_rows.append(
+                (
+                    current_user_uid,
+                    employee_name,
+                    employee_email,
+                    device_number,
+                    laptop.get('name'),
+                    laptop.get('barcode'),
+                    'active'
+                )
+            )
+        cursor.executemany(
+            '''
+            INSERT INTO borrow_records (
+                employee_uid,
+                employee_name,
+                employee_email,
+                device_number,
+                device_name,
+                barcode,
+                status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?);
+            ''',
+            borrow_record_rows
         )
         cursor.executemany(
             'INSERT INTO laptop_history (uid, laptop_name, action) VALUES (?, ?, ?);',
@@ -583,30 +677,18 @@ def get_laptop_status():
 def home_state():
     consume_pending_uid_scan()
     recompute_laptop_status()
-    return jsonify(build_home_state())
+    user_actions_redirect = consume_user_actions_redirect()
+    return jsonify(build_home_state(user_actions_redirect=user_actions_redirect))
 
 
 @app.route('/admin_state', methods=['GET'])
 def admin_state():
-    admin_session_active = is_admin_session_active()
-    admin_token = ''
-    admin_uid_bypass = bool(session.get('admin_uid_bypass'))
-
-    if not ADMIN_PIN_REQUIRED:
-        admin_token = ensure_admin_session() or ''
-        admin_session_active = True
-    elif admin_uid_bypass and admin_session_active:
-        admin_token = session.get('admin_session_token') or ''
-
-    should_require_pin = ADMIN_PIN_REQUIRED and not bool(admin_token)
-
-    if admin_token:
-        session.pop('admin_uid_bypass', None)
+    admin_token = ensure_admin_session() or ''
 
     return jsonify({
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
-        'admin_session_active': admin_session_active,
-        'admin_pin_required': should_require_pin,
+        'admin_session_active': True,
+        'admin_pin_required': False,
         'admin_token': admin_token,
         'last_detected_uid': last_detected_uid
     })
@@ -638,7 +720,7 @@ def debug_scan_uid():
     return success_response(
         message,
         redirect_admin=bool(session.get('redirect_to_admin_page')),
-        redirect_user=bool(session.get('redirect_to_hello_page')),
+        redirect_user=bool(session.get('user_actions_redirect')),
         last_detected_uid=last_detected_uid
     )
 
@@ -667,8 +749,10 @@ def return_page():
 
 @app.route('/check-redirect')
 def check_redirect():
+    user_actions_redirect = consume_user_actions_redirect()
     return jsonify({
-        'redirect': bool(session.get('current_user_uid')),
+        'redirect': bool(user_actions_redirect),
+        'user_actions_redirect': bool(user_actions_redirect),
         'user_session_active': bool(session.get('current_user_uid')),
         'admin_redirect': bool(session.get('redirect_to_admin_page'))
     })
@@ -676,32 +760,14 @@ def check_redirect():
 
 @app.route('/admin')
 def admin_page():
-    if not ADMIN_PIN_REQUIRED:
-        ensure_admin_session()
+    ensure_admin_session()
     session.pop('redirect_to_admin_page', None)
-    return serve_frontend_page('admin.html')
+    return serve_frontend_page('index.html')
 
 
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
-    if not ADMIN_PIN_REQUIRED:
-        token = ensure_admin_session()
-        return success_response(
-            'PIN отключен. / PIN is disabled.',
-            admin_token=token,
-            redirect_url='/admin'
-        )
-
-    data = request.get_json(silent=True) or {}
-    pin = str(data.get('pin') or '').strip()
-
-    if not pin:
-        return error_response('Введите PIN-код. / Enter the PIN code.')
-
-    if hash_pin(pin) != hash_pin(ADMIN_PIN):
-        return error_response('Неверный PIN-код. / Invalid PIN code.', 401)
-
-    token = create_admin_session()
+    token = ensure_admin_session()
     return success_response(
         'Вход администратора выполнен. / Admin login successful.',
         admin_token=token,
@@ -721,8 +787,8 @@ def admin_overview():
     if auth_error:
         return auth_error
 
-    users, laptops = fetch_admin_dashboard_data()
-    return jsonify({'success': True, 'users': users, 'laptops': laptops})
+    users, laptops, borrow_records = fetch_admin_dashboard_data()
+    return jsonify({'success': True, 'users': users, 'laptops': laptops, 'borrow_records': borrow_records})
 
 
 @app.route('/admin/users', methods=['POST'])
@@ -734,6 +800,7 @@ def admin_add_user():
     data = request.get_json(silent=True) or {}
     uid = str(data.get('uid') or '').strip()
     name = str(data.get('name') or '').strip()
+    email = str(data.get('email') or '').strip()
     is_admin = bool(data.get('is_admin'))
     role = 'admin' if is_admin else 'user'
 
@@ -743,8 +810,8 @@ def admin_add_user():
     connection = get_db_connection()
     try:
         connection.execute(
-            'INSERT INTO users (uid, name, role, is_admin) VALUES (?, ?, ?, ?);',
-            (uid, name or uid, role, 1 if is_admin else 0)
+            'INSERT INTO users (uid, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?);',
+            (uid, name or uid, email, role, 1 if is_admin else 0)
         )
         connection.commit()
         return success_response('Пользователь добавлен. / User added.')
@@ -779,6 +846,7 @@ def admin_add_laptop():
     data = request.get_json(silent=True) or {}
     name = str(data.get('name') or '').strip()
     barcode = str(data.get('barcode') or '').strip()
+    device_number = str(data.get('device_number') or barcode).strip()
     status = str(data.get('status') or 'available').strip().lower()
 
     if not name:
@@ -787,12 +855,18 @@ def admin_add_laptop():
     if not barcode:
         return error_response('Введите штрихкод устройства. / Enter device barcode.')
 
+    if not device_number:
+        return error_response('Введите номер устройства. / Enter device number.')
+
     if status not in {'available', 'unavailable'}:
         status = 'available'
 
     connection = get_db_connection()
     try:
-        connection.execute('INSERT INTO laptops (name, barcode, status) VALUES (?, ?, ?);', (name, barcode, status))
+        connection.execute(
+            'INSERT INTO laptops (name, barcode, device_number, status) VALUES (?, ?, ?, ?);',
+            (name, barcode, device_number, status)
+        )
         connection.commit()
         recompute_laptop_status(connection)
         return success_response('Устройство добавлено. / Device added.')
@@ -864,7 +938,7 @@ def return_laptops():
         placeholders = ', '.join('?' for _ in barcodes)
         cursor.execute(
             f'''
-            SELECT lb.laptop_name, l.barcode
+            SELECT lb.laptop_name, l.barcode, l.device_number
             FROM laptop_bookings lb
             JOIN laptops l ON l.name = lb.laptop_name
             WHERE lb.uid = ? AND l.barcode IN ({placeholders});
@@ -872,7 +946,13 @@ def return_laptops():
             [current_user_uid, *barcodes]
         )
         borrowed_rows = cursor.fetchall()
-        borrowed_by_barcode = {row['barcode']: row['laptop_name'] for row in borrowed_rows}
+        borrowed_by_barcode = {
+            row['barcode']: {
+                'laptop_name': row['laptop_name'],
+                'device_number': row['device_number']
+            }
+            for row in borrowed_rows
+        }
         borrowed_laptops = [barcode for barcode in barcodes if barcode in borrowed_by_barcode]
         not_borrowed_laptops = [barcode for barcode in barcodes if barcode not in borrowed_by_barcode]
 
@@ -883,11 +963,24 @@ def return_laptops():
                 f'These devices are not checked out on this card: {not_borrowed_text}.'
             )
 
-        returned_names = [borrowed_by_barcode[barcode] for barcode in borrowed_laptops]
+        returned_records = [borrowed_by_barcode[barcode] for barcode in borrowed_laptops]
+        returned_names = [record['laptop_name'] for record in returned_records]
+        returned_device_numbers = [record['device_number'] for record in returned_records]
         cursor.executemany("UPDATE laptops SET status = 'available' WHERE name = ?;", [(name,) for name in returned_names])
         cursor.executemany(
             'DELETE FROM laptop_bookings WHERE uid = ? AND laptop_name = ?;',
             [(current_user_uid, name) for name in returned_names]
+        )
+        cursor.executemany(
+            '''
+            UPDATE borrow_records
+            SET returned_at = CURRENT_TIMESTAMP,
+                status = 'returned'
+            WHERE employee_uid = ?
+              AND device_number = ?
+              AND status = 'active';
+            ''',
+            [(current_user_uid, device_number) for device_number in returned_device_numbers]
         )
         cursor.executemany(
             'INSERT INTO laptop_history (uid, laptop_name, action) VALUES (?, ?, ?);',

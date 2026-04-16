@@ -27,6 +27,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 uid TEXT PRIMARY KEY,
                 name TEXT,
+                email TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
                 is_admin INTEGER NOT NULL DEFAULT 0
             );
@@ -40,11 +41,16 @@ def init_db():
             cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;")
         except sqlite3.OperationalError:
             pass
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN email TEXT;')
+        except sqlite3.OperationalError:
+            pass
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS laptops (
                 name TEXT PRIMARY KEY,
                 barcode TEXT UNIQUE,
+                device_number TEXT UNIQUE,
                 status TEXT NOT NULL CHECK(status IN ('available', 'unavailable'))
             );
             '''
@@ -53,7 +59,12 @@ def init_db():
             cursor.execute('ALTER TABLE laptops ADD COLUMN barcode TEXT;')
         except sqlite3.OperationalError:
             pass
+        try:
+            cursor.execute('ALTER TABLE laptops ADD COLUMN device_number TEXT;')
+        except sqlite3.OperationalError:
+            pass
         cursor.execute("UPDATE laptops SET barcode = name WHERE barcode IS NULL OR TRIM(barcode) = '';" )
+        cursor.execute("UPDATE laptops SET device_number = barcode WHERE device_number IS NULL OR TRIM(device_number) = '';")
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS laptop_bookings (
@@ -74,6 +85,31 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             '''
+        )
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS borrow_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_uid TEXT NOT NULL,
+                employee_name TEXT NOT NULL,
+                employee_email TEXT,
+                device_number TEXT NOT NULL,
+                device_name TEXT,
+                barcode TEXT,
+                taken_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                returned_at TIMESTAMP,
+                status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'returned'))
+            );
+            '''
+        )
+        cursor.execute(
+            'CREATE INDEX IF NOT EXISTS idx_borrow_records_uid_status ON borrow_records (employee_uid, status);'
+        )
+        cursor.execute(
+            'CREATE INDEX IF NOT EXISTS idx_borrow_records_device_status ON borrow_records (device_number, status);'
+        )
+        cursor.execute(
+            'CREATE INDEX IF NOT EXISTS idx_borrow_records_taken_at ON borrow_records (taken_at);'
         )
         connection.commit()
     finally:
@@ -100,32 +136,35 @@ def seed_db():
         for user in users:
             uid = (user.get('uid') or '').strip()
             name = (user.get('name') or '').strip() or uid
+            email = (user.get('email') or '').strip()
             role = (user.get('role') or 'user').strip().lower()
             is_admin = 1 if user.get('is_admin', False) or role == 'admin' else 0
             if role not in {'user', 'admin'}:
                 role = 'admin' if is_admin else 'user'
             if uid:
                 cursor.execute(
-                    'INSERT OR IGNORE INTO users (uid, name, role, is_admin) VALUES (?, ?, ?, ?);',
-                    (uid, name, role, is_admin)
+                    'INSERT OR IGNORE INTO users (uid, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?);',
+                    (uid, name, email, role, is_admin)
                 )
 
         for laptop in laptops:
             if isinstance(laptop, str):
                 name = laptop.strip()
                 barcode = name
+                device_number = name
                 status = 'available'
             else:
                 name = (laptop.get('name') or '').strip()
                 barcode = (laptop.get('barcode') or name).strip()
+                device_number = (laptop.get('device_number') or barcode or name).strip()
                 status = (laptop.get('status') or 'available').strip().lower()
                 if status not in {'available', 'unavailable'}:
                     status = 'available'
 
             if name:
                 cursor.execute(
-                    'INSERT OR IGNORE INTO laptops (name, barcode, status) VALUES (?, ?, ?);',
-                    (name, barcode or name, status)
+                    'INSERT OR IGNORE INTO laptops (name, barcode, device_number, status) VALUES (?, ?, ?, ?);',
+                    (name, barcode or name, device_number or barcode or name, status)
                 )
 
         connection.commit()
@@ -138,6 +177,7 @@ def reset_db():
     try:
         cursor = connection.cursor()
         cursor.execute('DELETE FROM laptop_history;')
+        cursor.execute('DELETE FROM borrow_records;')
         cursor.execute('DELETE FROM laptop_bookings;')
         cursor.execute('DELETE FROM laptops;')
         cursor.execute('DELETE FROM users;')
@@ -146,12 +186,12 @@ def reset_db():
         connection.close()
 
 
-def add_user(uid, name, is_admin=False):
+def add_user(uid, name, email='', is_admin=False):
     connection = get_connection()
     try:
         connection.execute(
-            'INSERT INTO users (uid, name, role, is_admin) VALUES (?, ?, ?, ?);',
-            (uid.strip(), (name or uid).strip(), 'admin' if is_admin else 'user', 1 if is_admin else 0)
+            'INSERT INTO users (uid, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?);',
+            (uid.strip(), (name or uid).strip(), email.strip(), 'admin' if is_admin else 'user', 1 if is_admin else 0)
         )
         connection.commit()
     finally:
@@ -167,12 +207,17 @@ def remove_user(uid):
         connection.close()
 
 
-def add_laptop(name, barcode, status):
+def add_laptop(name, barcode, status, device_number=''):
     connection = get_connection()
     try:
         connection.execute(
-            'INSERT INTO laptops (name, barcode, status) VALUES (?, ?, ?);',
-            (name.strip(), (barcode or name).strip(), status)
+            'INSERT INTO laptops (name, barcode, device_number, status) VALUES (?, ?, ?, ?);',
+            (
+                name.strip(),
+                (barcode or name).strip(),
+                (device_number or barcode or name).strip(),
+                status
+            )
         )
         connection.commit()
     finally:
@@ -212,6 +257,7 @@ def build_parser():
     add_user_parser = subparsers.add_parser('add-user')
     add_user_parser.add_argument('--uid', required=True)
     add_user_parser.add_argument('--name', default='')
+    add_user_parser.add_argument('--email', default='')
     add_user_parser.add_argument('--admin', action='store_true')
 
     remove_user_parser = subparsers.add_parser('remove-user')
@@ -220,6 +266,7 @@ def build_parser():
     add_laptop_parser = subparsers.add_parser('add-laptop')
     add_laptop_parser.add_argument('--name', required=True)
     add_laptop_parser.add_argument('--barcode', default='')
+    add_laptop_parser.add_argument('--device-number', default='')
     add_laptop_parser.add_argument('--status', default='available', choices=['available', 'unavailable'])
 
     remove_laptop_parser = subparsers.add_parser('remove-laptop')
@@ -237,6 +284,9 @@ def build_parser():
     list_history_parser = subparsers.add_parser('list-history')
     list_history_parser.set_defaults(table='laptop_history')
 
+    list_borrow_records_parser = subparsers.add_parser('list-borrow-records')
+    list_borrow_records_parser.set_defaults(table='borrow_records')
+
     return parser
 
 
@@ -253,11 +303,11 @@ def main():
         init_db()
         reset_db()
     elif args.command == 'add-user':
-        add_user(args.uid, args.name, args.admin)
+        add_user(args.uid, args.name, args.email, args.admin)
     elif args.command == 'remove-user':
         remove_user(args.uid)
     elif args.command == 'add-laptop':
-        add_laptop(args.name, args.barcode, args.status)
+        add_laptop(args.name, args.barcode, args.status, args.device_number)
     elif args.command == 'remove-laptop':
         remove_laptop(args.name)
     elif args.command.startswith('list-'):

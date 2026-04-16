@@ -263,10 +263,15 @@ export function KioskPage() {
         }
 
         if (data.user_session_active) {
-          setView((current) => (current === 'home' ? 'actions' : current));
-        } else if (view === 'home') {
-          setTakeBarcodes(readStoredArray(TAKE_BARCODES_STORAGE_KEY));
-          setReturnBarcodes(readStoredArray(RETURN_BARCODES_STORAGE_KEY));
+          if (data.user_actions_redirect) {
+            setView('actions');
+          }
+        } else {
+          setView('home');
+          setTakeBarcodes([]);
+          setReturnBarcodes([]);
+          localStorage.removeItem(TAKE_BARCODES_STORAGE_KEY);
+          localStorage.removeItem(RETURN_BARCODES_STORAGE_KEY);
         }
       } catch (error) {
         showToast('error', 'Home state failed', error.message);

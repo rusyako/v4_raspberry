@@ -31,6 +31,15 @@ export const UsersPanel = memo(function UsersPanel({
             placeholder="Ruslan"
           />
         </label>
+        <label className="admin-field">
+          <span>Email</span>
+          <input
+            value={userForm.email || ''}
+            onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))}
+            type="email"
+            placeholder="ruslan@company.kz"
+          />
+        </label>
         <label className="admin-checkbox">
           <input
             checked={userForm.is_admin}
@@ -47,6 +56,7 @@ export const UsersPanel = memo(function UsersPanel({
             <div>
               <strong>{user.name || user.uid}</strong>
               <small>{user.uid}</small>
+              <small>{user.email || '-'}</small>
             </div>
             <div className="admin-item-actions">
               {user.is_admin ? <span className="status-badge status-admin">Admin</span> : null}
@@ -91,6 +101,15 @@ export const LaptopsPanel = memo(function LaptopsPanel({
           />
         </label>
         <label className="admin-field">
+          <span>Device number</span>
+          <input
+            value={laptopForm.device_number || ''}
+            onChange={(event) => setLaptopForm((current) => ({ ...current, device_number: event.target.value }))}
+            type="text"
+            placeholder="2000000188706"
+          />
+        </label>
+        <label className="admin-field">
           <span>Status</span>
           <select
             value={laptopForm.status}
@@ -108,6 +127,7 @@ export const LaptopsPanel = memo(function LaptopsPanel({
             <div>
               <strong>{laptop.name}</strong>
               <small>Barcode: {laptop.barcode || '-'}</small>
+              <small>Device: {laptop.device_number || '-'}</small>
             </div>
             <div className="admin-item-actions">
               <span className={`status-badge ${laptop.status === 'available' ? 'status-available' : 'status-unavailable'}`}>

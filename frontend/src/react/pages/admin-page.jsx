@@ -7,13 +7,11 @@ const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ def
 
 export function AdminPage() {
   const [adminToken, setAdminToken] = useState('');
-  const [pinRequired, setPinRequired] = useState(true);
-  const [pinHint, setPinHint] = useState('Enter the administrator PIN code.');
-  const [pin, setPin] = useState('');
   const [users, setUsers] = useState([]);
   const [laptops, setLaptops] = useState([]);
-  const [userForm, setUserForm] = useState({ uid: '', name: '', is_admin: false });
-  const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', status: 'available' });
+  const [borrowRecords, setBorrowRecords] = useState([]);
+  const [userForm, setUserForm] = useState({ uid: '', name: '', email: '', is_admin: false });
+  const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
   const { toast, showToast, clearToast } = useToast();
 
   function authHeaders() {
@@ -27,6 +25,7 @@ export function AdminPage() {
     });
     setUsers(data.users || []);
     setLaptops(data.laptops || []);
+    setBorrowRecords(data.borrow_records || []);
   }
 
   useEffect(() => {
@@ -35,25 +34,14 @@ export function AdminPage() {
     async function bootstrap() {
       try {
         const state = await requestJson('/admin_state', { method: 'GET' });
-        if (mounted) {
-          setPinRequired(state.admin_pin_required !== false);
-          setPinHint(
-            state.admin_pin_required === false
-              ? 'PIN is disabled. Admin access opens automatically.'
-              : state.admin_redirect
-                ? 'Admin card detected. Enter PIN 5005 to continue.'
-                : 'Enter the administrator PIN code.'
-          );
-        }
-
-        if (mounted && state.admin_pin_required === false && state.admin_token) {
+        if (mounted && state.admin_token) {
           setAdminToken(state.admin_token);
           await loadAdminData(state.admin_token);
           return;
         }
 
         if (mounted && state.admin_redirect && !adminToken) {
-          showToast('info', 'Admin card detected', 'Enter PIN 5005 to continue.');
+          showToast('info', 'Admin card detected', 'Admin card recognized. Opening dashboard...');
         }
       } catch {
         return;
@@ -79,19 +67,6 @@ export function AdminPage() {
     };
   }, [adminToken, showToast]);
 
-  async function handleLogin(event) {
-    event.preventDefault();
-    try {
-      const data = await postJson('/admin/login', { pin: pin.trim() });
-      setAdminToken(data.admin_token);
-      setPin('');
-      await loadAdminData(data.admin_token);
-      showToast('success', 'Admin unlocked', data.message);
-    } catch (error) {
-      showToast('error', 'PIN failed', error.message);
-    }
-  }
-
   async function handleLogout() {
     try {
       await postJson('/admin/logout', {}, authHeaders());
@@ -101,13 +76,14 @@ export function AdminPage() {
     setAdminToken('');
     setUsers([]);
     setLaptops([]);
+    setBorrowRecords([]);
   }
 
   async function handleAddUser(event) {
     event.preventDefault();
     try {
       const data = await postJson('/admin/users', userForm, authHeaders());
-      setUserForm({ uid: '', name: '', is_admin: false });
+      setUserForm({ uid: '', name: '', email: '', is_admin: false });
       await loadAdminData();
       showToast('success', 'User added', data.message);
     } catch (error) {
@@ -119,7 +95,7 @@ export function AdminPage() {
     event.preventDefault();
     try {
       const data = await postJson('/admin/laptops', laptopForm, authHeaders());
-      setLaptopForm({ name: '', barcode: '', status: 'available' });
+      setLaptopForm({ name: '', barcode: '', device_number: '', status: 'available' });
       await loadAdminData();
       showToast('success', 'Device added', data.message);
     } catch (error) {
@@ -152,20 +128,13 @@ export function AdminPage() {
       <Toast toast={toast} onClose={clearToast} />
       {!adminToken ? (
         <div className="admin-login-wrap">
-          <form className="admin-login-panel" onSubmit={handleLogin}>
+          <div className="admin-login-panel">
             <h1>Admin Access</h1>
-            <p>{pinHint}</p>
-            {pinRequired ? (
-              <label className="admin-field">
-                <span>PIN</span>
-                <input value={pin} onChange={(event) => setPin(event.target.value)} type="password" inputMode="numeric" autoComplete="off" />
-              </label>
-            ) : null}
+            <p>Connecting to admin dashboard...</p>
             <div className="admin-actions">
-              {pinRequired ? <button type="submit" className="primary-button">Unlock Admin</button> : null}
               <button type="button" className="ghost-button" onClick={() => { window.location.href = '/'; }}>Back Home</button>
             </div>
-          </form>
+          </div>
         </div>
       ) : (
         <div className="admin-page">
@@ -202,6 +171,54 @@ export function AdminPage() {
               />
             </Suspense>
           </div>
+
+          <section className="admin-panel admin-wide-panel">
+            <div className="admin-panel-head">
+              <h2>Borrow Records</h2>
+            </div>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>UID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Device #</th>
+                    <th>Device</th>
+                    <th>Barcode</th>
+                    <th>Taken</th>
+                    <th>Returned</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {borrowRecords.length ? borrowRecords.map((record) => (
+                    <tr key={record.id}>
+                      <td>{record.id}</td>
+                      <td>{record.employee_uid}</td>
+                      <td>{record.employee_name || '-'}</td>
+                      <td>{record.employee_email || '-'}</td>
+                      <td>{record.device_number || '-'}</td>
+                      <td>{record.device_name || '-'}</td>
+                      <td>{record.barcode || '-'}</td>
+                      <td>{record.taken_at || '-'}</td>
+                      <td>{record.returned_at || '-'}</td>
+                      <td>
+                        <span className={`status-badge ${record.status === 'active' ? 'status-available' : 'status-unavailable'}`}>
+                          {record.status}
+                        </span>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="10" className="admin-empty">No borrow records yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
       )}
     </div>
