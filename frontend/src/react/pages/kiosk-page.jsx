@@ -1,7 +1,7 @@
 import { AnimatedBackground } from '../shared/background';
 import { Toast, useToast } from '../shared/toast';
 import { RETURN_BARCODES_STORAGE_KEY, TAKE_BARCODES_STORAGE_KEY } from '../shared/storage';
-import { ActionPanel, HomePanel, SessionPanel } from './kiosk/kiosk-views';
+import { KioskActionsView, KioskHomeView, KioskSessionView } from './kiosk/kiosk-views';
 import { useKioskController } from './kiosk/use-kiosk-controller';
 
 export function KioskPage() {
@@ -11,7 +11,10 @@ export function KioskPage() {
     language,
     setLanguage,
     t,
-    laptopCount,
+    stationCellsStatus,
+    activeBorrowedRecords,
+    isActiveBorrowedOpen,
+    isActiveBorrowedLoading,
     view,
     takeBarcodes,
     setTakeBarcodes,
@@ -19,6 +22,7 @@ export function KioskPage() {
     setReturnBarcodes,
     screenClassName,
     clearSessionAndGoHome,
+    toggleActiveBorrowedInfo,
     goToCheckout,
     goToReturn,
     submitTake,
@@ -30,12 +34,23 @@ export function KioskPage() {
       <AnimatedBackground />
       <Toast toast={toast} onClose={clearToast} />
 
-      {view === 'home' ? <HomePanel language={language} setLanguage={setLanguage} laptopCount={laptopCount} t={t} /> : null}
+      {view === 'home' ? (
+        <KioskHomeView
+          language={language}
+          setLanguage={setLanguage}
+          stationCellsStatus={stationCellsStatus}
+          activeBorrowedRecords={activeBorrowedRecords}
+          isActiveBorrowedOpen={isActiveBorrowedOpen}
+          isActiveBorrowedLoading={isActiveBorrowedLoading}
+          onToggleActiveBorrowed={toggleActiveBorrowedInfo}
+          t={t}
+        />
+      ) : null}
 
-      {view === 'actions' ? <ActionPanel onTake={goToCheckout} onReturn={goToReturn} language={language} setLanguage={setLanguage} t={t} /> : null}
+      {view === 'actions' ? <KioskActionsView onTake={goToCheckout} onReturn={goToReturn} language={language} setLanguage={setLanguage} t={t} /> : null}
 
       {view === 'checkout' ? (
-        <SessionPanel
+        <KioskSessionView
           title={t.kiosk.checkoutTitle}
           description={t.kiosk.checkoutDescription}
           placeholder={t.kiosk.checkoutPlaceholder}
@@ -54,7 +69,7 @@ export function KioskPage() {
       ) : null}
 
       {view === 'return' ? (
-        <SessionPanel
+        <KioskSessionView
           title={t.kiosk.returnTitle}
           description={t.kiosk.returnDescription}
           placeholder={t.kiosk.returnPlaceholder}

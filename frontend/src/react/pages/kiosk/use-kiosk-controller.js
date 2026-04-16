@@ -22,6 +22,10 @@ export function useKioskController(showToast) {
   const [takeBarcodes, setTakeBarcodes] = useState(() => readStoredArray(TAKE_BARCODES_STORAGE_KEY));
   const [returnBarcodes, setReturnBarcodes] = useState(() => readStoredArray(RETURN_BARCODES_STORAGE_KEY));
   const [lastAckedUserActionsEventId, setLastAckedUserActionsEventId] = useState(0);
+  const [stationCellsStatus, setStationCellsStatus] = useState('0/0');
+  const [activeBorrowedRecords, setActiveBorrowedRecords] = useState([]);
+  const [isActiveBorrowedOpen, setIsActiveBorrowedOpen] = useState(false);
+  const [isActiveBorrowedLoading, setIsActiveBorrowedLoading] = useState(false);
 
   const inactivityTimerRef = useRef(null);
   const homePollTimerRef = useRef(null);
@@ -57,6 +61,7 @@ export function useKioskController(showToast) {
       try {
         const data = await requestJson('/home_state', { cache: 'no-store' });
         setLaptopCount(data.laptop_count || '0/0');
+        setStationCellsStatus(data.station_cells_status || data.laptop_count || '0/0');
 
         if (data.admin_redirect) {
           window.location.href = '/admin';
@@ -144,6 +149,28 @@ export function useKioskController(showToast) {
     };
   }, [lastAckedUserActionsEventId, showToast, t]);
 
+  async function loadActiveBorrowedRecords() {
+    setIsActiveBorrowedLoading(true);
+    try {
+      const data = await requestJson('/active_borrow_records', { method: 'GET', cache: 'no-store' });
+      setActiveBorrowedRecords(data.records || []);
+    } catch (error) {
+      showToast('error', t.kiosk.activeBorrowedLoadFailTitle, error.message);
+    } finally {
+      setIsActiveBorrowedLoading(false);
+    }
+  }
+
+  async function toggleActiveBorrowedInfo() {
+    if (isActiveBorrowedOpen) {
+      setIsActiveBorrowedOpen(false);
+      return;
+    }
+
+    setIsActiveBorrowedOpen(true);
+    await loadActiveBorrowedRecords();
+  }
+
   useEffect(() => {
     if (view === 'home') {
       window.clearTimeout(inactivityTimerRef.current);
@@ -204,7 +231,7 @@ export function useKioskController(showToast) {
         return;
       }
 
-      showToast('info', 'No devices available', 'All MacBooks are currently checked out.');
+      showToast('info', t.kiosk.noDevicesAvailableTitle, t.kiosk.noDevicesAvailableText);
     } catch (error) {
       showToast('error', t.kiosk.statusCheckFailedTitle, error.message);
     }
@@ -259,7 +286,7 @@ export function useKioskController(showToast) {
 
   const screenClassName = useMemo(() => {
     if (view === 'actions') {
-      return 'screen screen-hello';
+      return 'screen screen-actions';
     }
     if (view === 'checkout' || view === 'return') {
       return 'screen screen-session';
@@ -272,6 +299,10 @@ export function useKioskController(showToast) {
     setLanguage,
     t,
     laptopCount,
+    stationCellsStatus,
+    activeBorrowedRecords,
+    isActiveBorrowedOpen,
+    isActiveBorrowedLoading,
     view,
     takeBarcodes,
     setTakeBarcodes,
@@ -279,6 +310,7 @@ export function useKioskController(showToast) {
     setReturnBarcodes,
     screenClassName,
     clearSessionAndGoHome,
+    toggleActiveBorrowedInfo,
     goToCheckout,
     goToReturn,
     submitTake,

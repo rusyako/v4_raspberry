@@ -15,21 +15,3 @@ export const KIOSK_PRELOAD_IMAGES = [
   KIOSK_IMAGES.kioskLogo,
   ...LANGUAGE_IMAGES
 ];
-
-export const TRANSLATIONS = {
-  en: {
-    cardTitle: 'Information',
-    availableLabel: 'Available',
-    accessMessage: 'Use your access card to open the station'
-  },
-  ru: {
-    cardTitle: 'Информация',
-    availableLabel: 'Доступно',
-    accessMessage: 'Приложите карту доступа, чтобы открыть станцию'
-  },
-  kz: {
-    cardTitle: 'Ақпарат',
-    availableLabel: 'Қолжетімді',
-    accessMessage: 'Станцияны ашу үшін рұқсат картасын жақындатыңыз'
-  }
-};

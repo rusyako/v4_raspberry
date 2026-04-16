@@ -68,7 +68,6 @@ except serial.SerialException as error:
     logging.error(f'Failed to connect to Arduino: {error}')
     ser = None
 
-redirect_to_scan_page = False
 laptop_status = '0/0'
 last_detected_uid = None
 pending_uid_scan = None
@@ -129,13 +128,10 @@ def build_home_state(user_actions_redirect=False, user_actions_event_id=0, user_
         'user_actions_event_id': int(user_actions_event_id or 0),
         'user_actions_event_ack': int(user_actions_event_ack or 0),
         'user_session_active': bool(session.get('current_user_uid')),
+        'station_cells_status': laptop_status,
         'laptop_count': laptop_status,
         'last_detected_uid': last_detected_uid
     }
-
-
-def hash_pin(value):
-    return hashlib.sha256(value.encode('utf-8')).hexdigest()
 
 
 def generate_admin_session_token():
@@ -327,6 +323,33 @@ def fetch_admin_dashboard_data():
         )
         borrow_records = [dict(row) for row in cursor.fetchall()]
         return users, laptops, borrow_records
+    finally:
+        connection.close()
+
+
+def fetch_active_borrow_records(limit=200):
+    connection = get_db_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            '''
+            SELECT
+                id,
+                employee_uid,
+                employee_name,
+                employee_email,
+                device_number,
+                device_name,
+                barcode,
+                taken_at
+            FROM borrow_records
+            WHERE status = 'active'
+            ORDER BY taken_at DESC
+            LIMIT ?;
+            ''',
+            (limit,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
     finally:
         connection.close()
 
@@ -524,7 +547,7 @@ def serve_frontend_page(filename):
 
 
 def arduino_thread():
-    global redirect_to_scan_page, laptop_status, ser, last_detected_uid
+    global laptop_status, ser, last_detected_uid
 
     while not stop_event.is_set():
         try:
@@ -711,6 +734,12 @@ def home_state():
     )
 
 
+@app.route('/active_borrow_records', methods=['GET'])
+def active_borrow_records():
+    records = fetch_active_borrow_records()
+    return jsonify({'success': True, 'records': records})
+
+
 @app.route('/user_actions_event/ack', methods=['POST'])
 def user_actions_event_ack():
     data = request.get_json(silent=True) or {}
@@ -784,22 +813,22 @@ def index():
 
 
 @app.route('/scan_page')
-def scan_page():
+def legacy_scan_page_redirect():
     return redirect('/', code=302)
 
 
 @app.route('/hello_page')
-def hello_page():
+def legacy_actions_page_redirect():
     return redirect('/', code=302)
 
 
 @app.route('/return_page')
-def return_page():
+def legacy_return_page_redirect():
     return redirect('/', code=302)
 
 
 @app.route('/check-redirect')
-def check_redirect():
+def legacy_check_redirect_state():
     user_actions_redirect, event_id, ack_id = get_user_actions_event_state()
     return jsonify({
         'redirect': bool(user_actions_redirect),

@@ -4,7 +4,16 @@ import { LanguageSwitcher } from '../../shared/language-switcher';
 import { writeStoredArray } from '../../shared/storage';
 import { BARCODE_PATTERN, KIOSK_IMAGES } from './constants';
 
-export function HomePanel({ language, setLanguage, laptopCount, t }) {
+export function KioskHomeView({
+  language,
+  setLanguage,
+  stationCellsStatus,
+  activeBorrowedRecords,
+  isActiveBorrowedOpen,
+  isActiveBorrowedLoading,
+  onToggleActiveBorrowed,
+  t
+}) {
 
   return (
     <>
@@ -13,7 +22,7 @@ export function HomePanel({ language, setLanguage, laptopCount, t }) {
       <main className="home-shell">
         <section className="home-brand">
           <div className="home-title-wrap">
-            <h1 className="home-title">SmartBox</h1>
+            <h1 className="home-title">{t.kiosk.brandTitle}</h1>
             <p className="home-subtitle">{t.kiosk.subtitle}</p>
           </div>
         </section>
@@ -25,33 +34,60 @@ export function HomePanel({ language, setLanguage, laptopCount, t }) {
           </div>
 
           <div className="home-count-card">
-            <span>{t.kiosk.availableLabel}</span>
-            <strong>{laptopCount}</strong>
+            <span>{t.kiosk.stationCellsLabel}</span>
+            <strong>{stationCellsStatus}</strong>
           </div>
 
           <p className="home-card-message">{t.kiosk.accessMessage}</p>
+
+          <div className="home-info-actions">
+            <button type="button" className="ghost-button" onClick={onToggleActiveBorrowed}>
+              {isActiveBorrowedOpen ? t.kiosk.hideBorrowedDevices : t.kiosk.openIssuedDevices}
+            </button>
+          </div>
+
+          {isActiveBorrowedOpen ? (
+            <section className="home-borrowed-card">
+              <h3>{t.kiosk.activeBorrowedTitle}</h3>
+              {isActiveBorrowedLoading ? (
+                <p className="home-borrowed-empty">...</p>
+              ) : activeBorrowedRecords.length ? (
+                <ul className="home-borrowed-list">
+                  {activeBorrowedRecords.map((record) => (
+                    <li key={record.id} className="home-borrowed-item">
+                      <p><strong>{t.kiosk.borrowedBy}:</strong> {record.employee_name || record.employee_uid}</p>
+                      <p><strong>{t.kiosk.borrowedDevice}:</strong> {record.device_name || '-'} ({record.device_number || '-'})</p>
+                      <p><strong>{t.kiosk.borrowedTakenAt}:</strong> {record.taken_at || '-'}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="home-borrowed-empty">{t.kiosk.activeBorrowedEmpty}</p>
+              )}
+            </section>
+          ) : null}
         </section>
       </main>
     </>
   );
 }
 
-export function ActionPanel({ onTake, onReturn, language, setLanguage, t }) {
+export function KioskActionsView({ onTake, onReturn, language, setLanguage, t }) {
   return (
-    <section className="hello-shell">
+    <section className="actions-shell">
       <LanguageSwitcher language={language} setLanguage={setLanguage} />
-      <header className="hello-header">
-        <p className="hello-kicker">{t.kiosk.sessionConfirmed}</p>
-        <h1>MacBook Kiosk</h1>
+      <header className="actions-header">
+        <p className="actions-kicker">{t.kiosk.sessionConfirmed}</p>
+        <h1>{t.kiosk.stationTitle}</h1>
         <p>{t.kiosk.chooseNextAction}</p>
       </header>
 
-      <div className="hello-actions">
-        <button type="button" className="hello-action primary" onClick={onTake}>
+      <div className="actions-grid">
+        <button type="button" className="actions-card primary" onClick={onTake}>
           <span>{t.kiosk.checkOut}</span>
           <small>{t.kiosk.checkOutHint}</small>
         </button>
-        <button type="button" className="hello-action danger" onClick={onReturn}>
+        <button type="button" className="actions-card danger" onClick={onReturn}>
           <span>{t.kiosk.return}</span>
           <small>{t.kiosk.returnHint}</small>
         </button>
@@ -60,7 +96,7 @@ export function ActionPanel({ onTake, onReturn, language, setLanguage, t }) {
   );
 }
 
-export function SessionPanel({
+export function KioskSessionView({
   title,
   description,
   placeholder,
@@ -168,7 +204,7 @@ export function SessionPanel({
             <li key={barcode} className="session-list-item">
               <span>{index + 1}. {barcode}</span>
               <button type="button" className="chip-button" onClick={() => removeBarcode(barcode)}>
-                Remove
+                {t.common.remove}
               </button>
             </li>
           ))}

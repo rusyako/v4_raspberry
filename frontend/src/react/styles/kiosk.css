@@ -90,6 +90,47 @@
   line-height: 1.5;
 }
 
+.home-info-actions {
+  margin-top: 18px;
+}
+
+.home-borrowed-card {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.home-borrowed-card h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.home-borrowed-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.home-borrowed-item {
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.home-borrowed-item p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.home-borrowed-empty {
+  margin: 12px 0 0;
+  color: rgba(236, 244, 248, 0.78);
+}
+
 .language-switcher {
   position: fixed;
   top: 18px;
@@ -123,12 +164,12 @@
   border-radius: 999px;
 }
 
-.screen-hello {
+.screen-actions {
   color: white;
   background: linear-gradient(125deg, #05131d, #123a49);
 }
 
-.hello-shell {
+.actions-shell {
   position: relative;
   z-index: 1;
   min-height: 100vh;
@@ -139,35 +180,35 @@
   padding: 32px;
 }
 
-.hello-header {
+.actions-header {
   text-align: center;
 }
 
-.hello-kicker {
+.actions-kicker {
   margin: 0 0 10px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: #89d3ff;
 }
 
-.hello-header h1 {
+.actions-header h1 {
   margin: 0;
   font-size: clamp(48px, 9vw, 88px);
 }
 
-.hello-header p:last-child {
+.actions-header p:last-child {
   margin: 12px 0 0;
   font-size: 20px;
   color: rgba(236, 244, 248, 0.82);
 }
 
-.hello-actions {
+.actions-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(280px, 360px));
   gap: 24px;
 }
 
-.hello-action {
+.actions-card {
   display: grid;
   gap: 10px;
   padding: 28px;
@@ -178,22 +219,22 @@
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
 }
 
-.hello-action span {
+.actions-card span {
   font-size: 28px;
   font-weight: 700;
 }
 
-.hello-action small {
+.actions-card small {
   font-size: 15px;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.82);
 }
 
-.hello-action.primary {
+.actions-card.primary {
   background: linear-gradient(135deg, #167df0, #24b7ff);
 }
 
-.hello-action.danger {
+.actions-card.danger {
   background: linear-gradient(135deg, #c33737, #e06b48);
 }
 
@@ -321,7 +362,7 @@
 }
 
 @media (max-width: 860px) {
-  .hello-actions {
+  .actions-grid {
     grid-template-columns: 1fr;
     width: min(100%, 420px);
   }
