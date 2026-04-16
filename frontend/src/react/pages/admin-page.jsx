@@ -1,25 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { deleteJson, postJson, requestJson } from '../shared/api';
-import { ADMIN_TOKEN_STORAGE_KEY } from '../shared/storage';
 import { Toast, useToast } from '../shared/toast';
 
 const UsersPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersPanel })));
 const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsPanel })));
 
-function getStoredAdminToken() {
-  return localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || '';
-}
-
-function setStoredAdminToken(token) {
-  if (token) {
-    localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
-  } else {
-    localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
-  }
-}
-
 export function AdminPage() {
-  const [adminToken, setAdminToken] = useState(getStoredAdminToken());
+  const [adminToken, setAdminToken] = useState('');
   const [pinRequired, setPinRequired] = useState(true);
   const [pinHint, setPinHint] = useState('Enter the administrator PIN code.');
   const [pin, setPin] = useState('');
@@ -60,7 +47,6 @@ export function AdminPage() {
         }
 
         if (mounted && state.admin_pin_required === false && state.admin_token) {
-          setStoredAdminToken(state.admin_token);
           setAdminToken(state.admin_token);
           await loadAdminData(state.admin_token);
           return;
@@ -81,7 +67,6 @@ export function AdminPage() {
         await loadAdminData(adminToken);
       } catch (error) {
         if (mounted) {
-          setStoredAdminToken('');
           setAdminToken('');
           showToast('error', 'Admin login required', error.message);
         }
@@ -98,7 +83,6 @@ export function AdminPage() {
     event.preventDefault();
     try {
       const data = await postJson('/admin/login', { pin: pin.trim() });
-      setStoredAdminToken(data.admin_token);
       setAdminToken(data.admin_token);
       setPin('');
       await loadAdminData(data.admin_token);
@@ -114,7 +98,6 @@ export function AdminPage() {
     } catch {
       // Ignore logout transport errors and clear local state anyway.
     }
-    setStoredAdminToken('');
     setAdminToken('');
     setUsers([]);
     setLaptops([]);
