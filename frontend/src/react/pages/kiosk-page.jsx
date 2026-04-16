@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { requestJson, postJson } from '../shared/api';
 import { AnimatedBackground } from '../shared/background';
+import { ensureNetworkWarmup, preloadImages } from '../shared/network';
 import { Toast, useToast } from '../shared/toast';
 import {
   LANGUAGE_STORAGE_KEY,
@@ -15,6 +16,7 @@ import flagRu from '../../assets/img/flags/flag-ru.png';
 import flagKz from '../../assets/img/flags/flag-kz.png';
 
 const POLL_INTERVAL_MS = 3000;
+const HOME_STATE_POLL_DEBOUNCE_MS = 350;
 const INACTIVITY_TIMEOUT_MS = 5000;
 const BARCODE_PATTERN = /^[a-zA-Z0-9-\s]+$/;
 
@@ -236,10 +238,18 @@ export function KioskPage() {
   const [returnBarcodes, setReturnBarcodes] = useState(() => readStoredArray(RETURN_BARCODES_STORAGE_KEY));
   const { toast, showToast, clearToast } = useToast();
   const inactivityTimerRef = useRef(null);
+  const homePollTimerRef = useRef(null);
+  const homePollInFlightRef = useRef(false);
+  const homePollQueuedRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   }, [language]);
+
+  useEffect(() => {
+    ensureNetworkWarmup();
+    preloadImages([kioskLogo, flagEn, flagRu, flagKz]);
+  }, []);
 
   useEffect(() => {
     async function updateHomeState() {
@@ -263,6 +273,30 @@ export function KioskPage() {
       }
     }
 
+    async function runHomeStatePoll() {
+      if (homePollInFlightRef.current) {
+        homePollQueuedRef.current = true;
+        return;
+      }
+
+      homePollInFlightRef.current = true;
+      try {
+        await updateHomeState();
+      } finally {
+        homePollInFlightRef.current = false;
+        if (homePollQueuedRef.current) {
+          homePollQueuedRef.current = false;
+          window.clearTimeout(homePollTimerRef.current);
+          homePollTimerRef.current = window.setTimeout(runHomeStatePoll, HOME_STATE_POLL_DEBOUNCE_MS);
+        }
+      }
+    }
+
+    function scheduleHomeStatePoll() {
+      window.clearTimeout(homePollTimerRef.current);
+      homePollTimerRef.current = window.setTimeout(runHomeStatePoll, HOME_STATE_POLL_DEBOUNCE_MS);
+    }
+
     window.smartBoxDebug = {
       scanUid: async (uid) => {
         const data = await postJson('/debug/scan_uid', { uid });
@@ -277,11 +311,12 @@ export function KioskPage() {
       }
     };
 
-    updateHomeState();
-    const intervalId = window.setInterval(updateHomeState, POLL_INTERVAL_MS);
+    runHomeStatePoll();
+    const intervalId = window.setInterval(scheduleHomeStatePoll, POLL_INTERVAL_MS);
 
     return () => {
       window.clearInterval(intervalId);
+      window.clearTimeout(homePollTimerRef.current);
       delete window.smartBoxDebug;
     };
   }, [showToast, view]);

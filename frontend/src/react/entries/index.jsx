@@ -4,8 +4,8 @@ import { KioskPage } from '../pages/kiosk-page';
 import '../styles/base.css';
 import '../styles/kiosk.css';
 
+const kioskNode = <KioskPage />;
+
 createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <KioskPage />
-  </React.StrictMode>
+  import.meta.env.DEV ? <React.StrictMode>{kioskNode}</React.StrictMode> : kioskNode
 );

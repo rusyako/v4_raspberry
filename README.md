@@ -1,113 +1,173 @@
 # Smart Box
 
-Smart Box is a kiosk application for issuing and returning MacBooks.
+Smart Box - kiosk-система для выдачи и возврата MacBook по RFID-карте.
 
-## Architecture
+## Что внутри
 
-- `backend/` - Flask API, SQLite logic, Arduino/serial integration
-- `frontend/src/` - frontend source files (HTML, CSS, JS, images)
-- `frontend/dist/` - built static frontend served by backend
-- `main.py` - runtime entrypoint
-- `manage_db.py` - SQLite admin CLI (users, devices, seed)
+- `backend/` - Flask API, SQLite, интеграция с Arduino/Serial
+- `frontend/` - Vite + React frontend
+  - `/` - пользовательский kiosk flow в одной странице (home + actions + checkout + return)
+  - `/admin` - отдельная админ-страница
+- `frontend/dist/` - production-сборка фронтенда, которую отдает Flask
+- `manage_db.py` - CLI для управления БД (пользователи/устройства)
 
-## Runtime flow
+## 1) Установка Docker на Ubuntu
 
-1. Frontend is built into `frontend/dist`.
-2. Flask serves pages from `frontend/dist`.
-3. Flask serves assets from `/assets/*`.
-4. SQLite database is stored in `/app/data` (Docker volume).
+Рекомендуется официальный репозиторий Docker Engine.
 
-## Local development
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo $VERSION_CODENAME) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
 
-### 1) Build frontend
+Проверка:
+
+```bash
+docker --version
+docker compose version
+```
+
+Чтобы запускать Docker без `sudo`:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+## 2) Установка Git и получение проекта
+
+```bash
+sudo apt update
+sudo apt install -y git
+git clone https://github.com/rusyako/v4_raspberry.git
+cd v4_raspberry
+```
+
+Обновить проект позже:
+
+```bash
+cd ~/v4_raspberry
+git pull
+```
+
+## 3) Настройка окружения
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Минимально проверь:
+
+- `FLASK_SECRET_KEY` (замени `change-me`)
+- `ADMIN_PIN`
+- `SERIAL_PORT` (обычно `/dev/ttyACM0`)
+- `START_ARDUINO_THREAD=true`
+- `ENABLE_LOCAL_DEBUG_SDK=false` (для прод/киоска)
+
+## 4) Сборка и запуск
+
+Из корня проекта:
+
+```bash
+docker compose up --build -d
+docker compose ps
+docker compose logs -f smart-box
+```
+
+Открыть:
+
+- `http://<IP_твоего_хоста>:5000/`
+- `http://<IP_твоего_хоста>:5000/admin`
+
+## 5) Частые команды Docker
+
+```bash
+docker compose up -d
+docker compose down
+docker compose restart
+docker compose ps
+docker compose logs -f smart-box
+docker compose logs --tail=200 smart-box
+```
+
+После `git pull` обычно достаточно:
+
+```bash
+docker compose down
+docker compose up --build -d
+```
+
+## 6) Инициализация БД и тестовые данные
+
+```bash
+docker exec smart-box python manage_db.py init-db
+docker exec smart-box python manage_db.py add-user --uid "F015ACDA" --name "Ruslan" --admin
+docker exec smart-box python manage_db.py add-user --uid "E02560DB" --name "Operator"
+docker exec smart-box python manage_db.py add-laptop --name "MB-001" --barcode "BC-001" --status available
+docker exec smart-box python manage_db.py list-users
+docker exec smart-box python manage_db.py list-laptops
+```
+
+Важно: UID в системе хранится в HEX-формате (например `F015ACDA`).
+
+## 7) Проверка Arduino
+
+Проверить, видит ли Linux устройство:
+
+```bash
+ls /dev/ttyACM* /dev/ttyUSB*
+dmesg | grep -i -E "tty|usb|arduino|cdc"
+```
+
+Проверить, что в логах backend приходят данные:
+
+```bash
+docker compose logs -f smart-box
+```
+
+Ожидаемый формат скана:
+
+```text
+Received: CARDUID:F015ACDA
+Received UID: F015ACDA
+```
+
+Если Docker пишет `no such file or directory` для `/dev/ttyACM0`, значит устройство не поднялось на хосте в момент запуска контейнера.
+
+## 8) Автозапуск после reboot (опционально)
+
+В `docker-compose.yml` уже стоит `restart: unless-stopped`, обычно этого достаточно.
+
+Также убедись, что сервис Docker включен:
+
+```bash
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
+## 9) Frontend dev (опционально)
+
+Если нужно локально разрабатывать фронт без Docker:
 
 ```bash
 cd frontend
 npm install
+npm run dev
+```
+
+Production-сборка фронта:
+
+```bash
+cd frontend
 npm run build
 ```
-
-### 2) Start container
-
-From project root:
-
-```bash
-docker compose up --build -d
-```
-
-Open:
-
-```text
-http://localhost:5000
-```
-
-Admin page:
-
-```text
-http://localhost:5000/admin
-```
-
-## Environment variables
-
-Copy `.env.example` to `.env` and adjust values for your environment.
-
-Important vars:
-
-- `FLASK_HOST`, `FLASK_PORT`, `FLASK_DEBUG`, `FLASK_SECRET_KEY`
-- `DATA_DIR`, `SQLITE_PATH`, `SEED_PATH`
-- `LOG_DIR`, `LOG_FILE`, `LOG_LEVEL`, `LOG_BACKUP_DAYS`
-- `ADMIN_PIN`, `ADMIN_SESSION_TIMEOUT_SECONDS`
-- `ENABLE_LOCAL_DEBUG_SDK`
-- `SERIAL_PORT`, `SERIAL_BAUDRATE`, `SERIAL_TIMEOUT`
-- `START_ARDUINO_THREAD`, `ENABLE_WEBVIEW`
-
-## Logs
-
-- Current log file: `logs/smart-box.log`
-- Rotation: daily at midnight
-- Retention: controlled by `LOG_BACKUP_DAYS` (default 14)
-- In Docker, logs are persisted in volume `smart-box-logs`
-
-## Database management
-
-Examples:
-
-```bash
-docker exec "smart-box" python manage_db.py init-db
-docker exec "smart-box" python manage_db.py seed-db
-docker exec "smart-box" python manage_db.py add-user --uid "UID-100" --name "Operator"
-docker exec "smart-box" python manage_db.py add-user --uid "ADMIN-UID-1" --name "Admin Card" --admin
-docker exec "smart-box" python manage_db.py add-laptop --name "MB-001" --status available
-docker exec "smart-box" python manage_db.py list-users
-docker exec "smart-box" python manage_db.py list-laptops
-```
-
-## Admin access
-
-- Manual access: `http://localhost:5000/admin`
-- PIN is controlled by `ADMIN_PIN`
-- Session timeout is controlled by `ADMIN_SESSION_TIMEOUT_SECONDS`
-- If an admin UID is scanned through SKD, Smart Box automatically redirects to the admin page
-
-## Local SKD debug
-
-When `ENABLE_LOCAL_DEBUG_SDK=true`, you can simulate a UID scan from browser console on localhost:
-
-```js
-await smartBoxDebug.scanUid('UID-100')
-```
-
-If the UID belongs to a regular user, Smart Box opens the booking flow.
-If the UID belongs to an admin user, Smart Box opens `/admin`.
-
-## Raspberry deploy (recommended)
-
-1. Build frontend on a stronger machine (`npm run build` in `frontend`).
-2. Copy project with prepared `frontend/dist` to Raspberry.
-3. Run:
-
-```bash
-docker compose up --build -d
-```
-
-This avoids running Node build on Raspberry.

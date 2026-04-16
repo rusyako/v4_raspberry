@@ -66,6 +66,14 @@
   padding: 20px;
 }
 
+.admin-loading {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b8d1df;
+}
+
 .admin-panel-head h2 {
   margin: 0 0 16px;
 }
