@@ -21,6 +21,7 @@ export function useKioskController(showToast) {
   const [view, setView] = useState('home');
   const [takeBarcodes, setTakeBarcodes] = useState(() => readStoredArray(TAKE_BARCODES_STORAGE_KEY));
   const [returnBarcodes, setReturnBarcodes] = useState(() => readStoredArray(RETURN_BARCODES_STORAGE_KEY));
+  const [lastAckedUserActionsEventId, setLastAckedUserActionsEventId] = useState(0);
 
   const inactivityTimerRef = useRef(null);
   const homePollTimerRef = useRef(null);
@@ -63,12 +64,23 @@ export function useKioskController(showToast) {
         }
 
         if (data.user_session_active) {
-          if (data.user_actions_redirect) {
+          const eventId = Number.parseInt(data.user_actions_event_id || 0, 10);
+          const shouldOpenActions = Boolean(data.user_actions_redirect);
+
+          if (shouldOpenActions && eventId > lastAckedUserActionsEventId) {
             setView('actions');
+
+            try {
+              await postJson('/user_actions_event/ack', { event_id: eventId });
+              setLastAckedUserActionsEventId(eventId);
+            } catch {
+              // Ignore ack transport errors, next poll will retry.
+            }
           }
         } else {
           setView('home');
           resetBarcodeState();
+          setLastAckedUserActionsEventId(0);
         }
       } catch (error) {
         showToast('error', t.kiosk.homeStateFailTitle, error.message);
@@ -108,6 +120,15 @@ export function useKioskController(showToast) {
         }
         if (data.redirect_user) {
           setView('actions');
+          const eventId = Number.parseInt(data.user_actions_event_id || 0, 10);
+          if (eventId > 0) {
+            try {
+              await postJson('/user_actions_event/ack', { event_id: eventId });
+              setLastAckedUserActionsEventId(eventId);
+            } catch {
+              // Ignore debug ack transport errors.
+            }
+          }
         }
         return data;
       }
@@ -121,7 +142,7 @@ export function useKioskController(showToast) {
       window.clearTimeout(homePollTimerRef.current);
       delete window.smartBoxDebug;
     };
-  }, [showToast, t]);
+  }, [lastAckedUserActionsEventId, showToast, t]);
 
   useEffect(() => {
     if (view === 'home') {

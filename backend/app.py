@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory, session
+from flask import Flask, jsonify, request, redirect, send_from_directory, session
 import atexit
 import hashlib
 import json
@@ -121,11 +121,13 @@ def extract_uid_from_serial_data(data):
     return None
 
 
-def build_home_state(user_actions_redirect=False):
+def build_home_state(user_actions_redirect=False, user_actions_event_id=0, user_actions_event_ack=0):
     return {
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
         'redirect': bool(user_actions_redirect),
         'user_actions_redirect': bool(user_actions_redirect),
+        'user_actions_event_id': int(user_actions_event_id or 0),
+        'user_actions_event_ack': int(user_actions_event_ack or 0),
         'user_session_active': bool(session.get('current_user_uid')),
         'laptop_count': laptop_status,
         'last_detected_uid': last_detected_uid
@@ -177,15 +179,38 @@ def clear_admin_session():
 
 def clear_user_session():
     session.pop('current_user_uid', None)
-    session.pop('redirect_to_hello_page', None)
-    session.pop('user_actions_redirect', None)
+    session.pop('user_actions_event_id', None)
+    session.pop('user_actions_event_ack', None)
 
 
-def consume_user_actions_redirect():
-    should_open_actions = bool(session.get('user_actions_redirect'))
-    if should_open_actions:
-        session.pop('user_actions_redirect', None)
-    return should_open_actions
+def create_user_actions_event():
+    current_event_id = int(session.get('user_actions_event_id', 0) or 0)
+    next_event_id = current_event_id + 1
+    session['user_actions_event_id'] = next_event_id
+    return next_event_id
+
+
+def get_user_actions_event_state():
+    event_id = int(session.get('user_actions_event_id', 0) or 0)
+    ack_id = int(session.get('user_actions_event_ack', 0) or 0)
+    should_open_actions = event_id > ack_id
+    return should_open_actions, event_id, ack_id
+
+
+def acknowledge_user_actions_event(event_id):
+    current_event_id = int(session.get('user_actions_event_id', 0) or 0)
+    current_ack_id = int(session.get('user_actions_event_ack', 0) or 0)
+
+    if event_id <= 0:
+        return current_ack_id
+
+    if current_event_id <= 0:
+        session['user_actions_event_ack'] = max(current_ack_id, event_id)
+        return int(session.get('user_actions_event_ack', 0) or 0)
+
+    next_ack_id = min(max(current_ack_id, event_id), current_event_id)
+    session['user_actions_event_ack'] = next_ack_id
+    return next_ack_id
 
 
 def activate_user_session(uid, is_admin):
@@ -203,8 +228,7 @@ def activate_user_session(uid, is_admin):
         return True, 'Администратор распознан. / Administrator recognized.'
 
     session.pop('redirect_to_admin_page', None)
-    session['redirect_to_hello_page'] = True
-    session['user_actions_redirect'] = True
+    create_user_actions_event()
     return True, 'Пользователь распознан. / User recognized.'
 
 
@@ -677,8 +701,34 @@ def get_laptop_status():
 def home_state():
     consume_pending_uid_scan()
     recompute_laptop_status()
-    user_actions_redirect = consume_user_actions_redirect()
-    return jsonify(build_home_state(user_actions_redirect=user_actions_redirect))
+    user_actions_redirect, event_id, ack_id = get_user_actions_event_state()
+    return jsonify(
+        build_home_state(
+            user_actions_redirect=user_actions_redirect,
+            user_actions_event_id=event_id,
+            user_actions_event_ack=ack_id
+        )
+    )
+
+
+@app.route('/user_actions_event/ack', methods=['POST'])
+def user_actions_event_ack():
+    data = request.get_json(silent=True) or {}
+    event_id = data.get('event_id')
+
+    try:
+        event_id = int(event_id)
+    except (TypeError, ValueError):
+        return error_response('Некорректный event_id. / Invalid event_id.', 400)
+
+    ack_id = acknowledge_user_actions_event(event_id)
+    user_actions_redirect, current_event_id, _ = get_user_actions_event_state()
+    return success_response(
+        'Событие подтверждено. / Event acknowledged.',
+        user_actions_redirect=user_actions_redirect,
+        user_actions_event_id=current_event_id,
+        user_actions_event_ack=ack_id
+    )
 
 
 @app.route('/admin_state', methods=['GET'])
@@ -720,7 +770,8 @@ def debug_scan_uid():
     return success_response(
         message,
         redirect_admin=bool(session.get('redirect_to_admin_page')),
-        redirect_user=bool(session.get('user_actions_redirect')),
+        redirect_user=bool(get_user_actions_event_state()[0]),
+        user_actions_event_id=int(get_user_actions_event_state()[1]),
         last_detected_uid=last_detected_uid
     )
 
@@ -734,25 +785,27 @@ def index():
 
 @app.route('/scan_page')
 def scan_page():
-    return serve_frontend_page('index.html')
+    return redirect('/', code=302)
 
 
 @app.route('/hello_page')
 def hello_page():
-    return serve_frontend_page('index.html')
+    return redirect('/', code=302)
 
 
 @app.route('/return_page')
 def return_page():
-    return serve_frontend_page('index.html')
+    return redirect('/', code=302)
 
 
 @app.route('/check-redirect')
 def check_redirect():
-    user_actions_redirect = consume_user_actions_redirect()
+    user_actions_redirect, event_id, ack_id = get_user_actions_event_state()
     return jsonify({
         'redirect': bool(user_actions_redirect),
         'user_actions_redirect': bool(user_actions_redirect),
+        'user_actions_event_id': int(event_id),
+        'user_actions_event_ack': int(ack_id),
         'user_session_active': bool(session.get('current_user_uid')),
         'admin_redirect': bool(session.get('redirect_to_admin_page'))
     })
