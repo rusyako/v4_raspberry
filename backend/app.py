@@ -5,6 +5,7 @@ import json
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -39,6 +40,7 @@ ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv('ADMIN_SESSION_TIMEOUT_SECONDS', '
 ENABLE_LOCAL_DEBUG_SDK = os.getenv('ENABLE_LOCAL_DEBUG_SDK', 'true').lower() == 'true'
 
 stop_event = threading.Event()
+CELL_STATUS_PATTERN = re.compile(r'^\d+/\d+$')
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -68,6 +70,7 @@ except serial.SerialException as error:
     logging.error(f'Failed to connect to Arduino: {error}')
     ser = None
 
+station_cells_status = '0/0'
 laptop_status = '0/0'
 last_detected_uid = None
 pending_uid_scan = None
@@ -120,6 +123,12 @@ def extract_uid_from_serial_data(data):
     return None
 
 
+def extract_station_cells_status(data):
+    if CELL_STATUS_PATTERN.fullmatch(data):
+        return data
+    return None
+
+
 def build_home_state(user_actions_redirect=False, user_actions_event_id=0, user_actions_event_ack=0):
     return {
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
@@ -128,7 +137,7 @@ def build_home_state(user_actions_redirect=False, user_actions_event_id=0, user_
         'user_actions_event_id': int(user_actions_event_id or 0),
         'user_actions_event_ack': int(user_actions_event_ack or 0),
         'user_session_active': bool(session.get('current_user_uid')),
-        'station_cells_status': laptop_status,
+        'station_cells_status': station_cells_status,
         'laptop_count': laptop_status,
         'last_detected_uid': last_detected_uid
     }
@@ -547,7 +556,7 @@ def serve_frontend_page(filename):
 
 
 def arduino_thread():
-    global laptop_status, ser, last_detected_uid
+    global station_cells_status, ser, last_detected_uid
 
     while not stop_event.is_set():
         try:
@@ -555,28 +564,32 @@ def arduino_thread():
                 data = ser.readline().strip()
                 if data:
                     data = data.decode().replace(' ', '').upper()
-                    print('Received:', data)
+                    logging.info(f'Received: {data}')
 
                     uid = extract_uid_from_serial_data(data)
                     if uid:
                         last_detected_uid = uid
-                        print('Received UID:', uid)
+                        logging.info(f'Received UID: {uid}')
 
                         user = get_user_by_uid(uid)
 
                         if user:
                             success, message = queue_uid_scan(uid)
                             if not success:
-                                print(message)
+                                logging.info(message)
                         else:
-                            print('UID not allowed.')
-                    elif '/' in data:
-                        laptop_status = data
+                            logging.info('UID not allowed.')
+                        continue
+
+                    next_station_cells_status = extract_station_cells_status(data)
+                    if next_station_cells_status and next_station_cells_status != station_cells_status:
+                        station_cells_status = next_station_cells_status
+                        logging.info(f'Station cells status: {next_station_cells_status}')
             time.sleep(0.1)
         except serial.SerialException:
             logging.warning('Arduino disconnected. Attempting to reconnect...')
         except Exception as error:
-            print(f'Arduino thread error: {error}')
+            logging.error(f'Arduino thread error: {error}')
 
 
 def run_flask():
