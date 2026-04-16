@@ -354,6 +354,34 @@ def fetch_active_borrow_records(limit=200):
         connection.close()
 
 
+def fetch_borrow_history_records(limit=300):
+    connection = get_db_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            '''
+            SELECT
+                id,
+                employee_uid,
+                employee_name,
+                employee_email,
+                device_number,
+                device_name,
+                barcode,
+                taken_at,
+                returned_at,
+                status
+            FROM borrow_records
+            ORDER BY taken_at DESC
+            LIMIT ?;
+            ''',
+            (limit,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        connection.close()
+
+
 def error_response(message, status_code=400):
     return jsonify({'success': False, 'message': message}), status_code
 
@@ -737,6 +765,12 @@ def home_state():
 @app.route('/active_borrow_records', methods=['GET'])
 def active_borrow_records():
     records = fetch_active_borrow_records()
+    return jsonify({'success': True, 'records': records})
+
+
+@app.route('/borrow_history_records', methods=['GET'])
+def borrow_history_records():
+    records = fetch_borrow_history_records()
     return jsonify({'success': True, 'records': records})
 
 

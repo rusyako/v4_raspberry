@@ -12,6 +12,10 @@ export function KioskHomeView({
   isActiveBorrowedOpen,
   isActiveBorrowedLoading,
   onToggleActiveBorrowed,
+  borrowHistoryRecords,
+  isBorrowHistoryOpen,
+  isBorrowHistoryLoading,
+  onToggleBorrowHistory,
   t
 }) {
 
@@ -44,6 +48,9 @@ export function KioskHomeView({
             <button type="button" className="ghost-button" onClick={onToggleActiveBorrowed}>
               {isActiveBorrowedOpen ? t.kiosk.hideBorrowedDevices : t.kiosk.openIssuedDevices}
             </button>
+            <button type="button" className="ghost-button" onClick={onToggleBorrowHistory}>
+              {isBorrowHistoryOpen ? t.kiosk.closeBorrowHistory : t.kiosk.openBorrowHistory}
+            </button>
           </div>
 
           {isActiveBorrowedOpen ? (
@@ -65,6 +72,36 @@ export function KioskHomeView({
                 <p className="home-borrowed-empty">{t.kiosk.activeBorrowedEmpty}</p>
               )}
             </section>
+          ) : null}
+
+          {isBorrowHistoryOpen ? (
+            <div className="history-modal-overlay" role="dialog" aria-modal="true" onClick={onToggleBorrowHistory}>
+              <div className="history-modal-card" onClick={(event) => event.stopPropagation()}>
+                <div className="history-modal-header">
+                  <h3>{t.kiosk.borrowHistoryTitle}</h3>
+                  <button type="button" className="danger-button small" onClick={onToggleBorrowHistory}>
+                    {t.kiosk.closeBorrowHistory}
+                  </button>
+                </div>
+                {isBorrowHistoryLoading ? (
+                  <p className="home-borrowed-empty">...</p>
+                ) : borrowHistoryRecords.length ? (
+                  <ul className="home-borrowed-list">
+                    {borrowHistoryRecords.map((record) => (
+                      <li key={record.id} className="home-borrowed-item">
+                        <p><strong>{t.kiosk.borrowedBy}:</strong> {record.employee_name || record.employee_uid}</p>
+                        <p><strong>{t.kiosk.borrowedDevice}:</strong> {record.device_name || '-'} ({record.device_number || '-'})</p>
+                        <p><strong>{t.kiosk.borrowedTakenAt}:</strong> {record.taken_at || '-'}</p>
+                        <p><strong>{t.kiosk.borrowedReturnedAt}:</strong> {record.returned_at || '-'}</p>
+                        <p><strong>{t.kiosk.borrowedStatus}:</strong> {record.status || '-'}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="home-borrowed-empty">{t.kiosk.borrowHistoryEmpty}</p>
+                )}
+              </div>
+            </div>
           ) : null}
         </section>
       </main>
