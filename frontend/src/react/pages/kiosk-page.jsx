@@ -15,6 +15,9 @@ export function KioskPage() {
     activeBorrowedRecords,
     isActiveBorrowedOpen,
     isActiveBorrowedLoading,
+    borrowHistoryRecords,
+    isBorrowHistoryOpen,
+    isBorrowHistoryLoading,
     view,
     takeBarcodes,
     setTakeBarcodes,
@@ -23,6 +26,7 @@ export function KioskPage() {
     screenClassName,
     clearSessionAndGoHome,
     toggleActiveBorrowedInfo,
+    toggleBorrowHistoryModal,
     goToCheckout,
     goToReturn,
     submitTake,
@@ -43,6 +47,10 @@ export function KioskPage() {
           isActiveBorrowedOpen={isActiveBorrowedOpen}
           isActiveBorrowedLoading={isActiveBorrowedLoading}
           onToggleActiveBorrowed={toggleActiveBorrowedInfo}
+          borrowHistoryRecords={borrowHistoryRecords}
+          isBorrowHistoryOpen={isBorrowHistoryOpen}
+          isBorrowHistoryLoading={isBorrowHistoryLoading}
+          onToggleBorrowHistory={toggleBorrowHistoryModal}
           t={t}
         />
       ) : null}

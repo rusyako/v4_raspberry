@@ -26,6 +26,9 @@ export function useKioskController(showToast) {
   const [activeBorrowedRecords, setActiveBorrowedRecords] = useState([]);
   const [isActiveBorrowedOpen, setIsActiveBorrowedOpen] = useState(false);
   const [isActiveBorrowedLoading, setIsActiveBorrowedLoading] = useState(false);
+  const [borrowHistoryRecords, setBorrowHistoryRecords] = useState([]);
+  const [isBorrowHistoryOpen, setIsBorrowHistoryOpen] = useState(false);
+  const [isBorrowHistoryLoading, setIsBorrowHistoryLoading] = useState(false);
 
   const inactivityTimerRef = useRef(null);
   const homePollTimerRef = useRef(null);
@@ -171,6 +174,28 @@ export function useKioskController(showToast) {
     await loadActiveBorrowedRecords();
   }
 
+  async function loadBorrowHistoryRecords() {
+    setIsBorrowHistoryLoading(true);
+    try {
+      const data = await requestJson('/borrow_history_records', { method: 'GET', cache: 'no-store' });
+      setBorrowHistoryRecords(data.records || []);
+    } catch (error) {
+      showToast('error', t.kiosk.borrowHistoryLoadFailTitle, error.message);
+    } finally {
+      setIsBorrowHistoryLoading(false);
+    }
+  }
+
+  async function toggleBorrowHistoryModal() {
+    if (isBorrowHistoryOpen) {
+      setIsBorrowHistoryOpen(false);
+      return;
+    }
+
+    setIsBorrowHistoryOpen(true);
+    await loadBorrowHistoryRecords();
+  }
+
   useEffect(() => {
     if (view === 'home') {
       window.clearTimeout(inactivityTimerRef.current);
@@ -303,6 +328,9 @@ export function useKioskController(showToast) {
     activeBorrowedRecords,
     isActiveBorrowedOpen,
     isActiveBorrowedLoading,
+    borrowHistoryRecords,
+    isBorrowHistoryOpen,
+    isBorrowHistoryLoading,
     view,
     takeBarcodes,
     setTakeBarcodes,
@@ -311,6 +339,7 @@ export function useKioskController(showToast) {
     screenClassName,
     clearSessionAndGoHome,
     toggleActiveBorrowedInfo,
+    toggleBorrowHistoryModal,
     goToCheckout,
     goToReturn,
     submitTake,
