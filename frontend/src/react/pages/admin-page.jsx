@@ -1,18 +1,32 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { deleteJson, postJson, requestJson } from '../shared/api';
+import { LanguageSwitcher } from '../shared/language-switcher';
+import { LANGUAGE_STORAGE_KEY } from '../shared/storage';
 import { Toast, useToast } from '../shared/toast';
+import { getTranslations, resolveLanguage } from '../shared/translations';
 
 const UsersPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersPanel })));
 const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsPanel })));
 
 export function AdminPage() {
   const [adminToken, setAdminToken] = useState('');
+  const [language, setLanguage] = useState(resolveLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY) || 'en'));
   const [users, setUsers] = useState([]);
   const [laptops, setLaptops] = useState([]);
   const [borrowRecords, setBorrowRecords] = useState([]);
   const [userForm, setUserForm] = useState({ uid: '', name: '', email: '', is_admin: false });
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
   const { toast, showToast, clearToast } = useToast();
+  const t = getTranslations(language);
+
+  useEffect(() => {
+    const resolvedLanguage = resolveLanguage(language);
+    if (resolvedLanguage !== language) {
+      setLanguage(resolvedLanguage);
+      return;
+    }
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, resolvedLanguage);
+  }, [language]);
 
   function authHeaders() {
     return adminToken ? { 'X-Admin-Token': adminToken } : {};
@@ -41,7 +55,7 @@ export function AdminPage() {
         }
 
         if (mounted && state.admin_redirect && !adminToken) {
-          showToast('info', 'Admin card detected', 'Admin card recognized. Opening dashboard...');
+          showToast('info', t.admin.toasts.adminDetectedTitle, t.admin.toasts.adminDetectedText);
         }
       } catch {
         return;
@@ -56,7 +70,7 @@ export function AdminPage() {
       } catch (error) {
         if (mounted) {
           setAdminToken('');
-          showToast('error', 'Admin login required', error.message);
+          showToast('error', t.admin.toasts.adminRequiredTitle, error.message);
         }
       }
     }
@@ -65,7 +79,7 @@ export function AdminPage() {
     return () => {
       mounted = false;
     };
-  }, [adminToken, showToast]);
+  }, [adminToken, showToast, t]);
 
   async function handleLogout() {
     try {
@@ -85,9 +99,9 @@ export function AdminPage() {
       const data = await postJson('/admin/users', userForm, authHeaders());
       setUserForm({ uid: '', name: '', email: '', is_admin: false });
       await loadAdminData();
-      showToast('success', 'User added', data.message);
+      showToast('success', t.admin.toasts.userAddedTitle, data.message);
     } catch (error) {
-      showToast('error', 'Admin error', error.message);
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
     }
   }
 
@@ -97,9 +111,9 @@ export function AdminPage() {
       const data = await postJson('/admin/laptops', laptopForm, authHeaders());
       setLaptopForm({ name: '', barcode: '', device_number: '', status: 'available' });
       await loadAdminData();
-      showToast('success', 'Device added', data.message);
+      showToast('success', t.admin.toasts.deviceAddedTitle, data.message);
     } catch (error) {
-      showToast('error', 'Admin error', error.message);
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
     }
   }
 
@@ -107,9 +121,9 @@ export function AdminPage() {
     try {
       const data = await deleteJson(`/admin/users/${encodeURIComponent(uid)}`, authHeaders());
       await loadAdminData();
-      showToast('success', 'User removed', data.message);
+      showToast('success', t.admin.toasts.userRemovedTitle, data.message);
     } catch (error) {
-      showToast('error', 'Admin error', error.message);
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
     }
   }
 
@@ -117,9 +131,9 @@ export function AdminPage() {
     try {
       const data = await deleteJson(`/admin/laptops/${encodeURIComponent(name)}`, authHeaders());
       await loadAdminData();
-      showToast('success', 'Device removed', data.message);
+      showToast('success', t.admin.toasts.deviceRemovedTitle, data.message);
     } catch (error) {
-      showToast('error', 'Admin error', error.message);
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
     }
   }
 
@@ -129,24 +143,26 @@ export function AdminPage() {
       {!adminToken ? (
         <div className="admin-login-wrap">
           <div className="admin-login-panel">
-            <h1>Admin Access</h1>
-            <p>Connecting to admin dashboard...</p>
+            <LanguageSwitcher language={language} setLanguage={setLanguage} />
+            <h1>{t.admin.accessTitle}</h1>
+            <p>{t.admin.connectingText}</p>
             <div className="admin-actions">
-              <button type="button" className="ghost-button" onClick={() => { window.location.href = '/'; }}>Back Home</button>
+              <button type="button" className="ghost-button" onClick={() => { window.location.href = '/'; }}>{t.common.backHome}</button>
             </div>
           </div>
         </div>
       ) : (
         <div className="admin-page">
+          <LanguageSwitcher language={language} setLanguage={setLanguage} />
           <header className="admin-hero">
             <div>
-              <p className="admin-eyebrow">Smart Box control room</p>
-              <h1>Admin Panel</h1>
-              <p>Manage access cards and MacBook inventory from one dashboard.</p>
+              <p className="admin-eyebrow">{t.admin.controlRoom}</p>
+              <h1>{t.admin.panelTitle}</h1>
+              <p>{t.admin.panelSubtitle}</p>
             </div>
             <div className="admin-actions">
-              <button type="button" className="ghost-button" onClick={() => loadAdminData()}>Refresh</button>
-              <button type="button" className="danger-button" onClick={handleLogout}>Logout</button>
+              <button type="button" className="ghost-button" onClick={() => loadAdminData()}>{t.common.refresh}</button>
+              <button type="button" className="danger-button" onClick={handleLogout}>{t.common.logout}</button>
             </div>
           </header>
 
@@ -156,6 +172,7 @@ export function AdminPage() {
                 userForm={userForm}
                 setUserForm={setUserForm}
                 users={users}
+                t={t}
                 onSubmit={handleAddUser}
                 onRemove={removeUser}
               />
@@ -166,6 +183,7 @@ export function AdminPage() {
                 laptopForm={laptopForm}
                 setLaptopForm={setLaptopForm}
                 laptops={laptops}
+                t={t}
                 onSubmit={handleAddLaptop}
                 onRemove={removeLaptop}
               />
@@ -174,22 +192,22 @@ export function AdminPage() {
 
           <section className="admin-panel admin-wide-panel">
             <div className="admin-panel-head">
-              <h2>Borrow Records</h2>
+              <h2>{t.admin.borrowRecordsTitle}</h2>
             </div>
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>UID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Device #</th>
-                    <th>Device</th>
-                    <th>Barcode</th>
-                    <th>Taken</th>
-                    <th>Returned</th>
-                    <th>Status</th>
+                    <th>{t.admin.columns.id}</th>
+                    <th>{t.admin.columns.uid}</th>
+                    <th>{t.admin.columns.name}</th>
+                    <th>{t.admin.columns.email}</th>
+                    <th>{t.admin.columns.deviceNumber}</th>
+                    <th>{t.admin.columns.device}</th>
+                    <th>{t.admin.columns.barcode}</th>
+                    <th>{t.admin.columns.taken}</th>
+                    <th>{t.admin.columns.returned}</th>
+                    <th>{t.admin.columns.status}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,7 +230,7 @@ export function AdminPage() {
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan="10" className="admin-empty">No borrow records yet.</td>
+                      <td colSpan="10" className="admin-empty">{t.admin.noBorrowRecords}</td>
                     </tr>
                   )}
                 </tbody>

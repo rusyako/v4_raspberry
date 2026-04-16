@@ -4,17 +4,18 @@ export const UsersPanel = memo(function UsersPanel({
   userForm,
   setUserForm,
   users,
+  t,
   onSubmit,
   onRemove
 }) {
   return (
     <section className="admin-panel">
       <div className="admin-panel-head">
-        <h2>Users / UID</h2>
+        <h2>{t.admin.usersTitle}</h2>
       </div>
       <form className="admin-form" onSubmit={onSubmit}>
         <label className="admin-field">
-          <span>UID</span>
+          <span>{t.admin.uidLabel}</span>
           <input
             value={userForm.uid}
             onChange={(event) => setUserForm((current) => ({ ...current, uid: event.target.value }))}
@@ -23,7 +24,7 @@ export const UsersPanel = memo(function UsersPanel({
           />
         </label>
         <label className="admin-field">
-          <span>Name</span>
+          <span>{t.admin.nameLabel}</span>
           <input
             value={userForm.name}
             onChange={(event) => setUserForm((current) => ({ ...current, name: event.target.value }))}
@@ -32,7 +33,7 @@ export const UsersPanel = memo(function UsersPanel({
           />
         </label>
         <label className="admin-field">
-          <span>Email</span>
+          <span>{t.admin.emailLabel}</span>
           <input
             value={userForm.email || ''}
             onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))}
@@ -46,9 +47,9 @@ export const UsersPanel = memo(function UsersPanel({
             onChange={(event) => setUserForm((current) => ({ ...current, is_admin: event.target.checked }))}
             type="checkbox"
           />
-          <span>Admin card</span>
+          <span>{t.admin.adminCardLabel}</span>
         </label>
-        <button type="submit" className="primary-button">Add User</button>
+        <button type="submit" className="primary-button">{t.admin.addUser}</button>
       </form>
       <div className="admin-list">
         {users.length ? users.map((user) => (
@@ -59,11 +60,11 @@ export const UsersPanel = memo(function UsersPanel({
               <small>{user.email || '-'}</small>
             </div>
             <div className="admin-item-actions">
-              {user.is_admin ? <span className="status-badge status-admin">Admin</span> : null}
-              <button type="button" className="danger-button small" onClick={() => onRemove(user.uid)}>Delete</button>
+              {user.is_admin ? <span className="status-badge status-admin">{t.admin.adminBadge}</span> : null}
+              <button type="button" className="danger-button small" onClick={() => onRemove(user.uid)}>{t.common.remove}</button>
             </div>
           </div>
-        )) : <div className="admin-empty">No users yet.</div>}
+        )) : <div className="admin-empty">{t.admin.noUsers}</div>}
       </div>
     </section>
   );
@@ -73,17 +74,18 @@ export const LaptopsPanel = memo(function LaptopsPanel({
   laptopForm,
   setLaptopForm,
   laptops,
+  t,
   onSubmit,
   onRemove
 }) {
   return (
     <section className="admin-panel">
       <div className="admin-panel-head">
-        <h2>MacBooks</h2>
+        <h2>{t.admin.laptopsTitle}</h2>
       </div>
       <form className="admin-form" onSubmit={onSubmit}>
         <label className="admin-field">
-          <span>Device name</span>
+          <span>{t.admin.deviceNameLabel}</span>
           <input
             value={laptopForm.name}
             onChange={(event) => setLaptopForm((current) => ({ ...current, name: event.target.value }))}
@@ -92,7 +94,7 @@ export const LaptopsPanel = memo(function LaptopsPanel({
           />
         </label>
         <label className="admin-field">
-          <span>Barcode</span>
+          <span>{t.admin.barcodeLabel}</span>
           <input
             value={laptopForm.barcode}
             onChange={(event) => setLaptopForm((current) => ({ ...current, barcode: event.target.value }))}
@@ -101,7 +103,7 @@ export const LaptopsPanel = memo(function LaptopsPanel({
           />
         </label>
         <label className="admin-field">
-          <span>Device number</span>
+          <span>{t.admin.deviceNumberLabel}</span>
           <input
             value={laptopForm.device_number || ''}
             onChange={(event) => setLaptopForm((current) => ({ ...current, device_number: event.target.value }))}
@@ -110,33 +112,33 @@ export const LaptopsPanel = memo(function LaptopsPanel({
           />
         </label>
         <label className="admin-field">
-          <span>Status</span>
+          <span>{t.admin.statusLabel}</span>
           <select
             value={laptopForm.status}
             onChange={(event) => setLaptopForm((current) => ({ ...current, status: event.target.value }))}
           >
-            <option value="available">Available</option>
-            <option value="unavailable">Unavailable</option>
+            <option value="available">{t.admin.statusAvailable}</option>
+            <option value="unavailable">{t.admin.statusUnavailable}</option>
           </select>
         </label>
-        <button type="submit" className="primary-button">Add Device</button>
+        <button type="submit" className="primary-button">{t.admin.addDevice}</button>
       </form>
       <div className="admin-list">
         {laptops.length ? laptops.map((laptop) => (
           <div key={`${laptop.name}:${laptop.barcode}`} className="admin-list-item">
             <div>
               <strong>{laptop.name}</strong>
-              <small>Barcode: {laptop.barcode || '-'}</small>
-              <small>Device: {laptop.device_number || '-'}</small>
+              <small>{t.admin.barcodePrefix}: {laptop.barcode || '-'}</small>
+              <small>{t.admin.devicePrefix}: {laptop.device_number || '-'}</small>
             </div>
             <div className="admin-item-actions">
               <span className={`status-badge ${laptop.status === 'available' ? 'status-available' : 'status-unavailable'}`}>
                 {laptop.status}
               </span>
-              <button type="button" className="danger-button small" onClick={() => onRemove(laptop.name)}>Delete</button>
+              <button type="button" className="danger-button small" onClick={() => onRemove(laptop.name)}>{t.common.remove}</button>
             </div>
           </div>
-        )) : <div className="admin-empty">No devices yet.</div>}
+        )) : <div className="admin-empty">{t.admin.noDevices}</div>}
       </div>
     </section>
   );

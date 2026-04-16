@@ -1,0 +1,185 @@
+import { useEffect, useRef } from 'react';
+import { postJson } from '../../shared/api';
+import { LanguageSwitcher } from '../../shared/language-switcher';
+import { writeStoredArray } from '../../shared/storage';
+import { BARCODE_PATTERN, KIOSK_IMAGES } from './constants';
+
+export function HomePanel({ language, setLanguage, laptopCount, t }) {
+
+  return (
+    <>
+      <LanguageSwitcher language={language} setLanguage={setLanguage} />
+
+      <main className="home-shell">
+        <section className="home-brand">
+          <div className="home-title-wrap">
+            <h1 className="home-title">SmartBox</h1>
+            <p className="home-subtitle">{t.kiosk.subtitle}</p>
+          </div>
+        </section>
+
+        <section className="home-card">
+          <div className="home-card-header">
+            <img src={KIOSK_IMAGES.kioskLogo} alt="Smart Box" className="home-logo" />
+            <h2>{t.kiosk.cardTitle}</h2>
+          </div>
+
+          <div className="home-count-card">
+            <span>{t.kiosk.availableLabel}</span>
+            <strong>{laptopCount}</strong>
+          </div>
+
+          <p className="home-card-message">{t.kiosk.accessMessage}</p>
+        </section>
+      </main>
+    </>
+  );
+}
+
+export function ActionPanel({ onTake, onReturn, language, setLanguage, t }) {
+  return (
+    <section className="hello-shell">
+      <LanguageSwitcher language={language} setLanguage={setLanguage} />
+      <header className="hello-header">
+        <p className="hello-kicker">{t.kiosk.sessionConfirmed}</p>
+        <h1>MacBook Kiosk</h1>
+        <p>{t.kiosk.chooseNextAction}</p>
+      </header>
+
+      <div className="hello-actions">
+        <button type="button" className="hello-action primary" onClick={onTake}>
+          <span>{t.kiosk.checkOut}</span>
+          <small>{t.kiosk.checkOutHint}</small>
+        </button>
+        <button type="button" className="hello-action danger" onClick={onReturn}>
+          <span>{t.kiosk.return}</span>
+          <small>{t.kiosk.returnHint}</small>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export function SessionPanel({
+  title,
+  description,
+  placeholder,
+  countLabel,
+  submitLabel,
+  storageKey,
+  barcodes,
+  onBarcodesChange,
+  onCancel,
+  onSubmit,
+  showToast,
+  language,
+  setLanguage,
+  t
+}) {
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  function focusAndClear() {
+    if (inputRef.current) {
+      inputRef.current.value = '';
+      inputRef.current.focus();
+    }
+  }
+
+  async function checkLaptop(barcode) {
+    await postJson('/check_laptop', { barcode });
+  }
+
+  async function handleKeyDown(event) {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    event.preventDefault();
+    const barcode = event.currentTarget.value.trim();
+
+    if (!barcode) {
+      focusAndClear();
+      return;
+    }
+
+    if (!BARCODE_PATTERN.test(barcode)) {
+      showToast('error', t.kiosk.invalidBarcodeTitle, t.kiosk.invalidBarcodeText);
+      focusAndClear();
+      return;
+    }
+
+    if (barcodes.includes(barcode)) {
+      showToast('info', t.kiosk.duplicateBarcodeTitle, t.kiosk.duplicateBarcodeText);
+      focusAndClear();
+      return;
+    }
+
+    try {
+      await checkLaptop(barcode);
+      const nextBarcodes = [...barcodes, barcode];
+      onBarcodesChange(nextBarcodes);
+      writeStoredArray(storageKey, nextBarcodes);
+      focusAndClear();
+    } catch (error) {
+      showToast('error', t.kiosk.checkFailedTitle, error.message);
+      focusAndClear();
+    }
+  }
+
+  function removeBarcode(barcode) {
+    const nextBarcodes = barcodes.filter((item) => item !== barcode);
+    onBarcodesChange(nextBarcodes);
+    writeStoredArray(storageKey, nextBarcodes);
+  }
+
+  return (
+    <section className="session-shell">
+      <LanguageSwitcher language={language} setLanguage={setLanguage} />
+      <header className="session-header">
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </header>
+
+      <div className="session-input-wrap">
+        <input
+          ref={inputRef}
+          className="session-input"
+          type="text"
+          placeholder={placeholder}
+          onKeyDown={handleKeyDown}
+          autoFocus
+        />
+        <button type="button" className="session-input-action" onClick={() => inputRef.current?.focus()}>
+          {t.common.scan}
+        </button>
+      </div>
+
+      <section className="session-list-card">
+        <div className="session-list-head">
+          <h2>{countLabel}</h2>
+          <span>{barcodes.length}</span>
+        </div>
+        <ul className="session-list">
+          {barcodes.map((barcode, index) => (
+            <li key={barcode} className="session-list-item">
+              <span>{index + 1}. {barcode}</span>
+              <button type="button" className="chip-button" onClick={() => removeBarcode(barcode)}>
+                Remove
+              </button>
+            </li>
+          ))}
+          {!barcodes.length ? <li className="session-list-empty">{t.kiosk.noDevicesScanned}</li> : null}
+        </ul>
+      </section>
+
+      <div className="session-actions">
+        <button type="button" className="ghost-button" onClick={onCancel}>{t.common.cancel}</button>
+        <button type="button" className="primary-button" onClick={onSubmit}>{submitLabel}</button>
+      </div>
+    </section>
+  );
+}
