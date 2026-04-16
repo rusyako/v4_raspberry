@@ -20,6 +20,8 @@ function setStoredAdminToken(token) {
 
 export function AdminPage() {
   const [adminToken, setAdminToken] = useState(getStoredAdminToken());
+  const [pinRequired, setPinRequired] = useState(true);
+  const [pinHint, setPinHint] = useState('Enter the administrator PIN code.');
   const [pin, setPin] = useState('');
   const [users, setUsers] = useState([]);
   const [laptops, setLaptops] = useState([]);
@@ -46,8 +48,26 @@ export function AdminPage() {
     async function bootstrap() {
       try {
         const state = await requestJson('/admin_state', { method: 'GET' });
+        if (mounted) {
+          setPinRequired(state.admin_pin_required !== false);
+          setPinHint(
+            state.admin_pin_required === false
+              ? 'PIN is disabled. Admin access opens automatically.'
+              : state.admin_redirect
+                ? 'Admin card detected. Enter PIN 5005 to continue.'
+                : 'Enter the administrator PIN code.'
+          );
+        }
+
+        if (mounted && state.admin_pin_required === false && state.admin_token) {
+          setStoredAdminToken(state.admin_token);
+          setAdminToken(state.admin_token);
+          await loadAdminData(state.admin_token);
+          return;
+        }
+
         if (mounted && state.admin_redirect && !adminToken) {
-          showToast('info', 'Admin card detected', 'Enter the PIN to continue.');
+          showToast('info', 'Admin card detected', 'Enter PIN 5005 to continue.');
         }
       } catch {
         return;
@@ -151,13 +171,15 @@ export function AdminPage() {
         <div className="admin-login-wrap">
           <form className="admin-login-panel" onSubmit={handleLogin}>
             <h1>Admin Access</h1>
-            <p>Enter the administrator PIN code.</p>
-            <label className="admin-field">
-              <span>PIN</span>
-              <input value={pin} onChange={(event) => setPin(event.target.value)} type="password" inputMode="numeric" autoComplete="off" />
-            </label>
+            <p>{pinHint}</p>
+            {pinRequired ? (
+              <label className="admin-field">
+                <span>PIN</span>
+                <input value={pin} onChange={(event) => setPin(event.target.value)} type="password" inputMode="numeric" autoComplete="off" />
+              </label>
+            ) : null}
             <div className="admin-actions">
-              <button type="submit" className="primary-button">Unlock Admin</button>
+              {pinRequired ? <button type="submit" className="primary-button">Unlock Admin</button> : null}
               <button type="button" className="ghost-button" onClick={() => { window.location.href = '/'; }}>Back Home</button>
             </div>
           </form>

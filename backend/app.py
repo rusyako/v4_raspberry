@@ -36,6 +36,7 @@ FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY', os.urandom(32).hex())
 ENABLE_WEBVIEW = os.getenv('ENABLE_WEBVIEW', 'false').lower() == 'true'
 START_ARDUINO_THREAD = os.getenv('START_ARDUINO_THREAD', 'true').lower() == 'true'
 ADMIN_PIN = os.getenv('ADMIN_PIN', '1234')
+ADMIN_PIN_REQUIRED = os.getenv('ADMIN_PIN_REQUIRED', 'true').lower() == 'true'
 ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv('ADMIN_SESSION_TIMEOUT_SECONDS', '1800'))
 ENABLE_LOCAL_DEBUG_SDK = os.getenv('ENABLE_LOCAL_DEBUG_SDK', 'true').lower() == 'true'
 
@@ -162,9 +163,16 @@ def create_admin_session():
     return admin_session_token
 
 
+def ensure_admin_session():
+    if is_admin_session_active():
+        return session.get('admin_session_token')
+    return create_admin_session()
+
+
 def clear_admin_session():
     session.pop('admin_session_token', None)
     session.pop('admin_session_expires_at', None)
+    session.pop('admin_uid_bypass', None)
     session.pop('redirect_to_admin_page', None)
 
 
@@ -183,6 +191,7 @@ def activate_user_session(uid, is_admin):
 
     if is_admin:
         create_admin_session()
+        session['admin_uid_bypass'] = True
         session['redirect_to_admin_page'] = True
         return True, 'Администратор распознан. / Administrator recognized.'
 
@@ -253,6 +262,10 @@ def consume_pending_uid_scan():
 
 
 def require_admin():
+    if not ADMIN_PIN_REQUIRED:
+        ensure_admin_session()
+        return None
+
     token = request.headers.get('X-Admin-Token', '').strip()
     if not is_admin_session_active(token):
         return error_response('Требуется вход администратора. / Admin login required.', 401)
@@ -575,9 +588,26 @@ def home_state():
 
 @app.route('/admin_state', methods=['GET'])
 def admin_state():
+    admin_session_active = is_admin_session_active()
+    admin_token = ''
+    admin_uid_bypass = bool(session.get('admin_uid_bypass'))
+
+    if not ADMIN_PIN_REQUIRED:
+        admin_token = ensure_admin_session() or ''
+        admin_session_active = True
+    elif admin_uid_bypass and admin_session_active:
+        admin_token = session.get('admin_session_token') or ''
+
+    should_require_pin = ADMIN_PIN_REQUIRED and not bool(admin_token)
+
+    if admin_token:
+        session.pop('admin_uid_bypass', None)
+
     return jsonify({
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
-        'admin_session_active': is_admin_session_active(),
+        'admin_session_active': admin_session_active,
+        'admin_pin_required': should_require_pin,
+        'admin_token': admin_token,
         'last_detected_uid': last_detected_uid
     })
 
@@ -646,12 +676,22 @@ def check_redirect():
 
 @app.route('/admin')
 def admin_page():
+    if not ADMIN_PIN_REQUIRED:
+        ensure_admin_session()
     session.pop('redirect_to_admin_page', None)
     return serve_frontend_page('admin.html')
 
 
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
+    if not ADMIN_PIN_REQUIRED:
+        token = ensure_admin_session()
+        return success_response(
+            'PIN отключен. / PIN is disabled.',
+            admin_token=token,
+            redirect_url='/admin'
+        )
+
     data = request.get_json(silent=True) or {}
     pin = str(data.get('pin') or '').strip()
 

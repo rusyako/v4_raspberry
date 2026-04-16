@@ -69,7 +69,8 @@ nano .env
 Минимально проверь:
 
 - `FLASK_SECRET_KEY` (замени `change-me`)
-- `ADMIN_PIN`
+- `ADMIN_PIN` (по умолчанию `5005`)
+- `ADMIN_PIN_REQUIRED` (`false` если хочешь открывать админку без PIN)
 - `SERIAL_PORT` (обычно `/dev/ttyACM0`)
 - `START_ARDUINO_THREAD=true`
 - `ENABLE_LOCAL_DEBUG_SDK=false` (для прод/киоска)
@@ -119,6 +120,11 @@ docker exec smart-box python manage_db.py list-laptops
 ```
 
 Важно: UID в системе хранится в HEX-формате (например `F015ACDA`).
+
+## 6.1) Логика доступа в админку
+
+- Переход по ссылке `/admin` требует PIN (по умолчанию `5005`).
+- Если сначала отсканирована admin UID-карта, `/admin` открывается без ручного ввода PIN.
 
 ## 7) Проверка Arduino
 
