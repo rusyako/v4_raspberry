@@ -25,6 +25,7 @@ export function useKioskController(showToast) {
   const [stationCellsStatus, setStationCellsStatus] = useState('0/0');
   const [activeBorrowedRecords, setActiveBorrowedRecords] = useState([]);
   const [isActiveBorrowedLoading, setIsActiveBorrowedLoading] = useState(false);
+  const [hasLoadedActiveBorrowedRecords, setHasLoadedActiveBorrowedRecords] = useState(false);
 
   const inactivityTimerRef = useRef(null);
   const homePollTimerRef = useRef(null);
@@ -148,15 +149,21 @@ export function useKioskController(showToast) {
     };
   }, [lastAckedUserActionsEventId, showToast, t]);
 
-  async function loadActiveBorrowedRecords() {
-    setIsActiveBorrowedLoading(true);
+  async function loadActiveBorrowedRecords({ silent = false } = {}) {
+    if (!silent && !hasLoadedActiveBorrowedRecords) {
+      setIsActiveBorrowedLoading(true);
+    }
+
     try {
       const data = await requestJson('/active_borrow_records', { method: 'GET', cache: 'no-store' });
       setActiveBorrowedRecords(data.records || []);
+      setHasLoadedActiveBorrowedRecords(true);
     } catch (error) {
       showToast('error', t.kiosk.activeBorrowedLoadFailTitle, error.message);
     } finally {
-      setIsActiveBorrowedLoading(false);
+      if (!silent && !hasLoadedActiveBorrowedRecords) {
+        setIsActiveBorrowedLoading(false);
+      }
     }
   }
 
@@ -165,9 +172,11 @@ export function useKioskController(showToast) {
       return;
     }
 
+    setHasLoadedActiveBorrowedRecords(false);
+    setIsActiveBorrowedLoading(true);
     loadActiveBorrowedRecords();
     const intervalId = window.setInterval(() => {
-      loadActiveBorrowedRecords();
+      loadActiveBorrowedRecords({ silent: true });
     }, POLL_INTERVAL_MS);
 
     return () => {
