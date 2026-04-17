@@ -44,51 +44,63 @@ export function KioskHomeView({
       <LanguageSwitcher language={language} setLanguage={setLanguage} />
 
       <main className="home-shell">
-        <section className="home-card home-card-borrowed">
-          <div className="home-card-header home-card-header-column">
-            <h2>{t.kiosk.activeBorrowedTitle}</h2>
-            <p className="home-card-message home-card-message-compact">{t.kiosk.subtitle}</p>
+        <div className="home-content-grid">
+          <section className="home-card home-card-borrowed">
+            <div className="home-card-header home-card-header-column">
+              <h2>{t.kiosk.activeBorrowedTitle}</h2>
+            </div>
+
+            {isActiveBorrowedLoading ? (
+              <p className="home-borrowed-empty">...</p>
+            ) : groupedBorrowedRecords.length ? (
+              <ul className="home-borrowed-list">
+                {groupedBorrowedRecords.map((group) => (
+                  <li key={group.employeeUid} className="home-borrowed-item">
+                    <div className="home-borrowed-person">
+                      <strong>{group.employeeName}</strong>
+                      <span className="home-borrowed-count">{group.devices.length}</span>
+                    </div>
+                    <ul className="home-borrowed-device-list">
+                      {group.devices.map((device) => (
+                        <li key={device.id} className="home-borrowed-device-item">
+                          <p className="home-borrowed-device-name">{device.device_name || '-'} <span>({device.device_number || '-'})</span></p>
+                          <p className="home-borrowed-device-time">{device.taken_at || '-'}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="home-borrowed-empty">{t.kiosk.activeBorrowedEmpty}</p>
+            )}
+          </section>
+
+          <div className="home-sidebar">
+            <section className="home-card home-card-title">
+              <div className="home-title-block">
+                <img src={KIOSK_IMAGES.kioskLogo} alt="Smart Box" className="home-logo home-hero-logo" />
+                <div>
+                  <h1>Smart Box</h1>
+                  <p>{t.kiosk.subtitle}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="home-card home-card-info">
+              <div className="home-card-header home-card-header-column">
+                <h2>{t.kiosk.cardTitle}</h2>
+              </div>
+
+              <div className="home-count-card">
+                <span>{t.kiosk.stationCellsLabel}</span>
+                <strong>{stationCellsStatus}</strong>
+              </div>
+
+              <p className="home-card-message">{t.kiosk.accessMessage}</p>
+            </section>
           </div>
-
-          {isActiveBorrowedLoading ? (
-            <p className="home-borrowed-empty">...</p>
-          ) : groupedBorrowedRecords.length ? (
-            <ul className="home-borrowed-list">
-              {groupedBorrowedRecords.map((group) => (
-                <li key={group.employeeUid} className="home-borrowed-item">
-                  <div className="home-borrowed-person">
-                    <strong>{group.employeeName}</strong>
-                    <span className="home-borrowed-count">{group.devices.length}</span>
-                  </div>
-                  <ul className="home-borrowed-device-list">
-                    {group.devices.map((device) => (
-                      <li key={device.id} className="home-borrowed-device-item">
-                        <p className="home-borrowed-device-name">{device.device_name || '-'} <span>({device.device_number || '-'})</span></p>
-                        <p className="home-borrowed-device-time">{device.taken_at || '-'}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="home-borrowed-empty">{t.kiosk.activeBorrowedEmpty}</p>
-          )}
-        </section>
-
-        <section className="home-card">
-          <div className="home-card-header">
-            <img src={KIOSK_IMAGES.kioskLogo} alt="Smart Box" className="home-logo" />
-            <h2>{t.kiosk.cardTitle}</h2>
-          </div>
-
-          <div className="home-count-card">
-            <span>{t.kiosk.stationCellsLabel}</span>
-            <strong>{stationCellsStatus}</strong>
-          </div>
-
-          <p className="home-card-message">{t.kiosk.accessMessage}</p>
-        </section>
+        </div>
       </main>
     </>
   );

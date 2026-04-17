@@ -6,18 +6,34 @@
 .home-shell {
   position: relative;
   z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px;
-  align-items: stretch;
+  display: block;
   min-height: 100vh;
   max-width: 1320px;
   margin: 0 auto;
   padding: 56px;
 }
 
+.home-hero-logo {
+  width: 92px;
+  height: 92px;
+}
+
+.home-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.3fr);
+  gap: 28px;
+  align-items: stretch;
+}
+
+.home-sidebar {
+  display: grid;
+  grid-template-rows: minmax(0, 0.55fr) minmax(0, 0.45fr);
+  gap: 28px;
+}
+
 .home-card {
   width: 100%;
+  min-height: 70vh;
   padding: 28px;
   border-radius: 28px;
   background: rgba(5, 16, 23, 0.8);
@@ -29,6 +45,41 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.home-card-title,
+.home-card-info {
+  min-height: 0;
+}
+
+.home-card-title {
+  display: flex;
+  align-items: center;
+}
+
+.home-title-block {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.home-title-block h1 {
+  margin: 0;
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+}
+
+.home-title-block p {
+  margin: 10px 0 0;
+  font-size: 20px;
+  color: rgba(236, 244, 248, 0.8);
+}
+
+.home-card-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .home-card-header {
@@ -388,13 +439,24 @@
 
 @media (max-width: 900px) {
   .home-shell {
-    grid-template-columns: 1fr;
-    align-items: start;
     padding: 92px 20px 28px;
+  }
+
+  .home-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-sidebar {
+    grid-template-rows: auto auto;
   }
 
   .home-card {
     justify-self: stretch;
+    min-height: auto;
+  }
+
+  .home-borrowed-list {
+    max-height: none;
   }
 }
 
