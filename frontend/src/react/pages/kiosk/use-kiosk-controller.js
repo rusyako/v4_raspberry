@@ -172,9 +172,11 @@ export function useKioskController(showToast) {
       return;
     }
 
-    setHasLoadedActiveBorrowedRecords(false);
-    setIsActiveBorrowedLoading(true);
-    loadActiveBorrowedRecords();
+    if (!hasLoadedActiveBorrowedRecords) {
+      setIsActiveBorrowedLoading(true);
+    }
+
+    loadActiveBorrowedRecords({ silent: hasLoadedActiveBorrowedRecords });
     const intervalId = window.setInterval(() => {
       loadActiveBorrowedRecords({ silent: true });
     }, POLL_INTERVAL_MS);
@@ -182,7 +184,7 @@ export function useKioskController(showToast) {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [view, showToast, t]);
+  }, [view, showToast, t, hasLoadedActiveBorrowedRecords]);
 
   useEffect(() => {
     if (view === 'home') {
