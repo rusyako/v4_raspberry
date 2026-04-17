@@ -6,11 +6,14 @@
 .home-shell {
   position: relative;
   z-index: 1;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 100vh;
-  max-width: 1320px;
+  width: min(80vw, 1600px);
   margin: 0 auto;
-  padding: 56px;
+  padding: 56px 32px;
+  box-sizing: border-box;
 }
 
 .home-hero-logo {
@@ -23,6 +26,7 @@
   grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.3fr);
   gap: 28px;
   align-items: stretch;
+  width: 100%;
 }
 
 .home-sidebar {
@@ -33,18 +37,19 @@
 
 .home-card {
   width: 100%;
-  min-height: 70vh;
-  padding: 28px;
+  min-height: 72vh;
+  padding: 32px;
   border-radius: 28px;
   background: rgba(5, 16, 23, 0.8);
   border: 1px solid rgba(152, 201, 231, 0.18);
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.24);
+  box-sizing: border-box;
 }
 
 .home-card-borrowed {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 72vh;
 }
 
 .home-card-title,
@@ -55,6 +60,7 @@
 .home-card-title {
   display: flex;
   align-items: center;
+  min-height: 0;
 }
 
 .home-title-block {
@@ -79,7 +85,9 @@
 .home-card-info {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: auto;
 }
 
 .home-card-header {
@@ -106,12 +114,14 @@
 }
 
 .home-count-card {
-  display: grid;
-  gap: 10px;
-  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   padding: 22px;
   border-radius: 24px;
   background: linear-gradient(135deg, rgba(49, 165, 255, 0.16), rgba(78, 240, 164, 0.16));
+  min-height: 0;
 }
 
 .home-count-card span {
@@ -119,16 +129,21 @@
   letter-spacing: 0.12em;
   font-size: 12px;
   color: rgba(240, 248, 255, 0.72);
+  line-height: 1.4;
 }
 
 .home-count-card strong {
-  font-size: clamp(42px, 7vw, 72px);
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .home-card-message {
-  margin: 24px 0 0;
-  font-size: 18px;
-  line-height: 1.5;
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.65;
+  font-weight: 700;
+  white-space: normal;
 }
 
 .home-card-message-compact {
@@ -144,7 +159,8 @@
   gap: 10px;
   flex: 1;
   align-content: start;
-  max-height: 70vh;
+  min-height: 0;
+  max-height: calc(72vh - 96px);
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -214,9 +230,21 @@
   margin-top: 4px;
 }
 
+.home-borrowed-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  padding: 24px;
+}
+
 .home-borrowed-empty {
-  margin: 22px 0 0;
+  margin: 0;
   color: rgba(236, 244, 248, 0.78);
+  font-size: 2rem;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .language-switcher {
@@ -439,6 +467,7 @@
 
 @media (max-width: 900px) {
   .home-shell {
+    width: min(100vw, 100%);
     padding: 92px 20px 28px;
   }
 
@@ -457,6 +486,15 @@
 
   .home-borrowed-list {
     max-height: none;
+  }
+
+  .home-count-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .home-count-card strong {
+    font-size: clamp(36px, 10vw, 54px);
   }
 }
 

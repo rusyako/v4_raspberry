@@ -72,7 +72,9 @@ export function KioskHomeView({
                 ))}
               </ul>
             ) : (
-              <p className="home-borrowed-empty">{t.kiosk.activeBorrowedEmpty}</p>
+              <div className="home-borrowed-empty-state">
+                <p className="home-borrowed-empty">{t.kiosk.activeBorrowedEmpty}</p>
+              </div>
             )}
           </section>
 
