@@ -4,27 +4,70 @@ import { LanguageSwitcher } from '../../shared/language-switcher';
 import { writeStoredArray } from '../../shared/storage';
 import { BARCODE_PATTERN, KIOSK_IMAGES } from './constants';
 
+function groupBorrowedRecordsByEmployee(records) {
+  const groups = new Map();
+
+  records.forEach((record) => {
+    const employeeUid = record.employee_uid || 'unknown';
+    const existingGroup = groups.get(employeeUid);
+
+    if (existingGroup) {
+      existingGroup.devices.push(record);
+      return;
+    }
+
+    groups.set(employeeUid, {
+      employeeUid,
+      employeeName: record.employee_name || record.employee_uid,
+      devices: [record]
+    });
+  });
+
+  return Array.from(groups.values());
+}
+
 export function KioskHomeView({
   language,
   setLanguage,
   stationCellsStatus,
   activeBorrowedRecords,
-  isActiveBorrowedOpen,
   isActiveBorrowedLoading,
-  onToggleActiveBorrowed,
   t
 }) {
+  const groupedBorrowedRecords = groupBorrowedRecordsByEmployee(activeBorrowedRecords);
 
   return (
     <>
       <LanguageSwitcher language={language} setLanguage={setLanguage} />
 
       <main className="home-shell">
-        <section className="home-brand">
-          <div className="home-title-wrap">
-            <h1 className="home-title">{t.kiosk.brandTitle}</h1>
-            <p className="home-subtitle">{t.kiosk.subtitle}</p>
+        <section className="home-card home-card-borrowed">
+          <div className="home-card-header home-card-header-column">
+            <h2>{t.kiosk.activeBorrowedTitle}</h2>
+            <p className="home-card-message home-card-message-compact">{t.kiosk.subtitle}</p>
           </div>
+
+          {isActiveBorrowedLoading ? (
+            <p className="home-borrowed-empty">...</p>
+          ) : groupedBorrowedRecords.length ? (
+            <ul className="home-borrowed-list">
+              {groupedBorrowedRecords.map((group) => (
+                <li key={group.employeeUid} className="home-borrowed-item">
+                  <p><strong>{t.kiosk.borrowedBy}:</strong> {group.employeeName}</p>
+                  <ul className="home-borrowed-device-list">
+                    {group.devices.map((device) => (
+                      <li key={device.id} className="home-borrowed-device-item">
+                        <p><strong>{t.kiosk.borrowedDevice}:</strong> {device.device_name || '-'} ({device.device_number || '-'})</p>
+                        <p><strong>{t.kiosk.borrowedTakenAt}:</strong> {device.taken_at || '-'}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="home-borrowed-empty">{t.kiosk.activeBorrowedEmpty}</p>
+          )}
         </section>
 
         <section className="home-card">
@@ -39,33 +82,6 @@ export function KioskHomeView({
           </div>
 
           <p className="home-card-message">{t.kiosk.accessMessage}</p>
-
-          <div className="home-info-actions">
-            <button type="button" className="ghost-button" onClick={onToggleActiveBorrowed}>
-              {isActiveBorrowedOpen ? t.kiosk.hideBorrowedDevices : t.kiosk.openIssuedDevices}
-            </button>
-          </div>
-
-          {isActiveBorrowedOpen ? (
-            <section className="home-borrowed-card">
-              <h3>{t.kiosk.activeBorrowedTitle}</h3>
-              {isActiveBorrowedLoading ? (
-                <p className="home-borrowed-empty">...</p>
-              ) : activeBorrowedRecords.length ? (
-                <ul className="home-borrowed-list">
-                  {activeBorrowedRecords.map((record) => (
-                    <li key={record.id} className="home-borrowed-item">
-                      <p><strong>{t.kiosk.borrowedBy}:</strong> {record.employee_name || record.employee_uid}</p>
-                      <p><strong>{t.kiosk.borrowedDevice}:</strong> {record.device_name || '-'} ({record.device_number || '-'})</p>
-                      <p><strong>{t.kiosk.borrowedTakenAt}:</strong> {record.taken_at || '-'}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="home-borrowed-empty">{t.kiosk.activeBorrowedEmpty}</p>
-              )}
-            </section>
-          ) : null}
         </section>
       </main>
     </>

@@ -24,7 +24,6 @@ export function useKioskController(showToast) {
   const [lastAckedUserActionsEventId, setLastAckedUserActionsEventId] = useState(0);
   const [stationCellsStatus, setStationCellsStatus] = useState('0/0');
   const [activeBorrowedRecords, setActiveBorrowedRecords] = useState([]);
-  const [isActiveBorrowedOpen, setIsActiveBorrowedOpen] = useState(false);
   const [isActiveBorrowedLoading, setIsActiveBorrowedLoading] = useState(false);
 
   const inactivityTimerRef = useRef(null);
@@ -161,15 +160,20 @@ export function useKioskController(showToast) {
     }
   }
 
-  async function toggleActiveBorrowedInfo() {
-    if (isActiveBorrowedOpen) {
-      setIsActiveBorrowedOpen(false);
+  useEffect(() => {
+    if (view !== 'home') {
       return;
     }
 
-    setIsActiveBorrowedOpen(true);
-    await loadActiveBorrowedRecords();
-  }
+    loadActiveBorrowedRecords();
+    const intervalId = window.setInterval(() => {
+      loadActiveBorrowedRecords();
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [view, showToast, t]);
 
   useEffect(() => {
     if (view === 'home') {
@@ -301,7 +305,6 @@ export function useKioskController(showToast) {
     laptopCount,
     stationCellsStatus,
     activeBorrowedRecords,
-    isActiveBorrowedOpen,
     isActiveBorrowedLoading,
     view,
     takeBarcodes,
@@ -310,7 +313,6 @@ export function useKioskController(showToast) {
     setReturnBarcodes,
     screenClassName,
     clearSessionAndGoHome,
-    toggleActiveBorrowedInfo,
     goToCheckout,
     goToReturn,
     submitTake,

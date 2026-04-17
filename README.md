@@ -83,6 +83,19 @@ docker compose ps
 docker compose logs -f smart-box
 ```
 
+На Windows можно запускать через готовый скрипт, который сам покажет точную ссылку с текущим IP хоста:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-smart-box.ps1
+```
+
+На Ubuntu / Raspberry Pi можно запускать так же через скрипт, который сам покажет точную ссылку с текущим IP хоста:
+
+```bash
+chmod +x ./scripts/start-smart-box.sh
+./scripts/start-smart-box.sh
+```
+
 Открыть:
 
 - `http://<IP_твоего_хоста>:5000/`

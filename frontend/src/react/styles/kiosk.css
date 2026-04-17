@@ -7,39 +7,17 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 28px;
-  align-items: center;
+  align-items: stretch;
   min-height: 100vh;
+  max-width: 1320px;
+  margin: 0 auto;
   padding: 56px;
 }
 
-.home-brand {
-  display: flex;
-  justify-content: center;
-}
-
-.home-title-wrap {
-  max-width: 520px;
-}
-
-.home-title {
-  margin: 0;
-  font-size: clamp(56px, 10vw, 108px);
-  line-height: 0.92;
-  letter-spacing: 0.08em;
-}
-
-.home-subtitle {
-  margin: 18px 0 0;
-  max-width: 420px;
-  font-size: 20px;
-  color: rgba(232, 243, 250, 0.8);
-}
-
 .home-card {
-  justify-self: end;
-  width: min(460px, 100%);
+  width: 100%;
   padding: 28px;
   border-radius: 28px;
   background: rgba(5, 16, 23, 0.8);
@@ -47,10 +25,21 @@
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.24);
 }
 
+.home-card-borrowed {
+  display: flex;
+  flex-direction: column;
+}
+
 .home-card-header {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.home-card-header-column {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .home-card-header h2 {
@@ -90,23 +79,35 @@
   line-height: 1.5;
 }
 
-.home-info-actions {
-  margin-top: 18px;
-}
-
-.home-borrowed-card {
-  margin-top: 18px;
-  padding: 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.home-borrowed-card h3 {
-  margin: 0;
-  font-size: 18px;
+.home-card-message-compact {
+  margin-top: 0;
+  color: rgba(236, 244, 248, 0.78);
 }
 
 .home-borrowed-list {
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  flex: 1;
+  align-content: start;
+}
+
+.home-borrowed-item {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(152, 201, 231, 0.1);
+}
+
+.home-borrowed-item p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.home-borrowed-device-list {
   margin: 12px 0 0;
   padding: 0;
   list-style: none;
@@ -114,20 +115,18 @@
   gap: 10px;
 }
 
-.home-borrowed-item {
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.2);
+.home-borrowed-device-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
 }
 
-.home-borrowed-item p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.4;
+.home-borrowed-device-item p + p {
+  margin-top: 4px;
 }
 
 .home-borrowed-empty {
-  margin: 12px 0 0;
+  margin: 22px 0 0;
   color: rgba(236, 244, 248, 0.78);
 }
 

@@ -13,7 +13,6 @@ export function KioskPage() {
     t,
     stationCellsStatus,
     activeBorrowedRecords,
-    isActiveBorrowedOpen,
     isActiveBorrowedLoading,
     view,
     takeBarcodes,
@@ -22,7 +21,6 @@ export function KioskPage() {
     setReturnBarcodes,
     screenClassName,
     clearSessionAndGoHome,
-    toggleActiveBorrowedInfo,
     goToCheckout,
     goToReturn,
     submitTake,
@@ -40,9 +38,7 @@ export function KioskPage() {
           setLanguage={setLanguage}
           stationCellsStatus={stationCellsStatus}
           activeBorrowedRecords={activeBorrowedRecords}
-          isActiveBorrowedOpen={isActiveBorrowedOpen}
           isActiveBorrowedLoading={isActiveBorrowedLoading}
-          onToggleActiveBorrowed={toggleActiveBorrowedInfo}
           t={t}
         />
       ) : null}
