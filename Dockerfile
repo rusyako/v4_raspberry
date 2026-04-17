@@ -1,3 +1,17 @@
+FROM node:20-alpine AS frontend-build
+
+WORKDIR /frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/index.html ./index.html
+COPY frontend/vite.config.js ./vite.config.js
+COPY frontend/src ./src
+
+RUN npm run build
+
+
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -18,7 +32,7 @@ COPY backend ./backend
 COPY main.py ./main.py
 COPY manage_db.py ./manage_db.py
 COPY seed_data.json ./seed_data.json
-COPY frontend/dist ./frontend/dist
+COPY --from=frontend-build /frontend/dist ./frontend/dist
 
 RUN mkdir -p /app/data
 

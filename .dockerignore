@@ -10,7 +10,5 @@ app.log*
 server.log
 templates/
 static/
-frontend/src/
 frontend/node_modules/
-frontend/package-lock.json
-frontend/build.mjs
+frontend/dist/

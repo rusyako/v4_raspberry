@@ -6,10 +6,14 @@ Smart Box - kiosk-система для выдачи и возврата MacBook
 
 - `backend/` - Flask API, SQLite, интеграция с Arduino/Serial
 - `frontend/` - Vite + React frontend
-  - `/` - пользовательский kiosk flow в одной странице (home + actions + checkout + return)
-  - `/admin` - отдельная админ-страница
-- `frontend/dist/` - production-сборка фронтенда, которую отдает Flask
 - `manage_db.py` - CLI для управления БД (пользователи/устройства)
+
+Маршруты:
+
+- `/` - пользовательский kiosk flow
+- `/admin` - админ-страница
+
+Docker-образ сам собирает frontend внутри контейнера. Отдельно готовить `frontend/dist` перед запуском не нужно.
 
 ## 1) Установка Docker на Ubuntu
 
@@ -83,23 +87,15 @@ docker compose ps
 docker compose logs -f smart-box
 ```
 
-На Windows можно запускать через готовый скрипт, который сам покажет точную ссылку с текущим IP хоста:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\start-smart-box.ps1
-```
-
-На Ubuntu / Raspberry Pi можно запускать так же через скрипт, который сам покажет точную ссылку с текущим IP хоста:
-
-```bash
-chmod +x ./scripts/start-smart-box.sh
-./scripts/start-smart-box.sh
-```
-
 Открыть:
 
 - `http://<IP_твоего_хоста>:5000/`
 - `http://<IP_твоего_хоста>:5000/admin`
+
+Если запускаешь прямо на Raspberry Pi и открываешь локально на нём же, можно использовать:
+
+- `http://localhost:5000/`
+- `http://localhost:5000/admin`
 
 ## 5) Частые команды Docker
 
@@ -131,13 +127,28 @@ docker exec smart-box python manage_db.py list-laptops
 docker exec smart-box python manage_db.py list-borrow-records
 ```
 
-Важно: UID в системе хранится в HEX-формате (например `F015ACDA`).
+Логика UID:
+
+- в админке можно ввести UID в `HEX` или `Decimal`
+- backend автоматически вычисляет вторую форму
+- в базе сохраняются оба поля: `uid_hex` и `uid_dec`
+- основной `uid` хранится в HEX-виде
+- на фронте у пользователя отображаются обе формы
+- при скане карта ищется по `uid`, `uid_hex` и `uid_dec`
+
+Пример:
+
+- `3668710896` -> `F015ACDA`
+- `F015ACDA` -> `3668710896`
 
 ## 6.1) Логика доступа в админку
 
 - Переход по ссылке `/admin` открывает админку сразу, без PIN.
 
 ## 7) Проверка Arduino
+
+`docker-compose.yml` уже пробрасывает serial-устройство внутрь контейнера через переменную `SERIAL_PORT`.
+Если у тебя считыватель висит не на `/dev/ttyACM0`, измени это значение в `.env` перед запуском.
 
 Проверить, видит ли Linux устройство:
 
@@ -159,7 +170,18 @@ Received: CARDUID:F015ACDA
 Received UID: F015ACDA
 ```
 
-Если Docker пишет `no such file or directory` для `/dev/ttyACM0`, значит устройство не поднялось на хосте в момент запуска контейнера.
+Если Docker пишет `no such file or directory` для `/dev/ttyACM0`, значит:
+
+- устройство не появилось на хосте
+- или в `.env` указан неверный `SERIAL_PORT`
+- или контейнер был поднят раньше, чем устройство стало доступно
+
+После исправления перезапусти контейнер:
+
+```bash
+docker compose down
+docker compose up --build -d
+```
 
 ## 8) Автозапуск после reboot (опционально)
 
@@ -182,9 +204,11 @@ npm install
 npm run dev
 ```
 
-Production-сборка фронта:
+Production-сборка фронта вручную:
 
 ```bash
 cd frontend
 npm run build
 ```
+
+Для Docker это не обязательно: production frontend собирается внутри `docker build` автоматически.
