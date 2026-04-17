@@ -5,6 +5,7 @@ import json
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -106,6 +107,62 @@ def normalize_barcodes(raw_barcodes):
         seen.add(value)
 
     return normalized
+
+
+def reverse_uid_hex_bytes(hex_uid):
+    pairs = [hex_uid[index:index + 2] for index in range(0, len(hex_uid), 2)]
+    return ''.join(reversed(pairs))
+
+
+def normalize_uid_value(raw_uid):
+    normalized = str(raw_uid or '').strip().upper()
+    if not normalized:
+        return ''
+
+    normalized = re.sub(r'[\s:-]+', '', normalized)
+    if normalized.startswith('0X'):
+        normalized = normalized[2:]
+
+    return normalized
+
+
+def build_uid_forms(raw_uid):
+    normalized = normalize_uid_value(raw_uid)
+    if not normalized:
+        return {'raw': '', 'uid_hex': '', 'uid_dec': ''}
+
+    if normalized.isdigit():
+        decimal_value = int(normalized, 10)
+        if decimal_value < 0 or decimal_value > 0xFFFFFFFF:
+            return {'raw': normalized, 'uid_hex': '', 'uid_dec': ''}
+
+        direct_hex = f'{decimal_value:08X}'
+        return {
+            'raw': normalized,
+            'uid_hex': reverse_uid_hex_bytes(direct_hex),
+            'uid_dec': str(decimal_value)
+        }
+
+    if re.fullmatch(r'[0-9A-F]{1,8}', normalized):
+        padded_hex = normalized.rjust(8, '0')
+        return {
+            'raw': normalized,
+            'uid_hex': padded_hex,
+            'uid_dec': str(int(reverse_uid_hex_bytes(padded_hex), 16))
+        }
+
+    return {'raw': normalized, 'uid_hex': '', 'uid_dec': ''}
+
+
+def build_uid_lookup_candidates(raw_uid):
+    uid_forms = build_uid_forms(raw_uid)
+    candidates = []
+
+    for value in (uid_forms['raw'], uid_forms['uid_hex'], uid_forms['uid_dec']):
+        if value and value not in candidates:
+            candidates.append(value)
+
+    return candidates
 
 
 def extract_uid_from_serial_data(data):
@@ -230,10 +287,25 @@ def activate_user_session(uid, is_admin):
 
 
 def get_user_by_uid(uid):
+    candidates = build_uid_lookup_candidates(uid)
+    if not candidates:
+        return None
+
+    placeholders = ', '.join('?' for _ in candidates)
     connection = get_db_connection()
     try:
         cursor = connection.cursor()
-        cursor.execute('SELECT uid, name, email, role, is_admin FROM users WHERE uid = ? LIMIT 1;', (uid,))
+        cursor.execute(
+            f'''
+            SELECT uid, uid_hex, uid_dec, name, email, role, is_admin
+            FROM users
+            WHERE uid IN ({placeholders})
+               OR uid_hex IN ({placeholders})
+               OR uid_dec IN ({placeholders})
+            LIMIT 1;
+            ''',
+            [*candidates, *candidates, *candidates]
+        )
         row = cursor.fetchone()
         return dict(row) if row else None
     except sqlite3.Error as error:
@@ -257,12 +329,12 @@ def queue_uid_scan(uid):
     global last_detected_uid, pending_uid_scan
 
     user = get_user_by_uid(uid)
-    last_detected_uid = uid
+    last_detected_uid = str(uid or '').strip()
 
     if not user:
         return False, 'Карта не найдена в системе. / Card was not found in the system.'
 
-    pending_uid_scan = {'uid': uid, 'is_admin': bool(user.get('is_admin'))}
+    pending_uid_scan = {'uid': user['uid'], 'is_admin': bool(user.get('is_admin'))}
     if user.get('is_admin'):
         return True, 'Администратор распознан. / Administrator recognized.'
     return True, 'Пользователь распознан. / User recognized.'
@@ -272,12 +344,12 @@ def apply_uid_scan_for_request(uid):
     global last_detected_uid
 
     user = get_user_by_uid(uid)
-    last_detected_uid = uid
+    last_detected_uid = str(uid or '').strip()
 
     if not user:
         return False, 'Карта не найдена в системе. / Card was not found in the system.'
 
-    return activate_user_session(uid, bool(user.get('is_admin')))
+    return activate_user_session(user['uid'], bool(user.get('is_admin')))
 
 
 def consume_pending_uid_scan():
@@ -300,7 +372,7 @@ def fetch_admin_dashboard_data():
     connection = get_db_connection()
     try:
         cursor = connection.cursor()
-        cursor.execute('SELECT uid, name, email, role, is_admin FROM users ORDER BY name, uid;')
+        cursor.execute('SELECT uid, uid_hex, uid_dec, name, email, role, is_admin FROM users ORDER BY name, uid;')
         users = [dict(row) for row in cursor.fetchall()]
         cursor.execute('SELECT name, barcode, device_number, status FROM laptops ORDER BY name;')
         laptops = [dict(row) for row in cursor.fetchall()]
@@ -399,16 +471,31 @@ def seed_database(connection):
         users = []
         for user in seed_data.get('users', []):
             uid = (user.get('uid') or '').strip()
-            name = (user.get('name') or '').strip() or uid
+            uid_forms = build_uid_forms(uid)
+            primary_uid = uid_forms['uid_hex'] or uid_forms['raw']
+            name = (user.get('name') or '').strip() or primary_uid
             email = (user.get('email') or '').strip()
             role = (user.get('role') or 'user').strip().lower()
             is_admin = 1 if user.get('is_admin', False) or role == 'admin' else 0
             if role not in {'user', 'admin'}:
                 role = 'admin' if is_admin else 'user'
-            if uid:
-                users.append((uid, name, email, role, is_admin))
+            if primary_uid:
+                users.append(
+                    (
+                        primary_uid,
+                        uid_forms['uid_hex'] or None,
+                        uid_forms['uid_dec'] or None,
+                        name,
+                        email,
+                        role,
+                        is_admin
+                    )
+                )
         if users:
-            cursor.executemany('INSERT INTO users (uid, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?);', users)
+            cursor.executemany(
+                'INSERT INTO users (uid, uid_hex, uid_dec, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?);',
+                users
+            )
 
     cursor.execute('SELECT COUNT(*) FROM laptops;')
     if cursor.fetchone()[0] == 0:
@@ -441,6 +528,8 @@ def init_db():
             '''
             CREATE TABLE IF NOT EXISTS users (
                 uid TEXT PRIMARY KEY,
+                uid_hex TEXT,
+                uid_dec TEXT,
                 name TEXT,
                 email TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
@@ -457,6 +546,14 @@ def init_db():
         pass
     try:
         cursor.execute('ALTER TABLE users ADD COLUMN email TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN uid_hex TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN uid_dec TEXT;')
     except sqlite3.OperationalError:
         pass
     try:
@@ -526,6 +623,20 @@ def init_db():
         cursor.execute(
             'CREATE INDEX IF NOT EXISTS idx_borrow_records_taken_at ON borrow_records (taken_at);'
         )
+
+        cursor.execute('SELECT uid, uid_hex, uid_dec FROM users;')
+        updates = []
+        for row in cursor.fetchall():
+            source_uid = row['uid_hex'] or row['uid_dec'] or row['uid']
+            uid_forms = build_uid_forms(source_uid)
+            next_uid_hex = uid_forms['uid_hex'] or None
+            next_uid_dec = uid_forms['uid_dec'] or None
+            if row['uid_hex'] != next_uid_hex or row['uid_dec'] != next_uid_dec:
+                updates.append((next_uid_hex, next_uid_dec, row['uid']))
+
+        if updates:
+            cursor.executemany('UPDATE users SET uid_hex = ?, uid_dec = ? WHERE uid = ?;', updates)
+
         seed_database(connection)
         cursor.execute("UPDATE users SET is_admin = CASE WHEN role = 'admin' THEN 1 ELSE is_admin END;")
         cursor.execute("UPDATE laptops SET barcode = name WHERE barcode IS NULL OR TRIM(barcode) = '';" )
@@ -882,19 +993,32 @@ def admin_add_user():
 
     data = request.get_json(silent=True) or {}
     uid = str(data.get('uid') or '').strip()
+    uid_forms = build_uid_forms(uid)
+    primary_uid = uid_forms['uid_hex'] or uid_forms['raw']
     name = str(data.get('name') or '').strip()
     email = str(data.get('email') or '').strip()
     is_admin = bool(data.get('is_admin'))
     role = 'admin' if is_admin else 'user'
 
-    if not uid:
+    if not primary_uid:
         return error_response('Введите UID. / Enter UID.')
+
+    if get_user_by_uid(uid):
+        return error_response('Такой UID уже существует. / This UID already exists.')
 
     connection = get_db_connection()
     try:
         connection.execute(
-            'INSERT INTO users (uid, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?);',
-            (uid, name or uid, email, role, 1 if is_admin else 0)
+            'INSERT INTO users (uid, uid_hex, uid_dec, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?);',
+            (
+                primary_uid,
+                uid_forms['uid_hex'] or None,
+                uid_forms['uid_dec'] or None,
+                name or primary_uid,
+                email,
+                role,
+                1 if is_admin else 0
+            )
         )
         connection.commit()
         return success_response('Пользователь добавлен. / User added.')

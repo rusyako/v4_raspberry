@@ -91,6 +91,7 @@ export function AdminPage() {
     setUsers([]);
     setLaptops([]);
     setBorrowRecords([]);
+    window.location.href = '/';
   }
 
   async function handleAddUser(event) {

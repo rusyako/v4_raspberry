@@ -1,5 +1,57 @@
 import React, { memo } from 'react';
 
+function reverseUidHexBytes(hexUid) {
+  const pairs = [];
+  for (let index = 0; index < hexUid.length; index += 2) {
+    pairs.push(hexUid.slice(index, index + 2));
+  }
+  return pairs.reverse().join('');
+}
+
+function normalizeUidValue(rawUid) {
+  let normalized = String(rawUid || '').trim().toUpperCase();
+  if (!normalized) {
+    return '';
+  }
+
+  normalized = normalized.replace(/[\s:-]+/g, '');
+  if (normalized.startsWith('0X')) {
+    normalized = normalized.slice(2);
+  }
+
+  return normalized;
+}
+
+function buildUidPreview(rawUid) {
+  const normalized = normalizeUidValue(rawUid);
+  if (!normalized) {
+    return { uidHex: '', uidDec: '' };
+  }
+
+  if (/^\d+$/.test(normalized)) {
+    const decimalValue = Number.parseInt(normalized, 10);
+    if (Number.isNaN(decimalValue) || decimalValue < 0 || decimalValue > 0xFFFFFFFF) {
+      return { uidHex: '', uidDec: '' };
+    }
+
+    const directHex = decimalValue.toString(16).toUpperCase().padStart(8, '0');
+    return {
+      uidHex: reverseUidHexBytes(directHex),
+      uidDec: normalized
+    };
+  }
+
+  if (/^[0-9A-F]{1,8}$/.test(normalized)) {
+    const paddedHex = normalized.padStart(8, '0');
+    return {
+      uidHex: paddedHex,
+      uidDec: Number.parseInt(reverseUidHexBytes(paddedHex), 16).toString(10)
+    };
+  }
+
+  return { uidHex: '', uidDec: '' };
+}
+
 export const UsersPanel = memo(function UsersPanel({
   userForm,
   setUserForm,
@@ -8,6 +60,8 @@ export const UsersPanel = memo(function UsersPanel({
   onSubmit,
   onRemove
 }) {
+  const uidPreview = buildUidPreview(userForm.uid);
+
   return (
     <section className="admin-panel">
       <div className="admin-panel-head">
@@ -22,6 +76,11 @@ export const UsersPanel = memo(function UsersPanel({
             type="text"
             placeholder="F015ACDA"
           />
+          {uidPreview.uidHex || uidPreview.uidDec ? (
+            <small>
+              HEX: {uidPreview.uidHex || '-'} | DEC: {uidPreview.uidDec || '-'}
+            </small>
+          ) : null}
         </label>
         <label className="admin-field">
           <span>{t.admin.nameLabel}</span>
@@ -56,7 +115,8 @@ export const UsersPanel = memo(function UsersPanel({
           <div key={user.uid} className="admin-list-item">
             <div>
               <strong>{user.name || user.uid}</strong>
-              <small>{user.uid}</small>
+              <small>HEX: {user.uid_hex || user.uid || '-'}</small>
+              <small>DEC: {user.uid_dec || '-'}</small>
               <small>{user.email || '-'}</small>
             </div>
             <div className="admin-item-actions">

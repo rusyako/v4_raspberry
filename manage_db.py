@@ -12,6 +12,41 @@ SEED_PATH = os.getenv('SEED_PATH', os.path.join(BASE_DIR, 'seed_data.json'))
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
+def reverse_uid_hex_bytes(hex_uid):
+    pairs = [hex_uid[index:index + 2] for index in range(0, len(hex_uid), 2)]
+    return ''.join(reversed(pairs))
+
+
+def build_uid_forms(raw_uid):
+    normalized = str(raw_uid or '').strip().replace(' ', '').upper()
+    if normalized.startswith('0X'):
+        normalized = normalized[2:]
+
+    if not normalized:
+        return {'raw': '', 'uid_hex': '', 'uid_dec': ''}
+
+    if normalized.isdigit():
+        decimal_value = int(normalized, 10)
+        if decimal_value < 0 or decimal_value > 0xFFFFFFFF:
+            return {'raw': normalized, 'uid_hex': '', 'uid_dec': ''}
+
+        direct_hex = f'{decimal_value:08X}'
+        return {
+            'raw': normalized,
+            'uid_hex': reverse_uid_hex_bytes(direct_hex),
+            'uid_dec': str(decimal_value)
+        }
+
+    if len(normalized) == 8 and all(character in '0123456789ABCDEF' for character in normalized):
+        return {
+            'raw': normalized,
+            'uid_hex': normalized,
+            'uid_dec': str(int(reverse_uid_hex_bytes(normalized), 16))
+        }
+
+    return {'raw': normalized, 'uid_hex': '', 'uid_dec': ''}
+
+
 def get_connection():
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
@@ -26,6 +61,8 @@ def init_db():
             '''
             CREATE TABLE IF NOT EXISTS users (
                 uid TEXT PRIMARY KEY,
+                uid_hex TEXT,
+                uid_dec TEXT,
                 name TEXT,
                 email TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
@@ -45,6 +82,25 @@ def init_db():
             cursor.execute('ALTER TABLE users ADD COLUMN email TEXT;')
         except sqlite3.OperationalError:
             pass
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN uid_hex TEXT;')
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN uid_dec TEXT;')
+        except sqlite3.OperationalError:
+            pass
+        cursor.execute('SELECT uid, uid_hex, uid_dec FROM users;')
+        updates = []
+        for row in cursor.fetchall():
+            source_uid = row['uid_hex'] or row['uid_dec'] or row['uid']
+            uid_forms = build_uid_forms(source_uid)
+            next_uid_hex = uid_forms['uid_hex'] or None
+            next_uid_dec = uid_forms['uid_dec'] or None
+            if row['uid_hex'] != next_uid_hex or row['uid_dec'] != next_uid_dec:
+                updates.append((next_uid_hex, next_uid_dec, row['uid']))
+        if updates:
+            cursor.executemany('UPDATE users SET uid_hex = ?, uid_dec = ? WHERE uid = ?;', updates)
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS laptops (
@@ -135,6 +191,7 @@ def seed_db():
 
         for user in users:
             uid = (user.get('uid') or '').strip()
+            uid_forms = build_uid_forms(uid)
             name = (user.get('name') or '').strip() or uid
             email = (user.get('email') or '').strip()
             role = (user.get('role') or 'user').strip().lower()
@@ -143,8 +200,8 @@ def seed_db():
                 role = 'admin' if is_admin else 'user'
             if uid:
                 cursor.execute(
-                    'INSERT OR IGNORE INTO users (uid, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?);',
-                    (uid, name, email, role, is_admin)
+                    'INSERT OR IGNORE INTO users (uid, uid_hex, uid_dec, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?);',
+                    (uid_forms['uid_hex'] or uid, uid_forms['uid_hex'] or None, uid_forms['uid_dec'] or None, name, email, role, is_admin)
                 )
 
         for laptop in laptops:
@@ -187,11 +244,21 @@ def reset_db():
 
 
 def add_user(uid, name, email='', is_admin=False):
+    uid_forms = build_uid_forms(uid)
+    primary_uid = uid_forms['uid_hex'] or uid.strip()
     connection = get_connection()
     try:
         connection.execute(
-            'INSERT INTO users (uid, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?);',
-            (uid.strip(), (name or uid).strip(), email.strip(), 'admin' if is_admin else 'user', 1 if is_admin else 0)
+            'INSERT INTO users (uid, uid_hex, uid_dec, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?);',
+            (
+                primary_uid,
+                uid_forms['uid_hex'] or None,
+                uid_forms['uid_dec'] or None,
+                (name or primary_uid).strip(),
+                email.strip(),
+                'admin' if is_admin else 'user',
+                1 if is_admin else 0
+            )
         )
         connection.commit()
     finally:
