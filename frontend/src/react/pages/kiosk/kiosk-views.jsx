@@ -23,7 +23,10 @@ function groupBorrowedRecordsByEmployee(records) {
     });
   });
 
-  return Array.from(groups.values());
+  return Array.from(groups.values()).map((group) => ({
+    ...group,
+    devices: group.devices.sort((left, right) => String(right.taken_at || '').localeCompare(String(left.taken_at || '')))
+  }));
 }
 
 export function KioskHomeView({
@@ -53,12 +56,15 @@ export function KioskHomeView({
             <ul className="home-borrowed-list">
               {groupedBorrowedRecords.map((group) => (
                 <li key={group.employeeUid} className="home-borrowed-item">
-                  <p><strong>{t.kiosk.borrowedBy}:</strong> {group.employeeName}</p>
+                  <div className="home-borrowed-person">
+                    <strong>{group.employeeName}</strong>
+                    <span className="home-borrowed-count">{group.devices.length}</span>
+                  </div>
                   <ul className="home-borrowed-device-list">
                     {group.devices.map((device) => (
                       <li key={device.id} className="home-borrowed-device-item">
-                        <p><strong>{t.kiosk.borrowedDevice}:</strong> {device.device_name || '-'} ({device.device_number || '-'})</p>
-                        <p><strong>{t.kiosk.borrowedTakenAt}:</strong> {device.taken_at || '-'}</p>
+                        <p className="home-borrowed-device-name">{device.device_name || '-'} <span>({device.device_number || '-'})</span></p>
+                        <p className="home-borrowed-device-time">{device.taken_at || '-'}</p>
                       </li>
                     ))}
                   </ul>

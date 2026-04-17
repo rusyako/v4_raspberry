@@ -28,6 +28,7 @@
 .home-card-borrowed {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .home-card-header {
@@ -92,6 +93,9 @@
   gap: 10px;
   flex: 1;
   align-content: start;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .home-borrowed-item {
@@ -101,10 +105,29 @@
   border: 1px solid rgba(152, 201, 231, 0.1);
 }
 
-.home-borrowed-item p {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.4;
+.home-borrowed-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-borrowed-person strong {
+  font-size: 16px;
+}
+
+.home-borrowed-count {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(34, 170, 255, 0.18);
+  color: #eef8ff;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .home-borrowed-device-list {
@@ -119,6 +142,21 @@
   padding: 12px 14px;
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.18);
+}
+
+.home-borrowed-device-name,
+.home-borrowed-device-time {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.home-borrowed-device-name span {
+  color: rgba(236, 244, 248, 0.72);
+}
+
+.home-borrowed-device-time {
+  color: rgba(236, 244, 248, 0.72);
 }
 
 .home-borrowed-device-item p + p {
