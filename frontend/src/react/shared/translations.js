@@ -57,7 +57,14 @@ export const DICTIONARY = {
       returnSuccessTitle: 'Return successful',
       returnSuccessFallback: 'Devices were returned successfully.',
       returnFailTitle: 'Return failed',
-      homeStateFailTitle: 'Home state failed'
+      homeStateFailTitle: 'Home state failed',
+      networkChangedTitle: 'Network changed',
+      networkChangedText: 'Connection was interrupted. Reconnecting...',
+      unknownUserTitle: 'You are not in the database.',
+      unknownUserText: 'Please contact IT specialists.',
+      unknownUserRequestAction: 'Submit IT request',
+      unknownUserEmailAction: 'Email IT',
+      unknownUserPhoneAction: 'Call IT'
     },
     admin: {
       accessTitle: 'Admin Access',
@@ -168,7 +175,14 @@ export const DICTIONARY = {
       returnSuccessTitle: 'Возврат успешен',
       returnSuccessFallback: 'Устройства успешно возвращены.',
       returnFailTitle: 'Ошибка возврата',
-      homeStateFailTitle: 'Ошибка состояния станции'
+      homeStateFailTitle: 'Ошибка состояния станции',
+      networkChangedTitle: 'Сеть изменилась',
+      networkChangedText: 'Соединение прервано. Выполняем переподключение...',
+      unknownUserTitle: 'Вас нет в базе.',
+      unknownUserText: 'Пожалуйста, обратитесь к IT-специалистам.',
+      unknownUserRequestAction: 'Оставить заявку в IT',
+      unknownUserEmailAction: 'Написать в IT',
+      unknownUserPhoneAction: 'Позвонить в IT'
     },
     admin: {
       accessTitle: 'Доступ администратора',
@@ -279,7 +293,14 @@ export const DICTIONARY = {
       returnSuccessTitle: 'Қайтару сәтті',
       returnSuccessFallback: 'Құрылғылар сәтті қайтарылды.',
       returnFailTitle: 'Қайтару қатесі',
-      homeStateFailTitle: 'Станция күйі қатесі'
+      homeStateFailTitle: 'Станция күйі қатесі',
+      networkChangedTitle: 'Желі өзгерді',
+      networkChangedText: 'Қосылым үзілді. Қайта қосылуда...',
+      unknownUserTitle: 'Сіз базада жоқсыз.',
+      unknownUserText: 'IT мамандарына хабарласыңыз.',
+      unknownUserRequestAction: 'IT-ге өтінім жіберу',
+      unknownUserEmailAction: 'IT-ге жазу',
+      unknownUserPhoneAction: 'IT-ге қоңырау шалу'
     },
     admin: {
       accessTitle: 'Әкімші қолжетімділігі',

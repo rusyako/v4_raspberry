@@ -1,11 +1,29 @@
+import { useEffect, useState } from 'react';
 import { AnimatedBackground } from '../shared/background';
+import { preloadImages } from '../shared/network';
 import { Toast, useToast } from '../shared/toast';
 import { RETURN_BARCODES_STORAGE_KEY, TAKE_BARCODES_STORAGE_KEY } from '../shared/storage';
-import { KioskActionsView, KioskHomeView, KioskSessionView } from './kiosk/kiosk-views';
+import { KioskActionsView, KioskHomeView, KioskSessionView, UnknownUserView } from './kiosk/kiosk-views';
+import { KIOSK_PRELOAD_IMAGES } from './kiosk/constants';
 import { useKioskController } from './kiosk/use-kiosk-controller';
 
 export function KioskPage() {
   const { toast, showToast, clearToast } = useToast();
+  const [assetsReady, setAssetsReady] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    preloadImages(KIOSK_PRELOAD_IMAGES).finally(() => {
+      if (isMounted) {
+        setAssetsReady(true);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const {
     language,
@@ -27,6 +45,10 @@ export function KioskPage() {
     submitReturn
   } = useKioskController(showToast);
 
+  if (!assetsReady) {
+    return <div className="screen screen-home" />;
+  }
+
   return (
     <div className={screenClassName}>
       <AnimatedBackground />
@@ -42,6 +64,8 @@ export function KioskPage() {
           t={t}
         />
       ) : null}
+
+      {view === 'unknown' ? <UnknownUserView language={language} setLanguage={setLanguage} t={t} /> : null}
 
       {view === 'actions' ? <KioskActionsView onTake={goToCheckout} onReturn={goToReturn} language={language} setLanguage={setLanguage} t={t} /> : null}
 

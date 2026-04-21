@@ -1,0 +1,5 @@
+services:
+  smart-box:
+    environment:
+      START_ARDUINO_THREAD: "false"
+    devices: !reset []

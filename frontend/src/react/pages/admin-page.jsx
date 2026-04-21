@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { deleteJson, postJson, requestJson } from '../shared/api';
 import { LanguageSwitcher } from '../shared/language-switcher';
 import { LANGUAGE_STORAGE_KEY } from '../shared/storage';
@@ -17,7 +17,7 @@ export function AdminPage() {
   const [userForm, setUserForm] = useState({ uid: '', name: '', email: '', is_admin: false });
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
   const { toast, showToast, clearToast } = useToast();
-  const t = getTranslations(language);
+  const t = useMemo(() => getTranslations(language), [language]);
 
   useEffect(() => {
     const resolvedLanguage = resolveLanguage(language);
@@ -32,7 +32,7 @@ export function AdminPage() {
     return adminToken ? { 'X-Admin-Token': adminToken } : {};
   }
 
-  async function loadAdminData(nextToken = adminToken) {
+  const loadAdminData = useCallback(async (nextToken = adminToken) => {
     const data = await requestJson('/admin/overview', {
       method: 'GET',
       headers: nextToken ? { 'X-Admin-Token': nextToken } : {}
@@ -40,7 +40,7 @@ export function AdminPage() {
     setUsers(data.users || []);
     setLaptops(data.laptops || []);
     setBorrowRecords(data.borrow_records || []);
-  }
+  }, [adminToken]);
 
   useEffect(() => {
     let mounted = true;
@@ -48,14 +48,34 @@ export function AdminPage() {
     async function bootstrap() {
       try {
         const state = await requestJson('/admin_state', { method: 'GET' });
-        if (mounted && state.admin_token) {
+
+        if (mounted && state.admin_redirect && !state.admin_session_active) {
+          showToast('info', t.admin.toasts.adminDetectedTitle, t.admin.toasts.adminDetectedText);
+        }
+
+        if (mounted && state.admin_session_active && state.admin_token) {
           setAdminToken(state.admin_token);
           await loadAdminData(state.admin_token);
           return;
         }
 
-        if (mounted && state.admin_redirect && !adminToken) {
-          showToast('info', t.admin.toasts.adminDetectedTitle, t.admin.toasts.adminDetectedText);
+        if (mounted && state.admin_redirect && !state.admin_session_active) {
+          try {
+            const login = await postJson('/admin/login', {});
+            if (!mounted) {
+              return;
+            }
+
+            setAdminToken(login.admin_token || '');
+            await loadAdminData(login.admin_token || '');
+            return;
+          } catch (error) {
+            if (!mounted) {
+              return;
+            }
+
+            showToast('error', t.admin.toasts.adminRequiredTitle, error.message);
+          }
         }
       } catch {
         return;
@@ -79,7 +99,7 @@ export function AdminPage() {
     return () => {
       mounted = false;
     };
-  }, [adminToken, showToast, t]);
+  }, [adminToken, loadAdminData, showToast, t]);
 
   async function handleLogout() {
     try {

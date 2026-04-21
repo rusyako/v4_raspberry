@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { postJson } from '../../shared/api';
 import { LanguageSwitcher } from '../../shared/language-switcher';
 import { writeStoredArray } from '../../shared/storage';
-import { BARCODE_PATTERN, KIOSK_IMAGES } from './constants';
+import { BARCODE_PATTERN, IT_SUPPORT_EMAIL, IT_SUPPORT_PHONE, IT_SUPPORT_REQUEST_URL, KIOSK_IMAGES } from './constants';
 
 function groupBorrowedRecordsByEmployee(records) {
   const groups = new Map();
@@ -53,7 +53,7 @@ export function KioskHomeView({
             {isActiveBorrowedLoading ? (
               <p className="home-borrowed-empty">...</p>
             ) : groupedBorrowedRecords.length ? (
-              <ul className="home-borrowed-list">
+              <ul className="home-borrowed-list home-borrowed-list-three-cols">
                 {groupedBorrowedRecords.map((group) => (
                   <li key={group.employeeUid} className="home-borrowed-item">
                     <div className="home-borrowed-person">
@@ -80,12 +80,9 @@ export function KioskHomeView({
 
           <div className="home-sidebar">
             <section className="home-card home-card-title">
-              <div className="home-title-block">
-                <img src={KIOSK_IMAGES.kioskLogo} alt="Smart Box" className="home-logo home-hero-logo" />
-                <div>
-                  <h1>Smart Box</h1>
-                  <p>{t.kiosk.subtitle}</p>
-                </div>
+              <div className="home-title-visual">
+                <img src={KIOSK_IMAGES.kioskLogo} alt="Smart Box" className="home-title-logo" />
+                <p className="home-title-subtitle">{t.kiosk.subtitle}</p>
               </div>
             </section>
 
@@ -251,6 +248,39 @@ export function KioskSessionView({
       <div className="session-actions">
         <button type="button" className="ghost-button" onClick={onCancel}>{t.common.cancel}</button>
         <button type="button" className="primary-button" onClick={onSubmit}>{submitLabel}</button>
+      </div>
+    </section>
+  );
+}
+
+export function UnknownUserView({ language, setLanguage, t }) {
+  const hasSupportLink = Boolean(IT_SUPPORT_REQUEST_URL);
+  const hasSupportEmail = Boolean(IT_SUPPORT_EMAIL);
+  const hasSupportPhone = Boolean(IT_SUPPORT_PHONE);
+
+  return (
+    <section className="unknown-shell">
+      <LanguageSwitcher language={language} setLanguage={setLanguage} />
+      <div className="unknown-card">
+        <h1>{t.kiosk.unknownUserTitle}</h1>
+        <p>{t.kiosk.unknownUserText}</p>
+        <div className="unknown-actions">
+          {hasSupportLink ? (
+            <a className="primary-button unknown-link" href={IT_SUPPORT_REQUEST_URL} target="_blank" rel="noreferrer">
+              {t.kiosk.unknownUserRequestAction}
+            </a>
+          ) : null}
+          {hasSupportEmail ? (
+            <a className="ghost-button unknown-link" href={`mailto:${IT_SUPPORT_EMAIL}`}>
+              {t.kiosk.unknownUserEmailAction}: {IT_SUPPORT_EMAIL}
+            </a>
+          ) : null}
+          {hasSupportPhone ? (
+            <a className="ghost-button unknown-link" href={`tel:${IT_SUPPORT_PHONE}`}>
+              {t.kiosk.unknownUserPhoneAction}: {IT_SUPPORT_PHONE}
+            </a>
+          ) : null}
+        </div>
       </div>
     </section>
   );

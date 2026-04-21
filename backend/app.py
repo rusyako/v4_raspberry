@@ -9,6 +9,7 @@ import re
 import sqlite3
 import threading
 import time
+import uuid
 
 import serial
 
@@ -33,7 +34,7 @@ SERIAL_TIMEOUT = float(os.getenv('SERIAL_TIMEOUT', '0.5'))
 FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
 FLASK_PORT = int(os.getenv('FLASK_PORT', '5000'))
 FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
-FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY', os.urandom(32).hex())
+FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY') or 'smart-box-dev-secret-key'
 ENABLE_WEBVIEW = os.getenv('ENABLE_WEBVIEW', 'false').lower() == 'true'
 START_ARDUINO_THREAD = os.getenv('START_ARDUINO_THREAD', 'true').lower() == 'true'
 ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv('ADMIN_SESSION_TIMEOUT_SECONDS', '1800'))
@@ -63,6 +64,9 @@ logging.getLogger('urllib3').setLevel(logging.WARNING)
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
 
+if not os.getenv('FLASK_SECRET_KEY'):
+    logging.warning('FLASK_SECRET_KEY is not set. Using development fallback secret key.')
+
 try:
     ser = serial.Serial(SERIAL_PORT, SERIAL_BAUDRATE, timeout=SERIAL_TIMEOUT)
 except serial.SerialException as error:
@@ -72,7 +76,51 @@ except serial.SerialException as error:
 station_cells_status = '0/0'
 laptop_status = '0/0'
 last_detected_uid = None
-pending_uid_scan = None
+pending_uid_scan_by_session = {}
+unknown_user_event_by_session = {}
+last_detected_uid_by_session = {}
+active_client_session_id = None
+runtime_state_lock = threading.Lock()
+DEFAULT_CLIENT_SESSION_ID = '__default__'
+
+
+def get_client_session_id():
+    client_session_id = str(session.get('client_session_id') or '').strip()
+    if client_session_id:
+        return client_session_id
+
+    client_session_id = uuid.uuid4().hex
+    session['client_session_id'] = client_session_id
+    return client_session_id
+
+
+def mark_client_active():
+    global active_client_session_id
+
+    client_session_id = get_client_session_id()
+    with runtime_state_lock:
+        active_client_session_id = client_session_id
+    return client_session_id
+
+
+def get_unknown_user_state(client_session_id):
+    with runtime_state_lock:
+        if client_session_id not in unknown_user_event_by_session and DEFAULT_CLIENT_SESSION_ID in unknown_user_event_by_session:
+            unknown_user_event_by_session[client_session_id] = unknown_user_event_by_session.pop(DEFAULT_CLIENT_SESSION_ID)
+
+        event = unknown_user_event_by_session.get(client_session_id)
+        if not event:
+            return 0, '', 0.0
+
+        return int(event.get('id', 0)), str(event.get('uid') or ''), float(event.get('at') or 0)
+
+
+def get_last_detected_uid_for_session(client_session_id):
+    with runtime_state_lock:
+        if client_session_id not in last_detected_uid_by_session and DEFAULT_CLIENT_SESSION_ID in last_detected_uid_by_session:
+            last_detected_uid_by_session[client_session_id] = last_detected_uid_by_session.pop(DEFAULT_CLIENT_SESSION_ID)
+
+        return str(last_detected_uid_by_session.get(client_session_id) or '')
 
 GENERIC_ERROR_MESSAGE = 'Что-то пошло не так. Попробуйте снова. / Something went wrong. Please try again.'
 SCAN_CARD_MESSAGE = 'Сначала приложите карту доступа. / Please scan your access card first.'
@@ -85,6 +133,7 @@ FRONTEND_BUILD_MISSING_MESSAGE = (
 def get_db_connection():
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
+    connection.execute('PRAGMA foreign_keys = ON;')
     return connection
 
 
@@ -178,7 +227,10 @@ def extract_uid_from_serial_data(data):
     return None
 
 
-def build_home_state(user_actions_redirect=False, user_actions_event_id=0, user_actions_event_ack=0):
+def build_home_state(client_session_id, user_actions_redirect=False, user_actions_event_id=0, user_actions_event_ack=0):
+    unknown_user_event_id, unknown_user_uid, unknown_user_event_at = get_unknown_user_state(client_session_id)
+    last_detected_uid_value = get_last_detected_uid_for_session(client_session_id)
+
     return {
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
         'redirect': bool(user_actions_redirect),
@@ -186,9 +238,12 @@ def build_home_state(user_actions_redirect=False, user_actions_event_id=0, user_
         'user_actions_event_id': int(user_actions_event_id or 0),
         'user_actions_event_ack': int(user_actions_event_ack or 0),
         'user_session_active': bool(session.get('current_user_uid')),
+        'unknown_user_event_id': int(unknown_user_event_id or 0),
+        'unknown_user_uid': unknown_user_uid,
+        'unknown_user_event_at': float(unknown_user_event_at or 0),
         'station_cells_status': station_cells_status,
         'laptop_count': laptop_status,
-        'last_detected_uid': last_detected_uid
+        'last_detected_uid': last_detected_uid_value
     }
 
 
@@ -221,7 +276,7 @@ def create_admin_session():
 def ensure_admin_session():
     if is_admin_session_active():
         return session.get('admin_session_token')
-    return create_admin_session()
+    return ''
 
 
 def clear_admin_session():
@@ -235,6 +290,11 @@ def clear_user_session():
     session.pop('current_user_uid', None)
     session.pop('user_actions_event_id', None)
     session.pop('user_actions_event_ack', None)
+
+
+def get_target_session_id_for_hardware_event():
+    with runtime_state_lock:
+        return active_client_session_id or DEFAULT_CLIENT_SESSION_ID
 
 
 def create_user_actions_event():
@@ -326,15 +386,23 @@ def is_local_request():
 
 
 def queue_uid_scan(uid):
-    global last_detected_uid, pending_uid_scan
+    global last_detected_uid
 
     user = get_user_by_uid(uid)
-    last_detected_uid = str(uid or '').strip()
+    target_session_id = get_target_session_id_for_hardware_event()
+    uid_value = str(uid or '').strip()
+    last_detected_uid = uid_value
+
+    with runtime_state_lock:
+        last_detected_uid_by_session[target_session_id] = uid_value
 
     if not user:
+        register_unknown_user_scan(uid, target_session_id)
         return False, 'Карта не найдена в системе. / Card was not found in the system.'
 
-    pending_uid_scan = {'uid': user['uid'], 'is_admin': bool(user.get('is_admin'))}
+    with runtime_state_lock:
+        pending_uid_scan_by_session[target_session_id] = {'uid': user['uid'], 'is_admin': bool(user.get('is_admin'))}
+
     if user.get('is_admin'):
         return True, 'Администратор распознан. / Administrator recognized.'
     return True, 'Пользователь распознан. / User recognized.'
@@ -343,28 +411,58 @@ def queue_uid_scan(uid):
 def apply_uid_scan_for_request(uid):
     global last_detected_uid
 
+    client_session_id = mark_client_active()
     user = get_user_by_uid(uid)
-    last_detected_uid = str(uid or '').strip()
+    uid_value = str(uid or '').strip()
+    last_detected_uid = uid_value
+
+    with runtime_state_lock:
+        last_detected_uid_by_session[client_session_id] = uid_value
 
     if not user:
+        register_unknown_user_scan(uid, client_session_id)
         return False, 'Карта не найдена в системе. / Card was not found in the system.'
 
     return activate_user_session(user['uid'], bool(user.get('is_admin')))
 
 
-def consume_pending_uid_scan():
-    global pending_uid_scan
+def consume_pending_uid_scan(client_session_id):
+    with runtime_state_lock:
+        if client_session_id not in pending_uid_scan_by_session and DEFAULT_CLIENT_SESSION_ID in pending_uid_scan_by_session:
+            pending_uid_scan_by_session[client_session_id] = pending_uid_scan_by_session.pop(DEFAULT_CLIENT_SESSION_ID)
 
-    if not pending_uid_scan:
+        queued_scan = pending_uid_scan_by_session.pop(client_session_id, None)
+
+    if not queued_scan:
         return
 
-    queued_scan = pending_uid_scan
-    pending_uid_scan = None
     activate_user_session(queued_scan['uid'], queued_scan['is_admin'])
 
 
+def register_unknown_user_scan(uid, client_session_id=None):
+    session_id = client_session_id or get_target_session_id_for_hardware_event()
+    uid_value = str(uid or '').strip()
+
+    with runtime_state_lock:
+        current_event = unknown_user_event_by_session.get(session_id) or {}
+        next_event_id = int(current_event.get('id', 0) or 0) + 1
+        unknown_user_event_by_session[session_id] = {
+            'id': next_event_id,
+            'uid': uid_value,
+            'at': time.time()
+        }
+
+
 def require_admin():
-    ensure_admin_session()
+    admin_token = str(request.headers.get('X-Admin-Token') or '').strip()
+    if not admin_token:
+        return error_response('Требуется вход администратора. / Administrator login required.', 401, code='ADMIN_AUTH_REQUIRED')
+
+    if not is_admin_session_active(admin_token):
+        clear_admin_session()
+        return error_response('Сессия администратора недействительна. / Admin session is not valid.', 401, code='ADMIN_AUTH_REQUIRED')
+
+    session['admin_session_expires_at'] = time.time() + ADMIN_SESSION_TIMEOUT_SECONDS
     return None
 
 
@@ -427,8 +525,11 @@ def fetch_active_borrow_records(limit=200):
         connection.close()
 
 
-def error_response(message, status_code=400):
-    return jsonify({'success': False, 'message': message}), status_code
+def error_response(message, status_code=400, code=None):
+    payload = {'success': False, 'message': message}
+    if code:
+        payload['code'] = str(code)
+    return jsonify(payload), status_code
 
 
 def success_response(message=None, status_code=200, **extra):
@@ -674,14 +775,9 @@ def arduino_thread():
                         last_detected_uid = uid
                         print('Received UID:', uid)
 
-                        user = get_user_by_uid(uid)
-
-                        if user:
-                            success, message = queue_uid_scan(uid)
-                            if not success:
-                                print(message)
-                        else:
-                            print('UID not allowed.')
+                        success, message = queue_uid_scan(uid)
+                        if not success:
+                            print(message)
                     elif '/' in data:
                         station_cells_status = data
             time.sleep(0.1)
@@ -829,27 +925,31 @@ def check_laptop():
 @app.route('/get_laptop_status', methods=['GET'])
 def get_laptop_status():
     recompute_laptop_status()
-    return jsonify({'laptop_count': laptop_status})
+    return success_response(laptop_count=laptop_status)
 
 
 @app.route('/home_state', methods=['GET'])
 def home_state():
-    consume_pending_uid_scan()
+    client_session_id = mark_client_active()
+    consume_pending_uid_scan(client_session_id)
     recompute_laptop_status()
     user_actions_redirect, event_id, ack_id = get_user_actions_event_state()
-    return jsonify(
-        build_home_state(
-            user_actions_redirect=user_actions_redirect,
-            user_actions_event_id=event_id,
-            user_actions_event_ack=ack_id
-        )
+    home_payload = build_home_state(
+        client_session_id,
+        user_actions_redirect=user_actions_redirect,
+        user_actions_event_id=event_id,
+        user_actions_event_ack=ack_id
+    )
+
+    return success_response(
+        **home_payload
     )
 
 
 @app.route('/active_borrow_records', methods=['GET'])
 def active_borrow_records():
     records = fetch_active_borrow_records()
-    return jsonify({'success': True, 'records': records})
+    return success_response(records=records)
 
 
 @app.route('/user_actions_event/ack', methods=['POST'])
@@ -874,20 +974,22 @@ def user_actions_event_ack():
 
 @app.route('/admin_state', methods=['GET'])
 def admin_state():
-    admin_token = ensure_admin_session() or ''
+    mark_client_active()
+    admin_token = session.get('admin_session_token') if is_admin_session_active() else ''
 
-    return jsonify({
-        'admin_redirect': bool(session.get('redirect_to_admin_page')),
-        'admin_session_active': True,
-        'admin_pin_required': False,
-        'admin_token': admin_token,
-        'last_detected_uid': last_detected_uid
-    })
+    return success_response(
+        admin_redirect=bool(session.get('redirect_to_admin_page')),
+        admin_session_active=bool(admin_token),
+        admin_pin_required=False,
+        admin_token=admin_token,
+        last_detected_uid=get_last_detected_uid_for_session(get_client_session_id())
+    )
 
 
 @app.route('/debug/last_scan', methods=['GET'])
 def debug_last_scan():
-    return jsonify({'success': True, 'last_detected_uid': last_detected_uid})
+    client_session_id = mark_client_active()
+    return success_response(last_detected_uid=get_last_detected_uid_for_session(client_session_id))
 
 
 @app.route('/debug/scan_uid', methods=['POST'])
@@ -913,13 +1015,14 @@ def debug_scan_uid():
         redirect_admin=bool(session.get('redirect_to_admin_page')),
         redirect_user=bool(get_user_actions_event_state()[0]),
         user_actions_event_id=int(get_user_actions_event_state()[1]),
-        last_detected_uid=last_detected_uid
+        last_detected_uid=get_last_detected_uid_for_session(get_client_session_id())
     )
 
 
 @app.route('/')
 def index():
-    consume_pending_uid_scan()
+    client_session_id = mark_client_active()
+    consume_pending_uid_scan(client_session_id)
     recompute_laptop_status()
     return serve_frontend_page('index.html')
 
@@ -941,27 +1044,46 @@ def legacy_return_page_redirect():
 
 @app.route('/check-redirect')
 def legacy_check_redirect_state():
+    client_session_id = mark_client_active()
+    unknown_user_event_id, _, unknown_user_event_at = get_unknown_user_state(client_session_id)
     user_actions_redirect, event_id, ack_id = get_user_actions_event_state()
-    return jsonify({
-        'redirect': bool(user_actions_redirect),
-        'user_actions_redirect': bool(user_actions_redirect),
-        'user_actions_event_id': int(event_id),
-        'user_actions_event_ack': int(ack_id),
-        'user_session_active': bool(session.get('current_user_uid')),
-        'admin_redirect': bool(session.get('redirect_to_admin_page'))
-    })
+    return success_response(
+        redirect=bool(user_actions_redirect),
+        user_actions_redirect=bool(user_actions_redirect),
+        user_actions_event_id=int(event_id),
+        user_actions_event_ack=int(ack_id),
+        user_session_active=bool(session.get('current_user_uid')),
+        admin_redirect=bool(session.get('redirect_to_admin_page')),
+        unknown_user_event_id=int(unknown_user_event_id),
+        unknown_user_event_at=float(unknown_user_event_at)
+    )
 
 
 @app.route('/admin')
 def admin_page():
-    ensure_admin_session()
-    session.pop('redirect_to_admin_page', None)
+    mark_client_active()
+    if ENABLE_LOCAL_DEBUG_SDK and is_local_request():
+        session['admin_uid_bypass'] = True
+        session['redirect_to_admin_page'] = True
+    else:
+        session.pop('redirect_to_admin_page', None)
     return serve_frontend_page('index.html')
 
 
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
-    token = ensure_admin_session()
+    mark_client_active()
+    if ENABLE_LOCAL_DEBUG_SDK and is_local_request():
+        session['admin_uid_bypass'] = True
+
+    if not session.get('admin_uid_bypass'):
+        return error_response(
+            'Требуется карта администратора. / Administrator card is required.',
+            401,
+            code='ADMIN_AUTH_REQUIRED'
+        )
+
+    token = create_admin_session()
     return success_response(
         'Вход администратора выполнен. / Admin login successful.',
         admin_token=token,
@@ -971,6 +1093,10 @@ def admin_login():
 
 @app.route('/admin/logout', methods=['POST'])
 def admin_logout():
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
     clear_admin_session()
     return success_response('Выход выполнен. / Logged out.')
 
@@ -982,7 +1108,7 @@ def admin_overview():
         return auth_error
 
     users, laptops, borrow_records = fetch_admin_dashboard_data()
-    return jsonify({'success': True, 'users': users, 'laptops': laptops, 'borrow_records': borrow_records})
+    return success_response(users=users, laptops=laptops, borrow_records=borrow_records)
 
 
 @app.route('/admin/users', methods=['POST'])
@@ -1034,10 +1160,52 @@ def admin_delete_user(uid):
     if auth_error:
         return auth_error
 
+    with runtime_state_lock:
+        stale_pending_session_ids = [
+            session_id
+            for session_id, pending_scan in pending_uid_scan_by_session.items()
+            if str((pending_scan or {}).get('uid') or '') == str(uid)
+        ]
+
+        for session_id in stale_pending_session_ids:
+            pending_uid_scan_by_session.pop(session_id, None)
+
     connection = get_db_connection()
     try:
-        connection.execute('DELETE FROM laptop_bookings WHERE uid = ?;', (uid,))
-        connection.execute('DELETE FROM users WHERE uid = ?;', (uid,))
+        cursor = connection.cursor()
+        cursor.execute(
+            '''
+            SELECT lb.laptop_name, l.device_number
+            FROM laptop_bookings lb
+            LEFT JOIN laptops l ON l.name = lb.laptop_name
+            WHERE lb.uid = ?;
+            ''',
+            (uid,)
+        )
+        booking_rows = cursor.fetchall()
+
+        laptop_names = list({str(row['laptop_name'] or '').strip() for row in booking_rows if row['laptop_name']})
+
+        if laptop_names:
+            cursor.executemany(
+                "UPDATE laptops SET status = 'available' WHERE name = ?;",
+                [(name,) for name in laptop_names]
+            )
+
+        cursor.execute(
+            '''
+            UPDATE borrow_records
+            SET returned_at = COALESCE(returned_at, CURRENT_TIMESTAMP),
+                status = 'returned'
+            WHERE employee_uid = ?
+              AND status = 'active';
+            ''',
+            (uid,)
+        )
+
+        cursor.execute('DELETE FROM laptop_bookings WHERE uid = ?;', (uid,))
+        cursor.execute('DELETE FROM users WHERE uid = ?;', (uid,))
+        recompute_laptop_status(connection)
         connection.commit()
         return success_response('Пользователь удалён. / User deleted.')
     finally:

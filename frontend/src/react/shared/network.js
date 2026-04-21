@@ -24,13 +24,24 @@ export function ensureNetworkWarmup() {
 }
 
 export function preloadImages(imageSources) {
-  imageSources.forEach((src) => {
-    if (!src) {
-      return;
-    }
+  const uniqueSources = [...new Set((imageSources || []).filter(Boolean))];
 
+  return Promise.allSettled(uniqueSources.map((src) => new Promise((resolve) => {
     const image = new Image();
     image.decoding = 'async';
+
+    function finish() {
+      image.onload = null;
+      image.onerror = null;
+      resolve(src);
+    }
+
+    image.onload = finish;
+    image.onerror = finish;
     image.src = src;
-  });
+
+    if (image.complete) {
+      finish();
+    }
+  })));
 }

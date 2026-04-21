@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { requestJson, postJson } from '../../shared/api';
-import { ensureNetworkWarmup, preloadImages } from '../../shared/network';
+import { isNetworkTransportError, requestJson, postJson } from '../../shared/api';
+import { ensureNetworkWarmup } from '../../shared/network';
 import {
   LANGUAGE_STORAGE_KEY,
   TAKE_BARCODES_STORAGE_KEY,
@@ -9,10 +9,12 @@ import {
 } from '../../shared/storage';
 import { getTranslations, resolveLanguage } from '../../shared/translations';
 import {
+  ACTIONS_INACTIVITY_TIMEOUT_MS,
   HOME_STATE_POLL_DEBOUNCE_MS,
-  INACTIVITY_TIMEOUT_MS,
-  KIOSK_PRELOAD_IMAGES,
-  POLL_INTERVAL_MS
+  NETWORK_ERROR_COOLDOWN_MS,
+  POLL_INTERVAL_MS,
+  UNKNOWN_USER_EVENT_MAX_AGE_MS,
+  SESSION_INACTIVITY_TIMEOUT_MS
 } from './constants';
 
 export function useKioskController(showToast) {
@@ -21,7 +23,6 @@ export function useKioskController(showToast) {
   const [view, setView] = useState('home');
   const [takeBarcodes, setTakeBarcodes] = useState(() => readStoredArray(TAKE_BARCODES_STORAGE_KEY));
   const [returnBarcodes, setReturnBarcodes] = useState(() => readStoredArray(RETURN_BARCODES_STORAGE_KEY));
-  const [lastAckedUserActionsEventId, setLastAckedUserActionsEventId] = useState(0);
   const [stationCellsStatus, setStationCellsStatus] = useState('0/0');
   const [activeBorrowedRecords, setActiveBorrowedRecords] = useState([]);
   const [isActiveBorrowedLoading, setIsActiveBorrowedLoading] = useState(false);
@@ -31,6 +32,22 @@ export function useKioskController(showToast) {
   const homePollTimerRef = useRef(null);
   const homePollInFlightRef = useRef(false);
   const homePollQueuedRef = useRef(false);
+  const networkToastShownAtRef = useRef(0);
+  const homeNetworkBlockedUntilRef = useRef(0);
+  const activeBorrowedNetworkBlockedUntilRef = useRef(0);
+  const unknownUserViewUntilRef = useRef(0);
+  const lastAckedUserActionsEventIdRef = useRef(0);
+  const lastUnknownUserEventIdRef = useRef(0);
+
+  function showNetworkChangedToast() {
+    const now = Date.now();
+    if (now - networkToastShownAtRef.current < NETWORK_ERROR_COOLDOWN_MS) {
+      return;
+    }
+
+    networkToastShownAtRef.current = now;
+    showToast('info', t.kiosk.networkChangedTitle, t.kiosk.networkChangedText);
+  }
 
   useEffect(() => {
     const resolvedLanguage = resolveLanguage(language);
@@ -46,7 +63,6 @@ export function useKioskController(showToast) {
 
   useEffect(() => {
     ensureNetworkWarmup();
-    preloadImages(KIOSK_PRELOAD_IMAGES);
   }, []);
 
   useEffect(() => {
@@ -58,6 +74,10 @@ export function useKioskController(showToast) {
     }
 
     async function updateHomeState() {
+      if (Date.now() < homeNetworkBlockedUntilRef.current) {
+        return;
+      }
+
       try {
         const data = await requestJson('/home_state', { cache: 'no-store' });
         setLaptopCount(data.laptop_count || '0/0');
@@ -68,26 +88,55 @@ export function useKioskController(showToast) {
           return;
         }
 
+        const unknownUserEventId = Number.parseInt(data.unknown_user_event_id || 0, 10);
+        const unknownUserEventAtMs = Number.parseFloat(data.unknown_user_event_at || 0) * 1000;
+        const now = Date.now();
+        const isUnknownEventFresh = unknownUserEventAtMs > 0
+          && (now - unknownUserEventAtMs) <= UNKNOWN_USER_EVENT_MAX_AGE_MS;
+
+        if (unknownUserEventId > lastUnknownUserEventIdRef.current && isUnknownEventFresh) {
+          lastUnknownUserEventIdRef.current = unknownUserEventId;
+          unknownUserViewUntilRef.current = now + UNKNOWN_USER_EVENT_MAX_AGE_MS;
+          setView('unknown');
+          resetBarcodeState();
+          lastAckedUserActionsEventIdRef.current = 0;
+          return;
+        }
+
+        if (unknownUserEventId > lastUnknownUserEventIdRef.current) {
+          lastUnknownUserEventIdRef.current = unknownUserEventId;
+        }
+
         if (data.user_session_active) {
           const eventId = Number.parseInt(data.user_actions_event_id || 0, 10);
           const shouldOpenActions = Boolean(data.user_actions_redirect);
 
-          if (shouldOpenActions && eventId > lastAckedUserActionsEventId) {
+          if (shouldOpenActions && eventId > lastAckedUserActionsEventIdRef.current) {
             setView('actions');
 
             try {
               await postJson('/user_actions_event/ack', { event_id: eventId });
-              setLastAckedUserActionsEventId(eventId);
+              lastAckedUserActionsEventIdRef.current = eventId;
             } catch {
               // Ignore ack transport errors, next poll will retry.
             }
           }
         } else {
+          if (Date.now() < unknownUserViewUntilRef.current) {
+            return;
+          }
+
           setView('home');
           resetBarcodeState();
-          setLastAckedUserActionsEventId(0);
+          lastAckedUserActionsEventIdRef.current = 0;
         }
       } catch (error) {
+        if (isNetworkTransportError(error)) {
+          homeNetworkBlockedUntilRef.current = Date.now() + NETWORK_ERROR_COOLDOWN_MS;
+          showNetworkChangedToast();
+          return;
+        }
+
         showToast('error', t.kiosk.homeStateFailTitle, error.message);
       }
     }
@@ -129,7 +178,7 @@ export function useKioskController(showToast) {
           if (eventId > 0) {
             try {
               await postJson('/user_actions_event/ack', { event_id: eventId });
-              setLastAckedUserActionsEventId(eventId);
+              lastAckedUserActionsEventIdRef.current = eventId;
             } catch {
               // Ignore debug ack transport errors.
             }
@@ -147,9 +196,13 @@ export function useKioskController(showToast) {
       window.clearTimeout(homePollTimerRef.current);
       delete window.smartBoxDebug;
     };
-  }, [lastAckedUserActionsEventId, showToast, t]);
+  }, [showToast, t]);
 
   async function loadActiveBorrowedRecords({ silent = false } = {}) {
+    if (Date.now() < activeBorrowedNetworkBlockedUntilRef.current) {
+      return;
+    }
+
     if (!silent && !hasLoadedActiveBorrowedRecords) {
       setIsActiveBorrowedLoading(true);
     }
@@ -159,6 +212,12 @@ export function useKioskController(showToast) {
       setActiveBorrowedRecords(data.records || []);
       setHasLoadedActiveBorrowedRecords(true);
     } catch (error) {
+      if (isNetworkTransportError(error)) {
+        activeBorrowedNetworkBlockedUntilRef.current = Date.now() + NETWORK_ERROR_COOLDOWN_MS;
+        showNetworkChangedToast();
+        return;
+      }
+
       showToast('error', t.kiosk.activeBorrowedLoadFailTitle, error.message);
     } finally {
       if (!silent && !hasLoadedActiveBorrowedRecords) {
@@ -192,6 +251,10 @@ export function useKioskController(showToast) {
       return;
     }
 
+    const inactivityTimeoutMs = view === 'actions'
+      ? ACTIONS_INACTIVITY_TIMEOUT_MS
+      : SESSION_INACTIVITY_TIMEOUT_MS;
+
     function resetInactivityTimer() {
       window.clearTimeout(inactivityTimerRef.current);
       inactivityTimerRef.current = window.setTimeout(async () => {
@@ -205,7 +268,7 @@ export function useKioskController(showToast) {
         setReturnBarcodes([]);
         localStorage.removeItem(TAKE_BARCODES_STORAGE_KEY);
         localStorage.removeItem(RETURN_BARCODES_STORAGE_KEY);
-      }, INACTIVITY_TIMEOUT_MS);
+      }, inactivityTimeoutMs);
     }
 
     resetInactivityTimer();
