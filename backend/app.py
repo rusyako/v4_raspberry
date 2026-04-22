@@ -214,6 +214,22 @@ def build_uid_lookup_candidates(raw_uid):
     return candidates
 
 
+def split_full_name(name):
+    normalized_name = ' '.join(str(name or '').strip().split())
+    if not normalized_name:
+        return '', ''
+
+    parts = normalized_name.split(' ', 1)
+    first_name = parts[0]
+    last_name = parts[1] if len(parts) > 1 else ''
+    return first_name, last_name
+
+
+def compose_full_name(first_name, last_name, fallback=''):
+    full_name = ' '.join(part for part in (str(first_name or '').strip(), str(last_name or '').strip()) if part)
+    return full_name or str(fallback or '').strip()
+
+
 def extract_uid_from_serial_data(data):
     if data.startswith('CARDUID:'):
         return data[8:]
@@ -357,7 +373,7 @@ def get_user_by_uid(uid):
         cursor = connection.cursor()
         cursor.execute(
             f'''
-            SELECT uid, uid_hex, uid_dec, name, email, role, is_admin
+            SELECT guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, role, is_admin
             FROM users
             WHERE uid IN ({placeholders})
                OR uid_hex IN ({placeholders})
@@ -470,7 +486,9 @@ def fetch_admin_dashboard_data():
     connection = get_db_connection()
     try:
         cursor = connection.cursor()
-        cursor.execute('SELECT uid, uid_hex, uid_dec, name, email, role, is_admin FROM users ORDER BY name, uid;')
+        cursor.execute(
+            'SELECT guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, description, category, role, is_admin FROM users ORDER BY name, uid;'
+        )
         users = [dict(row) for row in cursor.fetchall()]
         cursor.execute('SELECT name, barcode, device_number, status FROM laptops ORDER BY name;')
         laptops = [dict(row) for row in cursor.fetchall()]
@@ -574,7 +592,12 @@ def seed_database(connection):
             uid = (user.get('uid') or '').strip()
             uid_forms = build_uid_forms(uid)
             primary_uid = uid_forms['uid_hex'] or uid_forms['raw']
-            name = (user.get('name') or '').strip() or primary_uid
+            source_name = (user.get('name') or '').strip()
+            first_name = (user.get('first_name') or '').strip()
+            last_name = (user.get('last_name') or '').strip()
+            if not first_name and not last_name:
+                first_name, last_name = split_full_name(source_name)
+            name = compose_full_name(first_name, last_name, source_name or primary_uid)
             email = (user.get('email') or '').strip()
             role = (user.get('role') or 'user').strip().lower()
             is_admin = 1 if user.get('is_admin', False) or role == 'admin' else 0
@@ -583,10 +606,13 @@ def seed_database(connection):
             if primary_uid:
                 users.append(
                     (
+                        str(uuid.uuid4()),
                         primary_uid,
                         uid_forms['uid_hex'] or None,
                         uid_forms['uid_dec'] or None,
                         name,
+                        first_name or None,
+                        last_name or None,
                         email,
                         role,
                         is_admin
@@ -594,7 +620,7 @@ def seed_database(connection):
                 )
         if users:
             cursor.executemany(
-                'INSERT INTO users (uid, uid_hex, uid_dec, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?);',
+                'INSERT INTO users (guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
                 users
             )
 
@@ -628,11 +654,16 @@ def init_db():
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS users (
-                uid TEXT PRIMARY KEY,
+                guid TEXT PRIMARY KEY,
+                uid TEXT UNIQUE,
                 uid_hex TEXT,
                 uid_dec TEXT,
                 name TEXT,
+                first_name TEXT,
+                last_name TEXT,
                 email TEXT,
+                description TEXT,
+                category TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
                 is_admin INTEGER NOT NULL DEFAULT 0
             );
@@ -646,7 +677,27 @@ def init_db():
     except sqlite3.OperationalError:
         pass
     try:
+        cursor.execute('ALTER TABLE users ADD COLUMN guid TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN first_name TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN last_name TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
         cursor.execute('ALTER TABLE users ADD COLUMN email TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN description TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN category TEXT;')
     except sqlite3.OperationalError:
         pass
     try:
@@ -725,18 +776,37 @@ def init_db():
             'CREATE INDEX IF NOT EXISTS idx_borrow_records_taken_at ON borrow_records (taken_at);'
         )
 
-        cursor.execute('SELECT uid, uid_hex, uid_dec FROM users;')
+        cursor.execute('SELECT guid, uid, uid_hex, uid_dec, name, first_name, last_name FROM users;')
         updates = []
         for row in cursor.fetchall():
             source_uid = row['uid_hex'] or row['uid_dec'] or row['uid']
             uid_forms = build_uid_forms(source_uid)
             next_uid_hex = uid_forms['uid_hex'] or None
             next_uid_dec = uid_forms['uid_dec'] or None
-            if row['uid_hex'] != next_uid_hex or row['uid_dec'] != next_uid_dec:
-                updates.append((next_uid_hex, next_uid_dec, row['uid']))
+            next_guid = row['guid'] or str(uuid.uuid4())
+            next_first_name = row['first_name']
+            next_last_name = row['last_name']
+            if row['name'] and not next_first_name and not next_last_name:
+                next_first_name, next_last_name = split_full_name(row['name'])
+            if (
+                row['guid'] != next_guid
+                or row['uid_hex'] != next_uid_hex
+                or row['uid_dec'] != next_uid_dec
+                or row['first_name'] != next_first_name
+                or row['last_name'] != next_last_name
+            ):
+                updates.append(
+                    (next_guid, next_uid_hex, next_uid_dec, next_first_name or None, next_last_name or None, row['uid'])
+                )
 
         if updates:
-            cursor.executemany('UPDATE users SET uid_hex = ?, uid_dec = ? WHERE uid = ?;', updates)
+            cursor.executemany(
+                'UPDATE users SET guid = ?, uid_hex = ?, uid_dec = ?, first_name = ?, last_name = ? WHERE uid = ?;',
+                updates
+            )
+
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_guid ON users (guid);')
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_uid ON users (uid);')
 
         seed_database(connection)
         cursor.execute("UPDATE users SET is_admin = CASE WHEN role = 'admin' THEN 1 ELSE is_admin END;")
@@ -1118,16 +1188,29 @@ def admin_add_user():
         return auth_error
 
     data = request.get_json(silent=True) or {}
+    guid = str(data.get('guid') or '').strip().strip('{}').lower() or str(uuid.uuid4())
     uid = str(data.get('uid') or '').strip()
     uid_forms = build_uid_forms(uid)
     primary_uid = uid_forms['uid_hex'] or uid_forms['raw']
     name = str(data.get('name') or '').strip()
+    first_name = str(data.get('first_name') or '').strip()
+    last_name = str(data.get('last_name') or '').strip()
     email = str(data.get('email') or '').strip()
+    description = str(data.get('description') or '').strip()
+    category = str(data.get('category') or '').strip()
     is_admin = bool(data.get('is_admin'))
     role = 'admin' if is_admin else 'user'
 
+    if not first_name and not last_name:
+        first_name, last_name = split_full_name(name)
+
+    name = compose_full_name(first_name, last_name, name)
+
     if not primary_uid:
         return error_response('Введите UID. / Enter UID.')
+
+    if not first_name or not last_name or not email:
+        return error_response('Введите имя, фамилию и почту. / Enter first name, last name and email.')
 
     if get_user_by_uid(uid):
         return error_response('Такой UID уже существует. / This UID already exists.')
@@ -1135,13 +1218,18 @@ def admin_add_user():
     connection = get_db_connection()
     try:
         connection.execute(
-            'INSERT INTO users (uid, uid_hex, uid_dec, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?);',
+            'INSERT INTO users (guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, description, category, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
             (
+                guid,
                 primary_uid,
                 uid_forms['uid_hex'] or None,
                 uid_forms['uid_dec'] or None,
                 name or primary_uid,
+                first_name or None,
+                last_name or None,
                 email,
+                description or None,
+                category or description or None,
                 role,
                 1 if is_admin else 0
             )

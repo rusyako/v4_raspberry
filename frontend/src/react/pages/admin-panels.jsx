@@ -69,6 +69,15 @@ export const UsersPanel = memo(function UsersPanel({
       </div>
       <form className="admin-form" onSubmit={onSubmit}>
         <label className="admin-field">
+          <span>{t.admin.guidLabel}</span>
+          <input
+            value={userForm.guid || ''}
+            onChange={(event) => setUserForm((current) => ({ ...current, guid: event.target.value }))}
+            type="text"
+            placeholder="550e8400-e29b-41d4-a716-446655440000"
+          />
+        </label>
+        <label className="admin-field">
           <span>{t.admin.uidLabel}</span>
           <input
             value={userForm.uid}
@@ -92,12 +101,48 @@ export const UsersPanel = memo(function UsersPanel({
           />
         </label>
         <label className="admin-field">
+          <span>{t.admin.firstNameLabel}</span>
+          <input
+            value={userForm.first_name || ''}
+            onChange={(event) => setUserForm((current) => ({ ...current, first_name: event.target.value }))}
+            type="text"
+            placeholder="Ruslan"
+          />
+        </label>
+        <label className="admin-field">
+          <span>{t.admin.lastNameLabel}</span>
+          <input
+            value={userForm.last_name || ''}
+            onChange={(event) => setUserForm((current) => ({ ...current, last_name: event.target.value }))}
+            type="text"
+            placeholder="Akhmetov"
+          />
+        </label>
+        <label className="admin-field">
           <span>{t.admin.emailLabel}</span>
           <input
             value={userForm.email || ''}
             onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))}
             type="email"
             placeholder="ruslan@company.kz"
+          />
+        </label>
+        <label className="admin-field">
+          <span>{t.admin.descriptionLabel}</span>
+          <input
+            value={userForm.description || ''}
+            onChange={(event) => setUserForm((current) => ({ ...current, description: event.target.value }))}
+            type="text"
+            placeholder="IT Specialist"
+          />
+        </label>
+        <label className="admin-field">
+          <span>{t.admin.categoryLabel}</span>
+          <input
+            value={userForm.category || ''}
+            onChange={(event) => setUserForm((current) => ({ ...current, category: event.target.value }))}
+            type="text"
+            placeholder="Staff"
           />
         </label>
         <label className="admin-checkbox">
@@ -115,8 +160,10 @@ export const UsersPanel = memo(function UsersPanel({
           <div key={user.uid} className="admin-list-item">
             <div>
               <strong>{user.name || user.uid}</strong>
+              <small>GUID: {user.guid || '-'}</small>
               <small>HEX: {user.uid_hex || user.uid || '-'}</small>
               <small>DEC: {user.uid_dec || '-'}</small>
+              <small>{user.description || user.category || '-'}</small>
               <small>{user.email || '-'}</small>
             </div>
             <div className="admin-item-actions">

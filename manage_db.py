@@ -47,6 +47,22 @@ def build_uid_forms(raw_uid):
     return {'raw': normalized, 'uid_hex': '', 'uid_dec': ''}
 
 
+def split_full_name(name):
+    normalized_name = ' '.join(str(name or '').strip().split())
+    if not normalized_name:
+        return '', ''
+
+    parts = normalized_name.split(' ', 1)
+    first_name = parts[0]
+    last_name = parts[1] if len(parts) > 1 else ''
+    return first_name, last_name
+
+
+def compose_full_name(first_name, last_name, fallback=''):
+    full_name = ' '.join(part for part in (str(first_name or '').strip(), str(last_name or '').strip()) if part)
+    return full_name or str(fallback or '').strip()
+
+
 def get_connection():
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
@@ -60,11 +76,16 @@ def init_db():
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS users (
-                uid TEXT PRIMARY KEY,
+                guid TEXT PRIMARY KEY,
+                uid TEXT UNIQUE,
                 uid_hex TEXT,
                 uid_dec TEXT,
                 name TEXT,
+                first_name TEXT,
+                last_name TEXT,
                 email TEXT,
+                description TEXT,
+                category TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
                 is_admin INTEGER NOT NULL DEFAULT 0
             );
@@ -79,7 +100,27 @@ def init_db():
         except sqlite3.OperationalError:
             pass
         try:
+            cursor.execute('ALTER TABLE users ADD COLUMN guid TEXT;')
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN first_name TEXT;')
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN last_name TEXT;')
+        except sqlite3.OperationalError:
+            pass
+        try:
             cursor.execute('ALTER TABLE users ADD COLUMN email TEXT;')
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN description TEXT;')
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN category TEXT;')
         except sqlite3.OperationalError:
             pass
         try:
@@ -90,17 +131,35 @@ def init_db():
             cursor.execute('ALTER TABLE users ADD COLUMN uid_dec TEXT;')
         except sqlite3.OperationalError:
             pass
-        cursor.execute('SELECT uid, uid_hex, uid_dec FROM users;')
+        cursor.execute('SELECT guid, uid, uid_hex, uid_dec, name, first_name, last_name FROM users;')
         updates = []
         for row in cursor.fetchall():
             source_uid = row['uid_hex'] or row['uid_dec'] or row['uid']
             uid_forms = build_uid_forms(source_uid)
             next_uid_hex = uid_forms['uid_hex'] or None
             next_uid_dec = uid_forms['uid_dec'] or None
-            if row['uid_hex'] != next_uid_hex or row['uid_dec'] != next_uid_dec:
-                updates.append((next_uid_hex, next_uid_dec, row['uid']))
+            next_guid = row['guid'] or str(os.urandom(16).hex())
+            next_first_name = row['first_name']
+            next_last_name = row['last_name']
+            if row['name'] and not next_first_name and not next_last_name:
+                next_first_name, next_last_name = split_full_name(row['name'])
+            if (
+                row['guid'] != next_guid
+                or row['uid_hex'] != next_uid_hex
+                or row['uid_dec'] != next_uid_dec
+                or row['first_name'] != next_first_name
+                or row['last_name'] != next_last_name
+            ):
+                updates.append(
+                    (next_guid, next_uid_hex, next_uid_dec, next_first_name or None, next_last_name or None, row['uid'])
+                )
         if updates:
-            cursor.executemany('UPDATE users SET uid_hex = ?, uid_dec = ? WHERE uid = ?;', updates)
+            cursor.executemany(
+                'UPDATE users SET guid = ?, uid_hex = ?, uid_dec = ?, first_name = ?, last_name = ? WHERE uid = ?;',
+                updates
+            )
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_guid ON users (guid);')
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_uid ON users (uid);')
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS laptops (
@@ -192,7 +251,12 @@ def seed_db():
         for user in users:
             uid = (user.get('uid') or '').strip()
             uid_forms = build_uid_forms(uid)
-            name = (user.get('name') or '').strip() or uid
+            source_name = (user.get('name') or '').strip()
+            first_name = (user.get('first_name') or '').strip()
+            last_name = (user.get('last_name') or '').strip()
+            if not first_name and not last_name:
+                first_name, last_name = split_full_name(source_name)
+            name = compose_full_name(first_name, last_name, source_name or uid)
             email = (user.get('email') or '').strip()
             role = (user.get('role') or 'user').strip().lower()
             is_admin = 1 if user.get('is_admin', False) or role == 'admin' else 0
@@ -200,8 +264,19 @@ def seed_db():
                 role = 'admin' if is_admin else 'user'
             if uid:
                 cursor.execute(
-                    'INSERT OR IGNORE INTO users (uid, uid_hex, uid_dec, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?);',
-                    (uid_forms['uid_hex'] or uid, uid_forms['uid_hex'] or None, uid_forms['uid_dec'] or None, name, email, role, is_admin)
+                    'INSERT OR IGNORE INTO users (guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+                    (
+                        str(os.urandom(16).hex()),
+                        uid_forms['uid_hex'] or uid,
+                        uid_forms['uid_hex'] or None,
+                        uid_forms['uid_dec'] or None,
+                        name,
+                        first_name or None,
+                        last_name or None,
+                        email,
+                        role,
+                        is_admin
+                    )
                 )
 
         for laptop in laptops:
@@ -246,15 +321,19 @@ def reset_db():
 def add_user(uid, name, email='', is_admin=False):
     uid_forms = build_uid_forms(uid)
     primary_uid = uid_forms['uid_hex'] or uid.strip()
+    first_name, last_name = split_full_name(name)
     connection = get_connection()
     try:
         connection.execute(
-            'INSERT INTO users (uid, uid_hex, uid_dec, name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?);',
+            'INSERT INTO users (guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, role, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
             (
+                str(os.urandom(16).hex()),
                 primary_uid,
                 uid_forms['uid_hex'] or None,
                 uid_forms['uid_dec'] or None,
-                (name or primary_uid).strip(),
+                compose_full_name(first_name, last_name, name or primary_uid),
+                first_name or None,
+                last_name or None,
                 email.strip(),
                 'admin' if is_admin else 'user',
                 1 if is_admin else 0

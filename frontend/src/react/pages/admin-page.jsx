@@ -14,7 +14,8 @@ export function AdminPage() {
   const [users, setUsers] = useState([]);
   const [laptops, setLaptops] = useState([]);
   const [borrowRecords, setBorrowRecords] = useState([]);
-  const [userForm, setUserForm] = useState({ uid: '', name: '', email: '', is_admin: false });
+  const emptyUserForm = { guid: '', uid: '', first_name: '', last_name: '', name: '', email: '', description: '', category: '', is_admin: false };
+  const [userForm, setUserForm] = useState(emptyUserForm);
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
   const { toast, showToast, clearToast } = useToast();
   const t = useMemo(() => getTranslations(language), [language]);
@@ -118,7 +119,7 @@ export function AdminPage() {
     event.preventDefault();
     try {
       const data = await postJson('/admin/users', userForm, authHeaders());
-      setUserForm({ uid: '', name: '', email: '', is_admin: false });
+      setUserForm(emptyUserForm);
       await loadAdminData();
       showToast('success', t.admin.toasts.userAddedTitle, data.message);
     } catch (error) {

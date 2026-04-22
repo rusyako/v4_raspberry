@@ -5,10 +5,15 @@ __pycache__/
 
 # Virtual env
 venv/
+.venv/
 
 # OS / IDE
 .DS_Store
 .idea/
+
+# Local runtime data
+data/
+logs/
 
 # Node
 node_modules/

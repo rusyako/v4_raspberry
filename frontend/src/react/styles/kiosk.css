@@ -107,10 +107,6 @@
   min-height: auto;
 }
 
-.home-borrowed-list-three-cols {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .home-card-header {
   display: flex;
   align-items: center;
@@ -184,6 +180,10 @@
   max-height: calc(72vh - 96px);
   overflow-y: auto;
   padding-right: 6px;
+}
+
+.home-borrowed-list-three-cols {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .home-borrowed-item {
@@ -560,18 +560,14 @@
     width: 100%;
   }
 
-  .home-borrowed-list-three-cols {
-    grid-template-columns: 1fr;
-  }
-
   .home-card {
     justify-self: stretch;
     height: auto;
     min-height: auto;
   }
 
-  .home-borrowed-list {
-    max-height: none;
+  .home-borrowed-list-three-cols {
+    grid-template-columns: 1fr;
   }
 
   .home-count-card {

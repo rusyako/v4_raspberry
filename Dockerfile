@@ -1,9 +1,9 @@
-FROM node:20-alpine AS frontend-build
+FROM node:20-bookworm-slim AS frontend-build
 
 WORKDIR /frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 COPY frontend/index.html ./index.html
 COPY frontend/vite.config.js ./vite.config.js

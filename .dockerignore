@@ -1,6 +1,8 @@
 venv/
+.venv/
 node_modules/
 .idea/
+.git/
 __pycache__/
 *.pyc
 *.pyo
@@ -8,6 +10,8 @@ __pycache__/
 .DS_Store
 app.log*
 server.log
+data/
+logs/
 templates/
 static/
 frontend/node_modules/
