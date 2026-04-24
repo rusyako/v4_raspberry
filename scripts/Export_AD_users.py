@@ -10,6 +10,26 @@ from ldap3 import ALL, SUBTREE, Connection, Server
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.getenv('DATA_DIR', os.path.join(BASE_DIR, 'data'))
 DB_PATH = os.getenv('SQLITE_PATH', os.path.join(DATA_DIR, 'smart-box.db'))
+AD_ENV_PATH = os.getenv('AD_ENV_PATH', os.path.join(BASE_DIR, '.env.ad'))
+
+
+def load_env_file(path):
+    if not os.path.exists(path):
+        return
+
+    with open(path, 'r', encoding='utf-8') as env_file:
+        for line in env_file:
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+load_env_file(AD_ENV_PATH)
 
 # --- Настройки подключения ---
 AD_SERVER = os.getenv('AD_SERVER', '192.168.100.1')
@@ -85,7 +105,7 @@ def get_entry_value(entry, attribute_name):
 
 def validate_required_fields(record):
     missing = []
-    for field_name in ('guid', 'first_name', 'last_name', 'email'):
+    for field_name in ('guid', 'first_name', 'last_name'):
         if not record.get(field_name):
             missing.append(field_name)
     return missing

@@ -58,7 +58,8 @@ export const UsersPanel = memo(function UsersPanel({
   users,
   t,
   onSubmit,
-  onRemove
+  onRemove,
+  onImport
 }) {
   const uidPreview = buildUidPreview(userForm.uid);
 
@@ -66,6 +67,15 @@ export const UsersPanel = memo(function UsersPanel({
     <section className="admin-panel">
       <div className="admin-panel-head">
         <h2>{t.admin.usersTitle}</h2>
+        <label className="primary-button" style={{ cursor: 'pointer' }}>
+          {t.admin.importUsers}
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={onImport}
+            style={{ display: 'none' }}
+          />
+        </label>
       </div>
       <form className="admin-form" onSubmit={onSubmit}>
         <label className="admin-field">
@@ -168,10 +178,59 @@ export const UsersPanel = memo(function UsersPanel({
             </div>
             <div className="admin-item-actions">
               {user.is_admin ? <span className="status-badge status-admin">{t.admin.adminBadge}</span> : null}
-              <button type="button" className="danger-button small" onClick={() => onRemove(user.uid)}>{t.common.remove}</button>
+              <button type="button" className="danger-button small" onClick={() => onRemove(user)}>{t.common.remove}</button>
             </div>
           </div>
         )) : <div className="admin-empty">{t.admin.noUsers}</div>}
+      </div>
+    </section>
+  );
+});
+
+export const UsersTable = memo(function UsersTable({ users, t, onRemove }) {
+  return (
+    <section className="admin-panel users-table-panel">
+      <div className="admin-panel-head">
+        <h2>{t.admin.registeredUsers}</h2>
+      </div>
+      <div className="admin-table-wrap users-table-wrap">
+        <table className="admin-table users-table">
+          <thead>
+            <tr>
+              <th>{t.admin.columns.name}</th>
+              <th>GUID</th>
+              <th>RFID HEX</th>
+              <th>RFID DEC</th>
+              <th>{t.admin.categoryLabel}</th>
+              <th>{t.admin.emailLabel}</th>
+              <th>{t.admin.columns.status}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.length ? users.map((user) => (
+              <tr key={user.guid || user.uid}>
+                <td>
+                  <strong>{user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || '-'}</strong>
+                  <small>{[user.first_name, user.last_name].filter(Boolean).join(' ') || '-'}</small>
+                </td>
+                <td><code>{user.guid || '-'}</code></td>
+                <td><code>{user.uid_hex || user.uid || '-'}</code></td>
+                <td><code>{user.uid_dec || '-'}</code></td>
+                <td>{user.description || user.category || '-'}</td>
+                <td>{user.email || '-'}</td>
+                <td>{user.is_admin ? <span className="status-badge status-admin">{t.admin.adminBadge}</span> : '-'}</td>
+                <td>
+                  <button type="button" className="danger-button small" onClick={() => onRemove(user)}>{t.common.remove}</button>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan="8" className="admin-empty">{t.admin.noUsers}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </section>
   );

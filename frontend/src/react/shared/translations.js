@@ -68,10 +68,22 @@ export const DICTIONARY = {
     },
     admin: {
       accessTitle: 'Admin Access',
-      connectingText: 'Connecting to admin dashboard...',
-      controlRoom: 'Smart Box control room',
+      connectingText: 'Connecting to admin panel...',
+      controlRoom: 'Smart Box Control Room',
       panelTitle: 'Admin Panel',
-      panelSubtitle: 'Manage access cards and MacBook inventory from one dashboard.',
+      panelSubtitle: 'Manage access cards and MacBook fleet from one panel.',
+      tabs: {
+        users: 'Users',
+        devices: 'Devices',
+        records: 'Records'
+      },
+      stats: {
+        totalUsers: 'Total Users',
+        totalDevices: 'Total Devices',
+        activeLoans: 'Active Loans'
+      },
+      registeredUsers: 'Registered Users',
+      viewUsers: 'View Users',
       usersTitle: 'Users / UID',
       guidLabel: 'GUID',
       uidLabel: 'UID',
@@ -83,6 +95,7 @@ export const DICTIONARY = {
       categoryLabel: 'Category',
       adminCardLabel: 'Admin card',
       addUser: 'Add User',
+      importUsers: 'Import from Excel/CSV',
       noUsers: 'No users yet.',
       adminBadge: 'Admin',
       laptopsTitle: 'MacBooks',
@@ -111,14 +124,12 @@ export const DICTIONARY = {
         status: 'Status'
       },
       toasts: {
-        adminDetectedTitle: 'Admin card detected',
-        adminDetectedText: 'Admin card recognized. Opening dashboard...',
-        adminRequiredTitle: 'Admin login required',
-        userAddedTitle: 'User added',
-        deviceAddedTitle: 'Device added',
-        userRemovedTitle: 'User removed',
-        deviceRemovedTitle: 'Device removed',
-        adminErrorTitle: 'Admin error'
+        userAddedTitle: 'Қолданушы қосылды',
+        userRemovedTitle: 'Қолданушы жойылды',
+        deviceAddedTitle: 'Құрылғы қосылды',
+        deviceRemovedTitle: 'Құрылғы жойылды',
+        importSuccessTitle: 'Импорт аяқталды',
+        adminErrorTitle: 'Қате'
       }
     }
   },
@@ -195,6 +206,18 @@ export const DICTIONARY = {
       controlRoom: 'Центр управления Smart Box',
       panelTitle: 'Панель администратора',
       panelSubtitle: 'Управляйте картами доступа и парком MacBook из одной панели.',
+      tabs: {
+        users: 'Пользователи',
+        devices: 'Устройства',
+        records: 'Записи'
+      },
+      stats: {
+        totalUsers: 'Всего пользователей',
+        totalDevices: 'Всего устройств',
+        activeLoans: 'Активных выдач'
+      },
+      registeredUsers: 'Зарегистрированные пользователи',
+      viewUsers: 'Просмотр пользователей',
       usersTitle: 'Пользователи / UID',
       guidLabel: 'GUID',
       uidLabel: 'UID',
@@ -206,6 +229,7 @@ export const DICTIONARY = {
       categoryLabel: 'Категория',
       adminCardLabel: 'Админ-карта',
       addUser: 'Добавить пользователя',
+      importUsers: 'Импорт из Excel/CSV',
       noUsers: 'Пользователей пока нет.',
       adminBadge: 'Админ',
       laptopsTitle: 'MacBook',
@@ -313,11 +337,23 @@ export const DICTIONARY = {
       unknownUserPhoneAction: 'IT-ге қоңырау шалу'
     },
     admin: {
-      accessTitle: 'Әкімші қолжетімділігі',
+      accessTitle: 'Әкімші қатынасы',
       connectingText: 'Әкімші панеліне қосылу...',
       controlRoom: 'Smart Box басқару орталығы',
       panelTitle: 'Әкімші панелі',
-      panelSubtitle: 'Қолжетімділік карталары мен MacBook қорын бір жерден басқарыңыз.',
+      panelSubtitle: 'Қатынау карталары мен MacBook паркін бір панельден басқарыңыз.',
+      tabs: {
+        users: 'Қолданушылар',
+        devices: 'Құрылғылар',
+        records: 'Жазбалар'
+      },
+      stats: {
+        totalUsers: 'Барлық қолданушылар',
+        totalDevices: 'Барлық құрылғылар',
+        activeLoans: 'Белсенді берулер'
+      },
+      registeredUsers: 'Тіркелген қолданушылар',
+      viewUsers: 'Қолданушыларды көру',
       usersTitle: 'Қолданушылар / UID',
       guidLabel: 'GUID',
       uidLabel: 'UID',
@@ -329,6 +365,7 @@ export const DICTIONARY = {
       categoryLabel: 'Санат',
       adminCardLabel: 'Әкімші картасы',
       addUser: 'Қолданушы қосу',
+      importUsers: 'Excel/CSV-тен импорт',
       noUsers: 'Қолданушылар әлі жоқ.',
       adminBadge: 'Әкімші',
       laptopsTitle: 'MacBook',

@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, request, redirect, send_from_directory, session
 import atexit
+import csv
 import hashlib
+import io
 import json
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -12,6 +14,11 @@ import time
 import uuid
 
 import serial
+
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
 
 try:
     import webview
@@ -470,15 +477,13 @@ def register_unknown_user_scan(uid, client_session_id=None):
 
 
 def require_admin():
-    admin_token = str(request.headers.get('X-Admin-Token') or '').strip()
-    if not admin_token:
-        return error_response('Требуется вход администратора. / Administrator login required.', 401, code='ADMIN_AUTH_REQUIRED')
-
-    if not is_admin_session_active(admin_token):
-        clear_admin_session()
-        return error_response('Сессия администратора недействительна. / Admin session is not valid.', 401, code='ADMIN_AUTH_REQUIRED')
-
-    session['admin_session_expires_at'] = time.time() + ADMIN_SESSION_TIMEOUT_SECONDS
+    if ENABLE_LOCAL_DEBUG_SDK and is_local_request():
+        session['admin_uid_bypass'] = True
+        if not is_admin_session_active():
+            create_admin_session()
+        return None
+    
+    ensure_admin_session()
     return None
 
 
@@ -655,7 +660,7 @@ def init_db():
             '''
             CREATE TABLE IF NOT EXISTS users (
                 guid TEXT PRIMARY KEY,
-                uid TEXT UNIQUE,
+                uid TEXT,
                 uid_hex TEXT,
                 uid_dec TEXT,
                 name TEXT,
@@ -1173,6 +1178,11 @@ def admin_logout():
 
 @app.route('/admin/overview', methods=['GET'])
 def admin_overview():
+    if ENABLE_LOCAL_DEBUG_SDK and is_local_request():
+        session['admin_uid_bypass'] = True
+        if not is_admin_session_active():
+            create_admin_session()
+    
     auth_error = require_admin()
     if auth_error:
         return auth_error
@@ -1298,6 +1308,222 @@ def admin_delete_user(uid):
         return success_response('Пользователь удалён. / User deleted.')
     finally:
         connection.close()
+
+
+@app.route('/admin/users/by-guid/<guid>', methods=['DELETE'])
+def admin_delete_user_by_guid(guid):
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
+    guid = str(guid or '').strip().lower()
+    if not guid:
+        return error_response('GUID is required.', 400)
+
+    connection = get_db_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute('SELECT uid FROM users WHERE guid = ?;', (guid,))
+        user = cursor.fetchone()
+        if not user:
+            return error_response('Пользователь не найден. / User not found.', 404)
+
+        uid = user['uid']
+        if uid:
+            cursor.execute(
+                '''
+                SELECT lb.laptop_name, l.device_number
+                FROM laptop_bookings lb
+                LEFT JOIN laptops l ON l.name = lb.laptop_name
+                WHERE lb.uid = ?;
+                ''',
+                (uid,)
+            )
+            booking_rows = cursor.fetchall()
+            laptop_names = list({str(row['laptop_name'] or '').strip() for row in booking_rows if row['laptop_name']})
+
+            if laptop_names:
+                cursor.executemany(
+                    "UPDATE laptops SET status = 'available' WHERE name = ?;",
+                    [(name,) for name in laptop_names]
+                )
+
+            cursor.execute(
+                '''
+                UPDATE borrow_records
+                SET returned_at = COALESCE(returned_at, CURRENT_TIMESTAMP),
+                    status = 'returned'
+                WHERE employee_uid = ?
+                  AND status = 'active';
+                ''',
+                (uid,)
+            )
+            cursor.execute('DELETE FROM laptop_bookings WHERE uid = ?;', (uid,))
+
+        cursor.execute('DELETE FROM users WHERE guid = ?;', (guid,))
+        recompute_laptop_status(connection)
+        connection.commit()
+        return success_response('Пользователь удалён. / User deleted.')
+    finally:
+        connection.close()
+
+
+@app.route('/admin/users/import', methods=['POST'])
+def admin_import_users():
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
+    if 'file' not in request.files:
+        return error_response('Файл не загружен. / No file uploaded.', 400)
+
+    uploaded_file = request.files['file']
+    if not uploaded_file.filename:
+        return error_response('Файл не выбран. / No file selected.', 400)
+
+    filename_lower = uploaded_file.filename.lower()
+    file_content = uploaded_file.read()
+
+    imported_count = 0
+    updated_count = 0
+    skipped_count = 0
+    errors = []
+
+    # Маппинг колонок на внутренние поля
+    column_mapping = {
+        'guid': ['guid', 'id', 'user_id', 'userid'],
+        'uid': ['uid', 'rfid', 'card', 'card_id', 'phone (h)', 'phone', 'homephone'],
+        'first_name': ['first_name', 'firstname', 'first name', 'given name', 'givenname', 'name', 'имя'],
+        'last_name': ['last_name', 'lastname', 'last name', 'surname', 'family name', 'familyname', 'фамилия'],
+        'email': ['email', 'e-mail', 'mail', 'почта'],
+        'description': ['description', 'desc', 'job title', 'title', 'position', 'должность'],
+        'category': ['category', 'cat', 'department', 'dept', 'group', 'отдел']
+    }
+
+    def normalize_column_name(col_name):
+        return str(col_name or '').strip().lower()
+
+    def find_column_value(row, field_name):
+        possible_names = column_mapping.get(field_name, [field_name])
+        for possible_name in possible_names:
+            value = row.get(possible_name, '')
+            if value and value not in ('[]', '[ ]', 'None', 'null'):
+                return str(value).strip()
+        return ''
+
+    def clean_value(value):
+        value = str(value or '').strip()
+        if value in ('[]', '[ ]', 'None', 'null', 'nan', 'NaN'):
+            return ''
+        return value
+
+    try:
+        if filename_lower.endswith('.csv'):
+            text_content = file_content.decode('utf-8-sig')
+            reader = csv.DictReader(io.StringIO(text_content))
+            rows = []
+            for row in reader:
+                normalized_row = {normalize_column_name(k): clean_value(v) for k, v in row.items()}
+                rows.append(normalized_row)
+        elif filename_lower.endswith(('.xlsx', '.xls')):
+            if not openpyxl:
+                return error_response('openpyxl не установлен. / openpyxl not installed.', 500)
+            workbook = openpyxl.load_workbook(io.BytesIO(file_content), read_only=True)
+            sheet = workbook.active
+            headers = [normalize_column_name(cell.value) for cell in sheet[1]]
+            rows = []
+            for row_index, row_cells in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                row_dict = {}
+                for col_index, cell_value in enumerate(row_cells):
+                    if col_index < len(headers) and headers[col_index]:
+                        row_dict[headers[col_index]] = clean_value(cell_value)
+                rows.append(row_dict)
+        else:
+            return error_response('Неподдерживаемый формат файла. / Unsupported file format.', 400)
+
+        connection = get_db_connection()
+        try:
+            for row_index, row in enumerate(rows, start=2):
+                guid = find_column_value(row, 'guid').strip('{}').lower() or str(uuid.uuid4())
+                uid = find_column_value(row, 'uid')
+                first_name = find_column_value(row, 'first_name')
+                last_name = find_column_value(row, 'last_name')
+                email = find_column_value(row, 'email')
+                description = find_column_value(row, 'description')
+                category = find_column_value(row, 'category')
+
+                # Если first_name пустой, попробуем взять из name
+                if not first_name and not last_name:
+                    full_name = row.get('name', '') or row.get('login', '')
+                    if full_name:
+                        first_name, last_name = split_full_name(full_name)
+
+                if not first_name or not last_name:
+                    skipped_count += 1
+                    errors.append(f'Строка {row_index}: пропущена (нет имени или фамилии) - {row}')
+                    continue
+
+                name = compose_full_name(first_name, last_name, guid)
+                uid_forms = build_uid_forms(uid)
+                primary_uid = uid_forms['uid_hex'] or uid_forms['raw'] or None
+
+                cursor = connection.cursor()
+                cursor.execute('SELECT guid FROM users WHERE guid = ? LIMIT 1;', (guid,))
+                existing_user = cursor.fetchone()
+
+                if existing_user:
+                    cursor.execute(
+                        '''
+                        UPDATE users
+                        SET uid = ?, uid_hex = ?, uid_dec = ?, name = ?, first_name = ?, last_name = ?, email = ?, description = ?, category = ?
+                        WHERE guid = ?;
+                        ''',
+                        (
+                            primary_uid,
+                            uid_forms['uid_hex'] or None,
+                            uid_forms['uid_dec'] or None,
+                            name,
+                            first_name,
+                            last_name,
+                            email or None,
+                            description or None,
+                            category or description or None,
+                            guid
+                        )
+                    )
+                    updated_count += 1
+                else:
+                    cursor.execute(
+                        '''
+                        INSERT INTO users (guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, description, category, role, is_admin)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                        ''',
+                        (
+                            guid,
+                            primary_uid,
+                            uid_forms['uid_hex'] or None,
+                            uid_forms['uid_dec'] or None,
+                            name,
+                            first_name,
+                            last_name,
+                            email or None,
+                            description or None,
+                            category or description or None,
+                            'user',
+                            0
+                        )
+                    )
+                    imported_count += 1
+
+            connection.commit()
+            message = f'Импорт завершён. Добавлено: {imported_count}, обновлено: {updated_count}, пропущено: {skipped_count}.'
+            return success_response(message, imported=imported_count, updated=updated_count, skipped=skipped_count, errors=errors[:20])
+        finally:
+            connection.close()
+
+    except Exception as error:
+        logging.error(f'Import error: {error}', exc_info=True)
+        return error_response(f'Ошибка импорта: {str(error)} / Import error: {str(error)}', 500)
 
 
 @app.route('/admin/laptops', methods=['POST'])

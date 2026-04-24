@@ -209,3 +209,148 @@
     align-items: stretch;
   }
 }
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: rgba(8, 20, 28, 0.95);
+  border: 1px solid rgba(143, 197, 224, 0.25);
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-content.modal-fullscreen {
+  max-width: 95vw;
+  max-height: 95vh;
+  width: 95vw;
+  height: 95vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #eaf2f8;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #aac7d8;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: #fff;
+}
+
+.modal-body {
+  padding: 24px;
+  flex: 1;
+  overflow: auto;
+}
+
+.modal-fullscreen .modal-body {
+  padding: 18px;
+}
+
+.users-table-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.users-table-wrap {
+  flex: 1;
+  overflow: auto;
+}
+
+.users-table th,
+.users-table td {
+  vertical-align: top;
+  white-space: normal;
+}
+
+.users-table td code {
+  display: inline-block;
+  max-width: 230px;
+  overflow-wrap: anywhere;
+  color: #cfe3ef;
+  font-size: 12px;
+}
+
+.users-table td strong,
+.users-table td small {
+  display: block;
+}
+
+.users-table td small {
+  margin-top: 4px;
+  color: #aac7d8;
+}
+
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-stat-card {
+  background: rgba(8, 20, 28, 0.6);
+  border: 1px solid rgba(143, 197, 224, 0.15);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.admin-stat-value {
+  display: block;
+  font-size: 32px;
+  font-weight: bold;
+  color: #8ad4ff;
+  margin-bottom: 4px;
+}
+
+.admin-stat-label {
+  display: block;
+  font-size: 13px;
+  color: #aac7d8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
