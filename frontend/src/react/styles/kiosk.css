@@ -543,20 +543,20 @@
   }
 
   .home-content-grid {
-    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr);
+    grid-template-columns: minmax(0, 1.8fr) minmax(240px, 0.72fr);
     gap: 12px;
   }
 
   .home-sidebar {
     grid-template-rows: minmax(120px, 0.8fr) minmax(0, 1fr);
-    gap: 12px;
+    gap: 10px;
     height: 100%;
     align-self: stretch;
   }
 
   .home-card {
     padding: 12px;
-    border-radius: 16px;
+    border-radius: 12px;
   }
 
   .home-card-header {
@@ -585,16 +585,23 @@
     max-width: 240px;
     font-size: 14px;
     line-height: 1.2;
+    padding-inline: 4px;
   }
 
   .home-card-info {
     gap: 12px;
   }
 
+  .home-card-title,
+  .home-card-info {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
   .home-count-card {
     gap: 12px;
     padding: 12px;
-    border-radius: 16px;
+    border-radius: 10px;
   }
 
   .home-count-card span {
@@ -609,6 +616,7 @@
   .home-card-message {
     font-size: 14px;
     line-height: 1.2;
+    padding-inline: 4px;
   }
 
   .home-borrowed-list {
