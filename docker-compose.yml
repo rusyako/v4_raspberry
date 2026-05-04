@@ -6,8 +6,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${HOST_PORT:-5000}:${FLASK_PORT:-5000}"
+    privileged: ${DOCKER_PRIVILEGED:-false}
     devices:
-      - "${SERIAL_PORT:-/dev/ttyACM0}:${SERIAL_PORT:-/dev/ttyACM0}"
+      - "/dev/spidev0.0:/dev/spidev0.0"
+      - "${SERIAL_DEVICE_MAPPING:-/dev/null:/dev/null}"
     environment:
       DATA_DIR: ${DATA_DIR:-/app/data}
       SQLITE_PATH: ${SQLITE_PATH:-/app/data/smart-box.db}
@@ -17,9 +19,21 @@ services:
       LOG_FILE: ${LOG_FILE:-smart-box.log}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_BACKUP_DAYS: ${LOG_BACKUP_DAYS:-14}
+      RFID_READER_MODE: ${RFID_READER_MODE:-rc522}
+      START_RFID_READER: ${START_RFID_READER:-true}
+      RFID_DEBOUNCE_SECONDS: ${RFID_DEBOUNCE_SECONDS:-1.5}
+      STATION_SIGNAL_MODE: ${STATION_SIGNAL_MODE:-gpio}
+      ENABLE_STATION_SIGNAL: ${ENABLE_STATION_SIGNAL:-true}
+      STATION_SIGNAL_GPIO: ${STATION_SIGNAL_GPIO:-24}
+      STATION_SIGNAL_ACTIVE_LEVEL: ${STATION_SIGNAL_ACTIVE_LEVEL:-low}
+      ENABLE_SERIAL_CONTROLLER: ${ENABLE_SERIAL_CONTROLLER:-false}
       SERIAL_PORT: ${SERIAL_PORT:-/dev/ttyACM0}
       SERIAL_BAUDRATE: ${SERIAL_BAUDRATE:-9600}
       SERIAL_TIMEOUT: ${SERIAL_TIMEOUT:-0.5}
+      RC522_SPI_BUS: ${RC522_SPI_BUS:-0}
+      RC522_SPI_DEVICE: ${RC522_SPI_DEVICE:-0}
+      RC522_RST_GPIO: ${RC522_RST_GPIO:-25}
+      RC522_GPIO_MODE: ${RC522_GPIO_MODE:-BCM}
       FLASK_HOST: ${FLASK_HOST:-0.0.0.0}
       FLASK_PORT: ${FLASK_PORT:-5000}
       FLASK_DEBUG: ${FLASK_DEBUG:-false}
@@ -27,7 +41,8 @@ services:
       ADMIN_SESSION_TIMEOUT_SECONDS: ${ADMIN_SESSION_TIMEOUT_SECONDS:-1800}
       ENABLE_LOCAL_DEBUG_SDK: ${ENABLE_LOCAL_DEBUG_SDK:-true}
       ENABLE_WEBVIEW: ${ENABLE_WEBVIEW:-false}
-      START_ARDUINO_THREAD: ${START_ARDUINO_THREAD:-true}
+    group_add:
+      - "${GPIO_GROUP_ID:-997}"
     volumes:
       - smart-box-data:/app/data
       - smart-box-logs:/app/logs

@@ -102,9 +102,48 @@ nano .env
 Минимально проверь:
 
 - `FLASK_SECRET_KEY` (замени `change-me`)
-- `SERIAL_PORT` (обычно `/dev/ttyACM0`)
-- `START_ARDUINO_THREAD=true`
+- `RFID_READER_MODE=rc522`
+- `RC522_RST_GPIO=25`
+- `STATION_SIGNAL_MODE=gpio`
+- `STATION_SIGNAL_GPIO=24`
+- `DOCKER_PRIVILEGED=true`
 - `ENABLE_LOCAL_DEBUG_SDK=false` (для прод/киоска)
+
+## 3.1) Подключение RC522 к Raspberry Pi 4
+
+Подключение для прямого чтения RFID без Arduino:
+
+- `SDA (SS)` -> `GPIO8 / CE0`
+- `SCK` -> `GPIO11 / SCLK`
+- `MOSI` -> `GPIO10`
+- `MISO` -> `GPIO9`
+- `RST` -> `GPIO25`
+- `GND` -> `GND`
+- `3.3V` -> `3.3V`
+
+Важно:
+
+- не подключай `RC522` к `5V`, модуль должен питаться от `3.3V`
+- на Raspberry Pi должен быть включён `SPI`
+- библиотека `mfrc522` ставится только на Linux ARM (`Raspberry Pi`), на обычной локальной машине без GPIO это нормально не использовать
+
+Включить `SPI` можно так:
+
+```bash
+sudo raspi-config
+```
+
+Дальше:
+
+- `Interface Options`
+- `SPI`
+- `Enable`
+
+После этого перезагрузи Raspberry Pi и проверь наличие устройства:
+
+```bash
+ls /dev/spidev0.0
+```
 
 ## 4) Сборка и запуск
 
@@ -174,43 +213,71 @@ docker exec smart-box python manage_db.py list-borrow-records
 
 - Переход по ссылке `/admin` открывает админку сразу, без PIN.
 
-## 7) Проверка Arduino
+## 7) Проверка RC522 на Raspberry Pi
 
-`docker-compose.yml` уже пробрасывает serial-устройство внутрь контейнера через переменную `SERIAL_PORT`.
-Если у тебя считыватель висит не на `/dev/ttyACM0`, измени это значение в `.env` перед запуском.
+Теперь RFID читается напрямую с Raspberry Pi через `SPI/GPIO`, без Arduino.
 
-Проверить, видит ли Linux устройство:
+Проверить, что `SPI` доступен на хосте:
 
 ```bash
-ls /dev/ttyACM* /dev/ttyUSB*
-dmesg | grep -i -E "tty|usb|arduino|cdc"
+ls /dev/spidev0.0
 ```
 
-Проверить, что в логах backend приходят данные:
+Проверить, что контейнер поднят с доступом к железу:
 
 ```bash
+docker compose ps
 docker compose logs -f smart-box
 ```
 
-Ожидаемый формат скана:
+При поднесении карты в логах должен появиться UID примерно в таком виде:
 
 ```text
-Received: CARDUID:F015ACDA
 Received UID: F015ACDA
 ```
 
-Если Docker пишет `no such file or directory` для `/dev/ttyACM0`, значит:
+Если UID не читается, проверь:
 
-- устройство не появилось на хосте
-- или в `.env` указан неверный `SERIAL_PORT`
-- или контейнер был поднят раньше, чем устройство стало доступно
+- включён ли `SPI` через `raspi-config`
+- правильно ли подключён `RST` к `GPIO25`
+- что модуль питается от `3.3V`, а не от `5V`
+- что контейнер запущен с `DOCKER_PRIVILEGED=true`
+- что в `.env` не изменены `RC522_SPI_BUS=0` и `RC522_SPI_DEVICE=0` без причины
 
-После исправления перезапусти контейнер:
+Если нужно оставить отдельный serial-контроллер для сигналов станции, включи в `.env`:
 
-```bash
-docker compose down
-docker compose up --build -d
+```env
+ENABLE_SERIAL_CONTROLLER=true
+STATION_SIGNAL_MODE=serial
+SERIAL_DEVICE_MAPPING=/dev/ttyACM0:/dev/ttyACM0
+SERIAL_PORT=/dev/ttyACM0
 ```
+
+## 7.1) Управление станцией через GPIO Raspberry Pi
+
+Маршруты `/send_arduino_signal` и `/send_arduino_signal_on` сохранены для совместимости с текущим фронтендом, но теперь они могут управлять станцией напрямую через GPIO Raspberry Pi.
+
+Логика такая:
+
+- `/send_arduino_signal` включает управляющий сигнал
+- `/send_arduino_signal_on` выключает управляющий сигнал
+
+Настройка в `.env`:
+
+```env
+STATION_SIGNAL_MODE=gpio
+ENABLE_STATION_SIGNAL=true
+STATION_SIGNAL_GPIO=24
+STATION_SIGNAL_ACTIVE_LEVEL=low
+```
+
+Пояснение:
+
+- `STATION_SIGNAL_GPIO` это GPIO-пин Raspberry Pi, который идёт на реле, замок или другой исполнительный вход
+- `STATION_SIGNAL_ACTIVE_LEVEL=low` означает active-low логику, это частый вариант для релейных модулей
+- если у тебя модуль включается уровнем `HIGH`, поставь `STATION_SIGNAL_ACTIVE_LEVEL=high`
+
+Если управляющее реле или контроллер станции подключены уже не к `GPIO24`, просто поменяй номер в `.env`.
 
 ## 8) Автозапуск после reboot (опционально)
 

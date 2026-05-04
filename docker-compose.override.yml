@@ -1,5 +1,8 @@
 services:
   smart-box:
     environment:
-      START_ARDUINO_THREAD: "false"
+      ENABLE_SERIAL_CONTROLLER: "false"
+      START_RFID_READER: "false"
+      ENABLE_STATION_SIGNAL: "false"
+    privileged: false
     devices: !reset []
