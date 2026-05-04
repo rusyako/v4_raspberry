@@ -1347,6 +1347,24 @@ def debug_scan_uid():
     )
 
 
+@app.route('/hardware/rfid-scan', methods=['POST'])
+def hardware_rfid_scan():
+    if not is_local_request():
+        return error_response('Разрешено только локально. / Allowed only from localhost.', 403)
+
+    data = request.get_json(silent=True) or {}
+    uid = str(data.get('uid') or '').strip()
+
+    if not uid:
+        return error_response('Введите UID. / Enter UID.')
+
+    success, message = queue_uid_scan(uid)
+    if not success:
+        return error_response(message, 404, code='RFID_USER_NOT_FOUND')
+
+    return success_response(message, uid=normalize_uid_value(uid))
+
+
 @app.route('/')
 def index():
     client_session_id = mark_client_active()

@@ -102,11 +102,11 @@ nano .env
 Минимально проверь:
 
 - `FLASK_SECRET_KEY` (замени `change-me`)
-- `RFID_READER_MODE=rc522`
+- `RFID_READER_MODE=disabled`
 - `RC522_RST_GPIO=25`
 - `STATION_SIGNAL_MODE=gpio`
 - `STATION_SIGNAL_GPIO=24`
-- `DOCKER_PRIVILEGED=true`
+- `DOCKER_PRIVILEGED=false`
 - `ENABLE_LOCAL_DEBUG_SDK=false` (для прод/киоска)
 
 ## 3.1) Подключение RC522 к Raspberry Pi 4
@@ -145,7 +145,7 @@ sudo raspi-config
 ls /dev/spidev0.0
 ```
 
-## 4) Сборка и запуск
+## 4) Сборка и запуск backend в Docker
 
 Из корня проекта:
 
@@ -215,7 +215,11 @@ docker exec smart-box python manage_db.py list-borrow-records
 
 ## 7) Проверка RC522 на Raspberry Pi
 
-Теперь RFID читается напрямую с Raspberry Pi через `SPI/GPIO`, без Arduino.
+Надёжная схема для Raspberry Pi такая:
+
+- `smart-box` backend работает в Docker
+- `RC522` reader работает на хосте Raspberry Pi отдельным Python-скриптом
+- host-скрипт отправляет UID в backend через `http://127.0.0.1:5000/hardware/rfid-scan`
 
 Проверить, что `SPI` доступен на хосте:
 
@@ -223,17 +227,38 @@ docker exec smart-box python manage_db.py list-borrow-records
 ls /dev/spidev0.0
 ```
 
-Проверить, что контейнер поднят с доступом к железу:
+Установить зависимости для host reader script:
+
+```bash
+sudo apt update
+sudo apt install -y python3-pip python3-dev gcc
+python3 -m pip install --break-system-packages RPi.GPIO spidev mfrc522
+```
+
+Поднять backend-контейнер:
 
 ```bash
 docker compose ps
 docker compose logs -f smart-box
 ```
 
-При поднесении карты в логах должен появиться UID примерно в таком виде:
+Запустить host reader script:
+
+```bash
+python3 scripts/rc522_reader.py
+```
+
+Или через helper script с автоподхватом `.env`:
+
+```bash
+chmod +x scripts/start-rc522-reader.sh
+./scripts/start-rc522-reader.sh
+```
+
+При поднесении карты в консоли host reader script должен появиться UID примерно в таком виде:
 
 ```text
-Received UID: F015ACDA
+Card detected: F015ACDA
 ```
 
 Если UID не читается, проверь:
@@ -241,8 +266,14 @@ Received UID: F015ACDA
 - включён ли `SPI` через `raspi-config`
 - правильно ли подключён `RST` к `GPIO25`
 - что модуль питается от `3.3V`, а не от `5V`
-- что контейнер запущен с `DOCKER_PRIVILEGED=true`
+- что backend уже запущен на `127.0.0.1:5000`
 - что в `.env` не изменены `RC522_SPI_BUS=0` и `RC522_SPI_DEVICE=0` без причины
+
+Если host reader script видит карту, но backend её не принимает, проверь ответ endpoint:
+
+```bash
+curl -X POST http://127.0.0.1:5000/hardware/rfid-scan -H 'Content-Type: application/json' -d '{"uid":"F015ACDA"}'
+```
 
 Если нужно оставить отдельный serial-контроллер для сигналов станции, включи в `.env`:
 

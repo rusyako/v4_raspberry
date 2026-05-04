@@ -8,8 +8,6 @@ services:
       - "${HOST_PORT:-5000}:${FLASK_PORT:-5000}"
     privileged: ${DOCKER_PRIVILEGED:-false}
     devices:
-      - "/dev/spidev0.0:/dev/spidev0.0"
-      - "/dev/gpiomem:/dev/gpiomem"
       - "${SERIAL_DEVICE_MAPPING:-/dev/null:/dev/null}"
     environment:
       DATA_DIR: ${DATA_DIR:-/app/data}
@@ -20,8 +18,8 @@ services:
       LOG_FILE: ${LOG_FILE:-smart-box.log}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_BACKUP_DAYS: ${LOG_BACKUP_DAYS:-14}
-      RFID_READER_MODE: ${RFID_READER_MODE:-rc522}
-      START_RFID_READER: ${START_RFID_READER:-true}
+      RFID_READER_MODE: ${RFID_READER_MODE:-disabled}
+      START_RFID_READER: ${START_RFID_READER:-false}
       RFID_DEBOUNCE_SECONDS: ${RFID_DEBOUNCE_SECONDS:-1.5}
       STATION_SIGNAL_MODE: ${STATION_SIGNAL_MODE:-gpio}
       ENABLE_STATION_SIGNAL: ${ENABLE_STATION_SIGNAL:-true}
@@ -45,7 +43,6 @@ services:
     group_add:
       - "${GPIO_GROUP_ID:-997}"
     volumes:
-      - /sys/firmware/devicetree/base:/sys/firmware/devicetree/base:ro
       - smart-box-data:/app/data
       - smart-box-logs:/app/logs
     restart: unless-stopped
