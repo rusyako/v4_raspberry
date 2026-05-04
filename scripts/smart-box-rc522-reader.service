@@ -1,0 +1,17 @@
+[Unit]
+Description=Smart Box RC522 RFID Reader
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/v4_raspberry
+ExecStart=/usr/bin/env bash /home/admin/v4_raspberry/scripts/start-rc522-reader.sh
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

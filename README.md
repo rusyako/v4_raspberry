@@ -145,6 +145,53 @@ sudo raspi-config
 ls /dev/spidev0.0
 ```
 
+## 3.2) Как RFID теперь работает
+
+Схема работы после перехода с Arduino такая:
+
+- `smart-box` backend работает в Docker-контейнере
+- `RC522` подключён напрямую к `Raspberry Pi`
+- отдельный host-скрипт `scripts/rc522_reader.py` запускается на самой Raspberry Pi, а не в Docker
+- host-скрипт читает UID карты через `SPI/GPIO`
+- после чтения UID отправляется в backend по локальному адресу `http://127.0.0.1:5000/hardware/rfid-scan`
+
+Это сделано специально, потому что `RPi.GPIO` и `mfrc522` нестабильно работают внутри Docker даже на настоящем Raspberry Pi, а на хосте Raspberry Pi работают надёжно.
+
+## 3.3) Реле двери и логика магнита
+
+Если используется готовый релейный модуль для удерживающего магнита двери, подключение к Raspberry Pi такое:
+
+```text
+Relay IN   -> Raspberry Pi GPIO24 (physical pin 18)
+Relay VCC  -> Raspberry Pi 5V (physical pin 2 or 4)
+Relay GND  -> Raspberry Pi GND (physical pin 6)
+```
+
+Логика в проекте такая:
+
+- host RFID reader script читает UID карты
+- backend проверяет, есть ли карта в базе пользователей
+- если карта распознана, backend временно переводит реле двери в состояние `unlock`
+- через несколько секунд backend автоматически возвращает реле в состояние `lock`
+
+Настройки в `.env`:
+
+```env
+STATION_SIGNAL_MODE=gpio
+ENABLE_STATION_SIGNAL=true
+STATION_SIGNAL_GPIO=24
+STATION_SIGNAL_ACTIVE_LEVEL=low
+ENABLE_DOOR_UNLOCK_ON_RFID=true
+DOOR_UNLOCK_DURATION_SECONDS=5
+```
+
+Пояснение:
+
+- `STATION_SIGNAL_GPIO=24` соответствует подключению `IN -> GPIO24`
+- `STATION_SIGNAL_ACTIVE_LEVEL=low` подходит для большинства active-low relay modules
+- `ENABLE_DOOR_UNLOCK_ON_RFID=true` включает автоматическое отпускание магнита после валидной карты
+- `DOOR_UNLOCK_DURATION_SECONDS=5` означает, что дверь будет отпущена на 5 секунд
+
 ## 4) Сборка и запуск backend в Docker
 
 Из корня проекта:
@@ -227,6 +274,24 @@ docker exec smart-box python manage_db.py list-borrow-records
 ls /dev/spidev0.0
 ```
 
+Проверить, что модуль подключён именно так:
+
+```text
+RC522 SDA(SS) -> Raspberry Pi GPIO8 / CE0
+RC522 SCK     -> Raspberry Pi GPIO11 / SCLK
+RC522 MOSI    -> Raspberry Pi GPIO10
+RC522 MISO    -> Raspberry Pi GPIO9
+RC522 RST     -> Raspberry Pi GPIO25
+RC522 GND     -> Raspberry Pi GND
+RC522 3.3V    -> Raspberry Pi 3.3V
+```
+
+Важно:
+
+- не подключай `RC522` к `5V`
+- `RST` в текущей конфигурации должен быть на `GPIO25`
+- `SPI` должен быть включён через `raspi-config`
+
 Установить зависимости для host reader script:
 
 ```bash
@@ -255,6 +320,71 @@ chmod +x scripts/start-rc522-reader.sh
 ./scripts/start-rc522-reader.sh
 ```
 
+Полный минимальный сценарий запуска после reboot:
+
+```bash
+cd ~/v4_raspberry
+sudo docker compose -f docker-compose.yml up --build -d
+python3 scripts/rc522_reader.py
+```
+
+## 7.1) Автозапуск RC522 reader через systemd
+
+Чтобы Raspberry Pi работала автономно после перезагрузки, host reader script лучше запускать как `systemd`-service.
+
+В репозитории уже есть готовый unit-файл:
+
+- `scripts/smart-box-rc522-reader.service`
+
+Текущая версия рассчитана на пользователя `admin` и путь проекта:
+
+- `/home/admin/v4_raspberry`
+
+Если у тебя другой пользователь или проект лежит в другом каталоге, сначала поправь строки `User=`, `WorkingDirectory=` и `ExecStart=` в этом файле.
+
+Установка сервиса:
+
+```bash
+cd ~/v4_raspberry
+sudo cp scripts/smart-box-rc522-reader.service /etc/systemd/system/smart-box-rc522-reader.service
+sudo systemctl daemon-reload
+sudo systemctl enable smart-box-rc522-reader.service
+sudo systemctl start smart-box-rc522-reader.service
+```
+
+Проверка статуса:
+
+```bash
+sudo systemctl status smart-box-rc522-reader.service
+```
+
+Просмотр логов сервиса:
+
+```bash
+sudo journalctl -u smart-box-rc522-reader.service -f
+```
+
+Ожидаемое поведение:
+
+- после загрузки Raspberry Pi backend можно поднять через Docker
+- `smart-box-rc522-reader.service` автоматически стартует
+- при поднесении карты в `journalctl` появится строка вроде `Card detected: F015ACDA`
+
+Полезные команды управления сервисом:
+
+```bash
+sudo systemctl restart smart-box-rc522-reader.service
+sudo systemctl stop smart-box-rc522-reader.service
+sudo systemctl disable smart-box-rc522-reader.service
+```
+
+Если хочешь, чтобы и backend в Docker тоже гарантированно поднимался после reboot, убедись, что Docker включён:
+
+```bash
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
 При поднесении карты в консоли host reader script должен появиться UID примерно в таком виде:
 
 ```text
@@ -268,6 +398,12 @@ Card detected: F015ACDA
 - что модуль питается от `3.3V`, а не от `5V`
 - что backend уже запущен на `127.0.0.1:5000`
 - что в `.env` не изменены `RC522_SPI_BUS=0` и `RC522_SPI_DEVICE=0` без причины
+
+Если host reader script вообще не стартует, проверь установку зависимостей на самой Raspberry Pi:
+
+```bash
+python3 -m pip show RPi.GPIO spidev mfrc522
+```
 
 Если host reader script видит карту, но backend её не принимает, проверь ответ endpoint:
 

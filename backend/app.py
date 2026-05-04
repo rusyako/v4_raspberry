@@ -18,19 +18,10 @@ try:
 except ImportError:
     serial = None
 
-gpio_import_error = None
 try:
     import RPi.GPIO as GPIO
-except Exception as error:
+except Exception:
     GPIO = None
-    gpio_import_error = str(error)
-
-rc522_import_error = None
-try:
-    from mfrc522 import MFRC522
-except Exception as error:
-    MFRC522 = None
-    rc522_import_error = str(error)
 
 try:
     import openpyxl
@@ -52,27 +43,23 @@ LOG_DIR = os.getenv('LOG_DIR', os.path.join(PROJECT_ROOT, 'logs'))
 LOG_FILE = os.getenv('LOG_FILE', 'smart-box.log')
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
 LOG_BACKUP_DAYS = int(os.getenv('LOG_BACKUP_DAYS', '14'))
-RFID_READER_MODE = os.getenv('RFID_READER_MODE', 'rc522').strip().lower()
-START_RFID_READER = os.getenv('START_RFID_READER', 'true').lower() == 'true'
 RFID_DEBOUNCE_SECONDS = float(os.getenv('RFID_DEBOUNCE_SECONDS', '1.5'))
 ENABLE_SERIAL_CONTROLLER = os.getenv('ENABLE_SERIAL_CONTROLLER', 'false').lower() == 'true'
 STATION_SIGNAL_MODE = os.getenv('STATION_SIGNAL_MODE', 'gpio').strip().lower()
 ENABLE_STATION_SIGNAL = os.getenv('ENABLE_STATION_SIGNAL', 'true').lower() == 'true'
 STATION_SIGNAL_GPIO = int(os.getenv('STATION_SIGNAL_GPIO', '24'))
 STATION_SIGNAL_ACTIVE_LEVEL = os.getenv('STATION_SIGNAL_ACTIVE_LEVEL', 'low').strip().lower()
+ENABLE_DOOR_UNLOCK_ON_RFID = os.getenv('ENABLE_DOOR_UNLOCK_ON_RFID', 'true').lower() == 'true'
+DOOR_UNLOCK_DURATION_SECONDS = float(os.getenv('DOOR_UNLOCK_DURATION_SECONDS', '5'))
 SERIAL_PORT = os.getenv('SERIAL_PORT', '/dev/ttyACM0')
 SERIAL_BAUDRATE = int(os.getenv('SERIAL_BAUDRATE', '9600'))
 SERIAL_TIMEOUT = float(os.getenv('SERIAL_TIMEOUT', '0.5'))
-RC522_SPI_BUS = int(os.getenv('RC522_SPI_BUS', '0'))
-RC522_SPI_DEVICE = int(os.getenv('RC522_SPI_DEVICE', '0'))
-RC522_RST_GPIO = int(os.getenv('RC522_RST_GPIO', '25'))
 RC522_GPIO_MODE = os.getenv('RC522_GPIO_MODE', 'BCM').strip().upper()
 FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
 FLASK_PORT = int(os.getenv('FLASK_PORT', '5000'))
 FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY') or 'smart-box-dev-secret-key'
 ENABLE_WEBVIEW = os.getenv('ENABLE_WEBVIEW', 'false').lower() == 'true'
-START_ARDUINO_THREAD = os.getenv('START_ARDUINO_THREAD', 'true').lower() == 'true'
 ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv('ADMIN_SESSION_TIMEOUT_SECONDS', '1800'))
 ENABLE_LOCAL_DEBUG_SDK = os.getenv('ENABLE_LOCAL_DEBUG_SDK', 'true').lower() == 'true'
 
@@ -94,12 +81,6 @@ root_logger.handlers.clear()
 root_logger.setLevel(LOG_LEVEL)
 root_logger.addHandler(handler)
 
-if gpio_import_error:
-    logging.warning(f'RPi.GPIO is unavailable: {gpio_import_error}')
-
-if rc522_import_error:
-    logging.warning(f'MFRC522 is unavailable: {rc522_import_error}')
-
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 
@@ -110,9 +91,9 @@ if not os.getenv('FLASK_SECRET_KEY'):
     logging.warning('FLASK_SECRET_KEY is not set. Using development fallback secret key.')
 
 ser = None
-rfid_reader = None
 station_signal_initialized = False
 last_hardware_uid = {'uid': '', 'at': 0.0}
+door_relock_timer = None
 
 station_cells_status = '0/0'
 laptop_status = '0/0'
@@ -284,17 +265,6 @@ def extract_uid_from_serial_data(data):
     return None
 
 
-def normalize_rfid_reader_mode(raw_mode):
-    mode = str(raw_mode or '').strip().lower()
-    if mode in {'', 'off', 'none'}:
-        return 'disabled'
-    if mode in {'serial', 'arduino'}:
-        return 'serial'
-    if mode in {'rc522', 'gpio', 'spi'}:
-        return 'rc522'
-    return mode
-
-
 def get_rc522_pin_mode():
     if GPIO is None:
         return None
@@ -375,6 +345,36 @@ def set_station_signal(active):
         return False, 'Не удаётся переключить GPIO станции. / Unable to switch station GPIO.'
 
 
+def relock_door_after_timeout():
+    success, message = set_station_signal(False)
+    if success:
+        logging.info('Door relay returned to locked state.')
+    else:
+        logging.warning(f'Failed to relock door automatically: {message}')
+
+
+def trigger_door_unlock():
+    global door_relock_timer
+
+    if not ENABLE_DOOR_UNLOCK_ON_RFID:
+        return False, 'RFID door unlock is disabled.'
+
+    success, message = set_station_signal(True)
+    if not success:
+        return False, message
+
+    with runtime_state_lock:
+        if door_relock_timer is not None:
+            door_relock_timer.cancel()
+
+        door_relock_timer = threading.Timer(DOOR_UNLOCK_DURATION_SECONDS, relock_door_after_timeout)
+        door_relock_timer.daemon = True
+        door_relock_timer.start()
+
+    logging.info('Door unlocked for %.2f seconds after RFID recognition.', DOOR_UNLOCK_DURATION_SECONDS)
+    return True, 'Door unlocked.'
+
+
 def initialize_serial_controller():
     global ser
 
@@ -399,34 +399,6 @@ def ensure_serial_controller():
     if ser and ser.is_open:
         return ser
     return initialize_serial_controller()
-
-
-def initialize_rc522_reader():
-    global rfid_reader
-
-    if MFRC522 is None or GPIO is None:
-        logging.warning('RC522 dependencies are unavailable. Install Raspberry Pi GPIO/SPI packages in the container.')
-        rfid_reader = None
-        return None
-
-    try:
-        rfid_reader = MFRC522(
-            bus=RC522_SPI_BUS,
-            device=RC522_SPI_DEVICE,
-            pin_mode=get_rc522_pin_mode(),
-            pin_rst=RC522_RST_GPIO
-        )
-        logging.info(
-            'RC522 reader initialized on SPI bus %s device %s with RST GPIO %s.',
-            RC522_SPI_BUS,
-            RC522_SPI_DEVICE,
-            RC522_RST_GPIO
-        )
-        return rfid_reader
-    except Exception as error:
-        logging.error(f'Failed to initialize RC522 reader: {error}')
-        rfid_reader = None
-        return None
 
 
 def should_process_hardware_uid(uid):
@@ -454,21 +426,6 @@ def handle_hardware_uid(uid):
     success, message = queue_uid_scan(uid_value)
     if not success:
         print(message)
-
-
-def read_rc522_uid_no_block(reader):
-    if reader is None:
-        return None
-
-    status, _ = reader.MFRC522_Request(reader.PICC_REQIDL)
-    if status != reader.MI_OK:
-        return None
-
-    status, uid = reader.MFRC522_Anticoll()
-    if status != reader.MI_OK or len(uid) < 4:
-        return None
-
-    return ''.join(f'{part:02X}' for part in uid[:4])
 
 
 def build_home_state(client_session_id, user_actions_redirect=False, user_actions_event_id=0, user_actions_event_ack=0):
@@ -646,6 +603,10 @@ def queue_uid_scan(uid):
 
     with runtime_state_lock:
         pending_uid_scan_by_session[target_session_id] = {'uid': user['uid'], 'is_admin': bool(user.get('is_admin'))}
+
+    unlock_success, unlock_message = trigger_door_unlock()
+    if not unlock_success:
+        logging.warning(f'RFID recognized but door unlock failed: {unlock_message}')
 
     if user.get('is_admin'):
         return True, 'Администратор распознан. / Administrator recognized.'
@@ -1083,35 +1044,8 @@ def serial_controller_thread():
             time.sleep(1)
 
 
-def rc522_reader_thread():
-    reader = initialize_rc522_reader()
-    if reader is None:
-        return
-
-    while not stop_event.is_set():
-        try:
-            uid = read_rc522_uid_no_block(reader)
-            if uid:
-                handle_hardware_uid(uid)
-                time.sleep(0.2)
-                continue
-            time.sleep(0.1)
-        except Exception as error:
-            logging.error(f'RC522 reader thread error: {error}')
-            time.sleep(1)
-
-
 def start_hardware_threads():
-    reader_mode = normalize_rfid_reader_mode(RFID_READER_MODE)
-
-    if START_RFID_READER and reader_mode == 'rc522':
-        threading.Thread(target=rc522_reader_thread, daemon=True).start()
-    elif START_RFID_READER and reader_mode == 'serial':
-        threading.Thread(target=serial_controller_thread, daemon=True).start()
-    elif START_RFID_READER and reader_mode != 'disabled':
-        logging.warning(f'Unsupported RFID_READER_MODE: {RFID_READER_MODE}')
-
-    if ENABLE_SERIAL_CONTROLLER and reader_mode != 'serial':
+    if ENABLE_SERIAL_CONTROLLER:
         threading.Thread(target=serial_controller_thread, daemon=True).start()
 
 
@@ -1976,8 +1910,13 @@ def send_arduino_signal_on():
 
 
 def cleanup():
+    global door_relock_timer
+
     stop_event.set()
     time.sleep(0.2)
+    if door_relock_timer is not None:
+        door_relock_timer.cancel()
+        door_relock_timer = None
     if ser and ser.is_open:
         ser.close()
     if station_signal_initialized and GPIO is not None:
@@ -1985,12 +1924,7 @@ def cleanup():
             GPIO.output(STATION_SIGNAL_GPIO, get_station_signal_inactive_state())
         except Exception:
             pass
-    if rfid_reader is not None:
-        try:
-            rfid_reader.Close_MFRC522()
-        except Exception:
-            pass
-    elif GPIO is not None:
+    if GPIO is not None:
         try:
             GPIO.cleanup()
         except Exception:
