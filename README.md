@@ -171,8 +171,8 @@ Relay GND  -> Raspberry Pi GND (physical pin 6)
 
 - host RFID reader script читает UID карты
 - backend проверяет, есть ли карта в базе пользователей
-- если карта распознана, backend временно переводит реле двери в состояние `unlock`
-- через несколько секунд backend автоматически возвращает реле в состояние `lock`
+- если карта распознана, host RFID reader script временно переводит реле двери в состояние `unlock`
+- через несколько секунд тот же host RFID reader script автоматически возвращает реле в состояние `lock`
 
 Настройки в `.env`:
 
@@ -189,7 +189,7 @@ DOOR_UNLOCK_DURATION_SECONDS=5
 
 - `STATION_SIGNAL_GPIO=24` соответствует подключению `IN -> GPIO24`
 - `STATION_SIGNAL_ACTIVE_LEVEL=low` подходит для большинства active-low relay modules
-- `ENABLE_DOOR_UNLOCK_ON_RFID=true` включает автоматическое отпускание магнита после валидной карты
+- `ENABLE_DOOR_UNLOCK_ON_RFID=true` включает автоматическое отпускание магнита после валидной карты на стороне Raspberry Pi host script
 - `DOOR_UNLOCK_DURATION_SECONDS=5` означает, что дверь будет отпущена на 5 секунд
 
 ## 4) Сборка и запуск backend в Docker

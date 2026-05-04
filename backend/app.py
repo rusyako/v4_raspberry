@@ -49,8 +49,6 @@ STATION_SIGNAL_MODE = os.getenv('STATION_SIGNAL_MODE', 'gpio').strip().lower()
 ENABLE_STATION_SIGNAL = os.getenv('ENABLE_STATION_SIGNAL', 'true').lower() == 'true'
 STATION_SIGNAL_GPIO = int(os.getenv('STATION_SIGNAL_GPIO', '24'))
 STATION_SIGNAL_ACTIVE_LEVEL = os.getenv('STATION_SIGNAL_ACTIVE_LEVEL', 'low').strip().lower()
-ENABLE_DOOR_UNLOCK_ON_RFID = os.getenv('ENABLE_DOOR_UNLOCK_ON_RFID', 'true').lower() == 'true'
-DOOR_UNLOCK_DURATION_SECONDS = float(os.getenv('DOOR_UNLOCK_DURATION_SECONDS', '5'))
 SERIAL_PORT = os.getenv('SERIAL_PORT', '/dev/ttyACM0')
 SERIAL_BAUDRATE = int(os.getenv('SERIAL_BAUDRATE', '9600'))
 SERIAL_TIMEOUT = float(os.getenv('SERIAL_TIMEOUT', '0.5'))
@@ -93,7 +91,6 @@ if not os.getenv('FLASK_SECRET_KEY'):
 ser = None
 station_signal_initialized = False
 last_hardware_uid = {'uid': '', 'at': 0.0}
-door_relock_timer = None
 
 station_cells_status = '0/0'
 laptop_status = '0/0'
@@ -345,36 +342,6 @@ def set_station_signal(active):
         return False, 'Не удаётся переключить GPIO станции. / Unable to switch station GPIO.'
 
 
-def relock_door_after_timeout():
-    success, message = set_station_signal(False)
-    if success:
-        logging.info('Door relay returned to locked state.')
-    else:
-        logging.warning(f'Failed to relock door automatically: {message}')
-
-
-def trigger_door_unlock():
-    global door_relock_timer
-
-    if not ENABLE_DOOR_UNLOCK_ON_RFID:
-        return False, 'RFID door unlock is disabled.'
-
-    success, message = set_station_signal(True)
-    if not success:
-        return False, message
-
-    with runtime_state_lock:
-        if door_relock_timer is not None:
-            door_relock_timer.cancel()
-
-        door_relock_timer = threading.Timer(DOOR_UNLOCK_DURATION_SECONDS, relock_door_after_timeout)
-        door_relock_timer.daemon = True
-        door_relock_timer.start()
-
-    logging.info('Door unlocked for %.2f seconds after RFID recognition.', DOOR_UNLOCK_DURATION_SECONDS)
-    return True, 'Door unlocked.'
-
-
 def initialize_serial_controller():
     global ser
 
@@ -603,10 +570,6 @@ def queue_uid_scan(uid):
 
     with runtime_state_lock:
         pending_uid_scan_by_session[target_session_id] = {'uid': user['uid'], 'is_admin': bool(user.get('is_admin'))}
-
-    unlock_success, unlock_message = trigger_door_unlock()
-    if not unlock_success:
-        logging.warning(f'RFID recognized but door unlock failed: {unlock_message}')
 
     if user.get('is_admin'):
         return True, 'Администратор распознан. / Administrator recognized.'
@@ -1910,13 +1873,8 @@ def send_arduino_signal_on():
 
 
 def cleanup():
-    global door_relock_timer
-
     stop_event.set()
     time.sleep(0.2)
-    if door_relock_timer is not None:
-        door_relock_timer.cancel()
-        door_relock_timer = None
     if ser and ser.is_open:
         ser.close()
     if station_signal_initialized and GPIO is not None:

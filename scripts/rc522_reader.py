@@ -23,6 +23,11 @@ RFID_DEBOUNCE_SECONDS = float(os.getenv('RFID_DEBOUNCE_SECONDS', '1.5'))
 POST_TIMEOUT_SECONDS = float(os.getenv('SMART_BOX_RFID_POST_TIMEOUT', '3'))
 POLL_INTERVAL_SECONDS = float(os.getenv('SMART_BOX_RFID_POLL_INTERVAL', '0.1'))
 LOG_LEVEL = os.getenv('SMART_BOX_RFID_LOG_LEVEL', 'INFO').strip().upper()
+ENABLE_STATION_SIGNAL = os.getenv('ENABLE_STATION_SIGNAL', 'true').lower() == 'true'
+STATION_SIGNAL_GPIO = int(os.getenv('STATION_SIGNAL_GPIO', '24'))
+STATION_SIGNAL_ACTIVE_LEVEL = os.getenv('STATION_SIGNAL_ACTIVE_LEVEL', 'low').strip().lower()
+ENABLE_DOOR_UNLOCK_ON_RFID = os.getenv('ENABLE_DOOR_UNLOCK_ON_RFID', 'true').lower() == 'true'
+DOOR_UNLOCK_DURATION_SECONDS = float(os.getenv('DOOR_UNLOCK_DURATION_SECONDS', '5'))
 
 
 def configure_logging():
@@ -37,6 +42,36 @@ def get_gpio_mode():
     if RC522_GPIO_MODE == 'BOARD':
         return GPIO.BOARD
     return GPIO.BCM
+
+
+def get_active_signal_level():
+    return GPIO.LOW if STATION_SIGNAL_ACTIVE_LEVEL == 'low' else GPIO.HIGH
+
+
+def get_inactive_signal_level():
+    active_level = get_active_signal_level()
+    return GPIO.HIGH if active_level == GPIO.LOW else GPIO.LOW
+
+
+def initialize_station_signal():
+    current_mode = GPIO.getmode()
+    if current_mode is None:
+        GPIO.setmode(get_gpio_mode())
+
+    GPIO.setup(STATION_SIGNAL_GPIO, GPIO.OUT, initial=get_inactive_signal_level())
+
+
+def unlock_door():
+    if not ENABLE_STATION_SIGNAL or not ENABLE_DOOR_UNLOCK_ON_RFID:
+        return
+
+    try:
+        GPIO.output(STATION_SIGNAL_GPIO, get_active_signal_level())
+        logging.info('Door relay unlocked for %.2f seconds.', DOOR_UNLOCK_DURATION_SECONDS)
+        time.sleep(DOOR_UNLOCK_DURATION_SECONDS)
+    finally:
+        GPIO.output(STATION_SIGNAL_GPIO, get_inactive_signal_level())
+        logging.info('Door relay returned to locked state.')
 
 
 def normalize_uid(uid_bytes):
@@ -70,6 +105,7 @@ def post_uid(uid):
         with request.urlopen(http_request, timeout=POST_TIMEOUT_SECONDS) as response:
             body = response.read().decode('utf-8', errors='replace')
             logging.info('UID %s accepted by backend: %s', uid, body)
+            unlock_door()
             return True
     except error.HTTPError as http_error:
         body = http_error.read().decode('utf-8', errors='replace')
@@ -93,6 +129,7 @@ def main():
     configure_logging()
     logging.info('Starting RC522 reader for %s', API_URL)
 
+    initialize_station_signal()
     reader = build_reader()
     last_uid = ''
     last_seen_at = 0.0
