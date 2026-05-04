@@ -18,15 +18,19 @@ try:
 except ImportError:
     serial = None
 
+gpio_import_error = None
 try:
     import RPi.GPIO as GPIO
-except ImportError:
+except Exception as error:
     GPIO = None
+    gpio_import_error = str(error)
 
+rc522_import_error = None
 try:
     from mfrc522 import MFRC522
-except ImportError:
+except Exception as error:
     MFRC522 = None
+    rc522_import_error = str(error)
 
 try:
     import openpyxl
@@ -89,6 +93,12 @@ root_logger = logging.getLogger()
 root_logger.handlers.clear()
 root_logger.setLevel(LOG_LEVEL)
 root_logger.addHandler(handler)
+
+if gpio_import_error:
+    logging.warning(f'RPi.GPIO is unavailable: {gpio_import_error}')
+
+if rc522_import_error:
+    logging.warning(f'MFRC522 is unavailable: {rc522_import_error}')
 
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
