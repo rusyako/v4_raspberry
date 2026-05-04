@@ -9,6 +9,7 @@ services:
     privileged: ${DOCKER_PRIVILEGED:-false}
     devices:
       - "/dev/spidev0.0:/dev/spidev0.0"
+      - "/dev/gpiomem:/dev/gpiomem"
       - "${SERIAL_DEVICE_MAPPING:-/dev/null:/dev/null}"
     environment:
       DATA_DIR: ${DATA_DIR:-/app/data}
@@ -44,6 +45,7 @@ services:
     group_add:
       - "${GPIO_GROUP_ID:-997}"
     volumes:
+      - /sys/firmware/devicetree/base:/sys/firmware/devicetree/base:ro
       - smart-box-data:/app/data
       - smart-box-logs:/app/logs
     restart: unless-stopped
