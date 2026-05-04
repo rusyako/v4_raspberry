@@ -25,6 +25,12 @@ ENV DATA_DIR=/app/data
 ENV SQLITE_PATH=/app/data/smart-box.db
 ENV FRONTEND_DIST_DIR=/app/frontend/dist
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
