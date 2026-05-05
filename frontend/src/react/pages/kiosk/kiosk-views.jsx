@@ -44,6 +44,21 @@ export function KioskHomeView({
   return (
     <>
       <LanguageSwitcher language={language} setLanguage={setLanguage} />
+      <aside className="home-sensors-overlay" aria-label={t.kiosk.temperatureSensorsLabel}>
+        <div className="home-sensors-overlay-header">
+          <span>{t.kiosk.temperatureSensorsLabel}</span>
+        </div>
+        <div className="home-sensors-overlay-grid">
+          <article className="home-sensors-overlay-item">
+            <span>{t.kiosk.temperatureSensor1Label}</span>
+            <strong>{temperature1}</strong>
+          </article>
+          <article className="home-sensors-overlay-item">
+            <span>{t.kiosk.temperatureSensor2Label}</span>
+            <strong>{temperature2}</strong>
+          </article>
+        </div>
+      </aside>
 
       <main className="home-shell">
         <div className="home-content-grid">
@@ -97,22 +112,6 @@ export function KioskHomeView({
                 <span>{t.kiosk.stationCellsLabel}</span>
                 <strong>{stationCellsStatus}</strong>
               </div>
-
-              <section className="home-temperature-card" aria-label={t.kiosk.temperatureSensorsLabel}>
-                <div className="home-temperature-header">
-                  <span>{t.kiosk.temperatureSensorsLabel}</span>
-                </div>
-                <div className="home-temperature-grid">
-                  <article className="home-temperature-item">
-                    <span>{t.kiosk.temperatureSensor1Label}</span>
-                    <strong>{temperature1}</strong>
-                  </article>
-                  <article className="home-temperature-item">
-                    <span>{t.kiosk.temperatureSensor2Label}</span>
-                    <strong>{temperature2}</strong>
-                  </article>
-                </div>
-              </section>
 
               <p className="home-card-message">{t.kiosk.accessMessage}</p>
             </section>
