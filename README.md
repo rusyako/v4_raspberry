@@ -654,3 +654,140 @@ npm run build
 ```
 
 Для Docker это не обязательно: production frontend собирается внутри `docker build` автоматически.
+
+## 10) Быстрый сценарий для новой Raspberry Pi
+
+Этот раздел нужен для повторяемой установки на несколько Raspberry Pi без ручной донастройки каждый раз.
+
+Что уже умеет проект:
+
+- backend и frontend поднимаются через Docker Compose
+- Docker stack стартует после reboot через `smart-box.service`
+- host RC522 reader стартует через `smart-box-rc522-reader.service`
+- ночной импорт AD запускается каждый день в `02:00` через `smart-box-ad-sync.timer`
+
+### 10.1) Первый запуск на новой Raspberry Pi
+
+```bash
+cd ~
+git clone https://github.com/rusyako/v4_raspberry.git
+cd v4_raspberry
+cp .env.example .env
+nano .env
+```
+
+Проверь минимум:
+
+- `FLASK_SECRET_KEY`
+- `RC522_RST_GPIO=25`
+- `STATION_SIGNAL_GPIO=24`
+- `ENABLE_LOCAL_DEBUG_SDK=false`
+
+Если используется Arduino на `/dev/ttyACM0`, создай локальный `docker-compose.override.yml`:
+
+```bash
+cat > docker-compose.override.yml <<'EOF'
+services:
+  smart-box:
+    environment:
+      ENABLE_SERIAL_CONTROLLER: "true"
+      ENABLE_STATION_SIGNAL: "false"
+      SERIAL_PORT: "/dev/ttyACM0"
+    privileged: true
+    devices:
+      - "/dev/ttyACM0:/dev/ttyACM0"
+EOF
+```
+
+Проверить устройство:
+
+```bash
+ls -l /dev/ttyACM*
+```
+
+### 10.2) Подготовка host Python для RC522
+
+Если `scripts/rc522_reader.py` запускается на хосте Raspberry Pi, а не в Docker, установи зависимости в локальное виртуальное окружение:
+
+```bash
+cd ~/v4_raspberry
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install mfrc522 RPi.GPIO spidev
+deactivate
+```
+
+Проверка `SPI`:
+
+```bash
+ls -l /dev/spidev*
+```
+
+### 10.3) Сборка и включение автозапуска
+
+```bash
+cd ~/v4_raspberry
+sudo docker compose down
+sudo docker compose up --build -d
+chmod +x scripts/install_autostart.sh
+SMART_BOX_SERVICE_USER=root ./scripts/install_autostart.sh
+```
+
+Проверка:
+
+```bash
+sudo systemctl status smart-box.service --no-pager
+sudo systemctl status smart-box-rc522-reader.service --no-pager
+sudo systemctl status smart-box-ad-sync.timer --no-pager
+sudo systemctl list-timers smart-box-ad-sync.timer
+sudo docker compose logs --tail=100 smart-box
+```
+
+Ожидаемое состояние:
+
+- `smart-box.service` -> `active (exited)`
+- `smart-box-rc522-reader.service` -> `active (running)`
+- `smart-box-ad-sync.timer` -> `active (waiting)`
+
+### 10.4) Обновление уже установленной Raspberry Pi
+
+Если локально изменён `docker-compose.override.yml`, перед `git pull` временно убери его в stash:
+
+```bash
+cd ~/v4_raspberry
+git stash push -m "local override backup" -- docker-compose.override.yml
+git pull
+git stash pop
+```
+
+После обновления:
+
+```bash
+sudo docker compose down
+sudo docker compose up --build -d
+SMART_BOX_SERVICE_USER=root ./scripts/install_autostart.sh
+```
+
+### 10.5) Полезные проверки
+
+Проверить, что сервис Arduino виден контейнеру:
+
+```bash
+sudo docker compose exec smart-box ls -l /dev/ttyACM0
+```
+
+Проверить логи RC522:
+
+```bash
+sudo journalctl -u smart-box-rc522-reader.service -f
+```
+
+Проверить ручной запуск AD sync:
+
+```bash
+sudo systemctl start smart-box-ad-sync.service
+tail -n 50 ~/v4_raspberry/logs/ad-sync.log
+```
+
+Если `smart-box-rc522-reader.service` падает с ошибкой `No module named 'mfrc522'`, значит зависимости установлены не в тот Python. В этом случае заново установи пакеты в `~/v4_raspberry/venv` и перезапусти сервис.

@@ -12,4 +12,12 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-exec python3 "$PROJECT_ROOT/scripts/rc522_reader.py"
+if [[ -x "$PROJECT_ROOT/venv/bin/python" ]]; then
+  PYTHON_BIN="$PROJECT_ROOT/venv/bin/python"
+elif [[ -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
+  PYTHON_BIN="$PROJECT_ROOT/.venv/bin/python"
+else
+  PYTHON_BIN="python3"
+fi
+
+exec "$PYTHON_BIN" "$PROJECT_ROOT/scripts/rc522_reader.py"

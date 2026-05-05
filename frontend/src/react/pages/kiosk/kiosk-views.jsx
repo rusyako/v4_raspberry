@@ -45,19 +45,14 @@ export function KioskHomeView({
     <>
       <LanguageSwitcher language={language} setLanguage={setLanguage} />
       <aside className="home-sensors-overlay" aria-label={t.kiosk.temperatureSensorsLabel}>
-        <div className="home-sensors-overlay-header">
-          <span>{t.kiosk.temperatureSensorsLabel}</span>
-        </div>
-        <div className="home-sensors-overlay-grid">
-          <article className="home-sensors-overlay-item">
-            <span>{t.kiosk.temperatureSensor1Label}</span>
-            <strong>{temperature1}</strong>
-          </article>
-          <article className="home-sensors-overlay-item">
-            <span>{t.kiosk.temperatureSensor2Label}</span>
-            <strong>{temperature2}</strong>
-          </article>
-        </div>
+        <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor1Label}: ${temperature1}`}>
+          <span>T1</span>
+          <strong>{temperature1}</strong>
+        </article>
+        <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor2Label}: ${temperature2}`}>
+          <span>T2</span>
+          <strong>{temperature2}</strong>
+        </article>
       </aside>
 
       <main className="home-shell">
