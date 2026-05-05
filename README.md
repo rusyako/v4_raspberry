@@ -4,7 +4,7 @@ Smart Box - kiosk-система для выдачи и возврата MacBook
 
 ## Что внутри
 
-- `backend/` - Flask API, SQLite, интеграция с Arduino/Serial
+- `backend/` - Flask API, SQLite, интеграция с serial и host RFID relay flow
 - `frontend/` - Vite + React frontend
 - `manage_db.py` - CLI для управления БД (пользователи/устройства)
 
@@ -14,6 +14,11 @@ Smart Box - kiosk-система для выдачи и возврата MacBook
 - `/admin` - админ-страница
 
 Docker-образ сам собирает frontend внутри контейнера. Отдельно готовить `frontend/dist` перед запуском не нужно.
+
+Проект поддерживает 2 режима запуска:
+
+- обычный Docker-режим на любом устройстве без Raspberry Pi hardware
+- Raspberry Pi kiosk-режим с `RC522` и реле двери на host side
 
 ## 1) Установка Docker на Ubuntu
 
@@ -108,6 +113,41 @@ nano .env
 - `STATION_SIGNAL_GPIO=24`
 - `DOCKER_PRIVILEGED=false`
 - `ENABLE_LOCAL_DEBUG_SDK=false` (для прод/киоска)
+
+## 3.0) Быстрый запуск на обычном устройстве без Raspberry Pi hardware
+
+Если нужно просто поднять проект на другом компьютере без `RC522`, реле и GPIO, достаточно Docker.
+
+Минимальный сценарий:
+
+```bash
+git clone https://github.com/rusyako/v4_raspberry.git
+cd v4_raspberry
+cp .env.example .env
+docker compose up --build -d
+docker compose ps
+docker compose logs -f smart-box
+```
+
+В таком режиме:
+
+- backend и frontend работают в Docker
+- RFID reader не нужен
+- door relay не нужен
+- можно пользоваться UI, админкой, БД, импортом и остальной backend-логикой
+
+Открыть:
+
+- `http://localhost:5000/`
+- `http://localhost:5000/admin`
+
+Если нужна только локальная отладка админки на обычном компьютере, можно временно включить:
+
+```env
+ENABLE_LOCAL_DEBUG_SDK=true
+```
+
+Тогда локальный доступ к `/admin` с того же устройства будет работать без admin-card.
 
 ## 3.1) Подключение RC522 к Raspberry Pi 4
 
