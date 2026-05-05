@@ -33,6 +33,8 @@ export function KioskHomeView({
   language,
   setLanguage,
   stationCellsStatus,
+  temperature1,
+  temperature2,
   activeBorrowedRecords,
   isActiveBorrowedLoading,
   t
@@ -95,6 +97,22 @@ export function KioskHomeView({
                 <span>{t.kiosk.stationCellsLabel}</span>
                 <strong>{stationCellsStatus}</strong>
               </div>
+
+              <section className="home-temperature-card" aria-label={t.kiosk.temperatureSensorsLabel}>
+                <div className="home-temperature-header">
+                  <span>{t.kiosk.temperatureSensorsLabel}</span>
+                </div>
+                <div className="home-temperature-grid">
+                  <article className="home-temperature-item">
+                    <span>{t.kiosk.temperatureSensor1Label}</span>
+                    <strong>{temperature1}</strong>
+                  </article>
+                  <article className="home-temperature-item">
+                    <span>{t.kiosk.temperatureSensor2Label}</span>
+                    <strong>{temperature2}</strong>
+                  </article>
+                </div>
+              </section>
 
               <p className="home-card-message">{t.kiosk.accessMessage}</p>
             </section>

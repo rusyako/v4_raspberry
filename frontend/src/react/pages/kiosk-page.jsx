@@ -30,6 +30,8 @@ export function KioskPage() {
     setLanguage,
     t,
     stationCellsStatus,
+    temperature1,
+    temperature2,
     activeBorrowedRecords,
     isActiveBorrowedLoading,
     view,
@@ -59,6 +61,8 @@ export function KioskPage() {
           language={language}
           setLanguage={setLanguage}
           stationCellsStatus={stationCellsStatus}
+          temperature1={temperature1}
+          temperature2={temperature2}
           activeBorrowedRecords={activeBorrowedRecords}
           isActiveBorrowedLoading={isActiveBorrowedLoading}
           t={t}

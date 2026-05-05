@@ -24,6 +24,8 @@ export function useKioskController(showToast) {
   const [takeBarcodes, setTakeBarcodes] = useState(() => readStoredArray(TAKE_BARCODES_STORAGE_KEY));
   const [returnBarcodes, setReturnBarcodes] = useState(() => readStoredArray(RETURN_BARCODES_STORAGE_KEY));
   const [stationCellsStatus, setStationCellsStatus] = useState('0/0');
+  const [temperature1, setTemperature1] = useState('--.-°C');
+  const [temperature2, setTemperature2] = useState('--.-°C');
   const [activeBorrowedRecords, setActiveBorrowedRecords] = useState([]);
   const [isActiveBorrowedLoading, setIsActiveBorrowedLoading] = useState(false);
   const [hasLoadedActiveBorrowedRecords, setHasLoadedActiveBorrowedRecords] = useState(false);
@@ -82,6 +84,8 @@ export function useKioskController(showToast) {
         const data = await requestJson('/home_state', { cache: 'no-store' });
         setLaptopCount(data.laptop_count || '0/0');
         setStationCellsStatus(data.station_cells_status || data.laptop_count || '0/0');
+        setTemperature1(data.temperature_1 || '--.-°C');
+        setTemperature2(data.temperature_2 || '--.-°C');
 
         if (data.admin_redirect) {
           window.location.href = '/admin';
@@ -378,6 +382,8 @@ export function useKioskController(showToast) {
     t,
     laptopCount,
     stationCellsStatus,
+    temperature1,
+    temperature2,
     activeBorrowedRecords,
     isActiveBorrowedLoading,
     view,

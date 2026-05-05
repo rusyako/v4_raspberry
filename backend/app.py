@@ -93,6 +93,8 @@ station_signal_initialized = False
 last_hardware_uid = {'uid': '', 'at': 0.0}
 
 station_cells_status = '0/0'
+temperature_sensor_1 = '--.-°C'
+temperature_sensor_2 = '--.-°C'
 laptop_status = '0/0'
 last_detected_uid = None
 pending_uid_scan_by_session = {}
@@ -262,6 +264,17 @@ def extract_uid_from_serial_data(data):
     return None
 
 
+def parse_temperature_payload(data):
+    match = re.fullmatch(r'TEMPERATURE1:([^|]+)\|TEMPERATURE2:(.+)', data)
+    if not match:
+        return None
+
+    return {
+        'temperature_1': match.group(1).strip(),
+        'temperature_2': match.group(2).strip()
+    }
+
+
 def get_rc522_pin_mode():
     if GPIO is None:
         return None
@@ -410,6 +423,8 @@ def build_home_state(client_session_id, user_actions_redirect=False, user_action
         'unknown_user_uid': unknown_user_uid,
         'unknown_user_event_at': float(unknown_user_event_at or 0),
         'station_cells_status': station_cells_status,
+        'temperature_1': temperature_sensor_1,
+        'temperature_2': temperature_sensor_2,
         'laptop_count': laptop_status,
         'last_detected_uid': last_detected_uid_value
     }
@@ -980,7 +995,7 @@ def serve_frontend_page(filename):
 
 
 def serial_controller_thread():
-    global station_cells_status
+    global station_cells_status, temperature_sensor_1, temperature_sensor_2
 
     while not stop_event.is_set():
         try:
@@ -992,9 +1007,13 @@ def serial_controller_thread():
                     print('Received:', data)
 
                     uid = extract_uid_from_serial_data(data)
+                    temperatures = parse_temperature_payload(data)
                     if uid:
                         handle_hardware_uid(uid)
-                    elif '/' in data:
+                    elif temperatures:
+                        temperature_sensor_1 = temperatures['temperature_1']
+                        temperature_sensor_2 = temperatures['temperature_2']
+                    elif re.fullmatch(r'\d+/\d+', data):
                         station_cells_status = data
             time.sleep(0.1)
         except Exception as error:
