@@ -1,0 +1,17 @@
+[Unit]
+Description=Smart Box Docker Compose Stack
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=__SMART_BOX_USER__
+WorkingDirectory=__SMART_BOX_PROJECT_ROOT__
+ExecStart=/usr/bin/env bash __SMART_BOX_PROJECT_ROOT__/scripts/start-smart-box-service.sh
+ExecStop=/usr/bin/env bash __SMART_BOX_PROJECT_ROOT__/scripts/stop-smart-box-service.sh
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

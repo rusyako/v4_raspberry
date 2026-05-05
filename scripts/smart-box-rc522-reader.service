@@ -6,9 +6,9 @@ Requires=docker.service
 
 [Service]
 Type=simple
-User=admin
-WorkingDirectory=/home/admin/v4_raspberry
-ExecStart=/usr/bin/env bash /home/admin/v4_raspberry/scripts/start-rc522-reader.sh
+User=__SMART_BOX_USER__
+WorkingDirectory=__SMART_BOX_PROJECT_ROOT__
+ExecStart=/usr/bin/env bash __SMART_BOX_PROJECT_ROOT__/scripts/start-rc522-reader.sh
 Restart=always
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1

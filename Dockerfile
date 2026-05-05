@@ -29,6 +29,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend ./backend
+COPY scripts ./scripts
 COPY main.py ./main.py
 COPY manage_db.py ./manage_db.py
 COPY seed_data.json ./seed_data.json

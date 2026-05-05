@@ -368,7 +368,54 @@ sudo docker compose -f docker-compose.yml up --build -d
 python3 scripts/rc522_reader.py
 ```
 
-## 7.1) Автозапуск RC522 reader через systemd
+## 7.1) Автозапуск Docker, RC522 и AD sync через systemd
+
+В репозитории теперь есть готовая схема автозапуска для Raspberry Pi:
+
+- `scripts/smart-box.service` - поднимает Docker Compose stack после reboot
+- `scripts/smart-box-rc522-reader.service` - запускает host RC522 reader
+- `scripts/smart-box-ad-sync.timer` - запускает ночной AD sync каждый день в `02:00`
+- `scripts/smart-box-ad-sync.service` - one-shot service для импорта AD
+- `scripts/install_autostart.sh` - ставит и включает все unit-файлы сразу
+
+Установка:
+
+```bash
+cd ~/v4_raspberry
+chmod +x scripts/install_autostart.sh
+./scripts/install_autostart.sh
+```
+
+Если нужно поставить сервисы от другого пользователя, укажи его явно:
+
+```bash
+SMART_BOX_SERVICE_USER=admin ./scripts/install_autostart.sh
+```
+
+Проверка:
+
+```bash
+sudo systemctl status smart-box.service
+sudo systemctl status smart-box-rc522-reader.service
+sudo systemctl status smart-box-ad-sync.timer
+sudo systemctl list-timers smart-box-ad-sync.timer
+```
+
+Логи:
+
+```bash
+sudo journalctl -u smart-box.service -f
+sudo journalctl -u smart-box-rc522-reader.service -f
+tail -f logs/ad-sync.log
+```
+
+Ожидаемое поведение:
+
+- после загрузки Raspberry Pi Docker stack поднимается автоматически
+- `smart-box-rc522-reader.service` автоматически стартует
+- ночью в `02:00` выполняется импорт `scripts/Export_AD_users.py`
+
+## 7.2) Автозапуск RC522 reader через systemd
 
 Чтобы Raspberry Pi работала автономно после перезагрузки, host reader script лучше запускать как `systemd`-service.
 
@@ -544,7 +591,24 @@ sudo docker exec smart-box python /app/scripts/Export_AD_users.py
 
 Если появляется ошибка `password is mandatory in simple bind`, значит контейнер не прочитал `AD_PASSWORD` из `.env.ad`.
 
-## 8.2) Ночной автосинк AD через cron
+## 8.2) Ночной автосинк AD
+
+Рекомендуемый вариант теперь `systemd timer`, а не `cron`, потому что он лучше интегрирован с автозапуском сервисов и переживает пропущенное время через `Persistent=true`.
+
+Ручной запуск sync:
+
+```bash
+./scripts/sync_ad_users.sh
+```
+
+Принудительный запуск systemd job:
+
+```bash
+sudo systemctl start smart-box-ad-sync.service
+tail -n 50 logs/ad-sync.log
+```
+
+Старый вариант через `cron` можно оставить только если он уже используется.
 
 Для ежедневного запуска импорта в `02:00` настрой `root`-cron:
 

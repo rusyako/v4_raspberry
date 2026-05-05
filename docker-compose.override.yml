@@ -1,7 +1,9 @@
 services:
   smart-box:
     environment:
-      ENABLE_SERIAL_CONTROLLER: "false"
+      ENABLE_SERIAL_CONTROLLER: "true"
       ENABLE_STATION_SIGNAL: "false"
-    privileged: false
-    devices: !reset []
+      SERIAL_PORT: "/dev/ttyACM0"
+    privileged: true
+    devices:
+      - "/dev/ttyACM0:/dev/ttyACM0"

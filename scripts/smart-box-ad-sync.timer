@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly Smart Box Active Directory Sync
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+Unit=smart-box-ad-sync.service
+
+[Install]
+WantedBy=timers.target

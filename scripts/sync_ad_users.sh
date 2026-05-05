@@ -1,16 +1,24 @@
-#!/bin/sh
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
-PROJECT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${LOG_DIR:-$PROJECT_DIR/logs}"
 mkdir -p "$LOG_DIR"
 
 cd "$PROJECT_DIR"
 
-if [ -x "$PROJECT_DIR/.venv/bin/python" ]; then
-  PYTHON="$PROJECT_DIR/.venv/bin/python"
-else
-  PYTHON="python3"
+if [[ -f "$PROJECT_DIR/.env.ad" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$PROJECT_DIR/.env.ad"
+  set +a
 fi
 
-"$PYTHON" "$PROJECT_DIR/scripts/Export_AD_users.py" >> "$LOG_DIR/ad-sync.log" 2>&1
+docker_env_args=()
+for env_name in AD_SERVER AD_USER AD_PASSWORD AD_SEARCH_BASE AD_EXPORT_CSV_PATH AD_ENV_PATH; do
+  if [[ -n "${!env_name:-}" ]]; then
+    docker_env_args+=( -e "$env_name=${!env_name}" )
+  fi
+done
+
+docker compose exec -T "${docker_env_args[@]}" smart-box python /app/scripts/Export_AD_users.py >> "$LOG_DIR/ad-sync.log" 2>&1
