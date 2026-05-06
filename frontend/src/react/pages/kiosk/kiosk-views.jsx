@@ -29,6 +29,15 @@ function groupBorrowedRecordsByEmployee(records) {
   }));
 }
 
+function formatCompactTemperature(value) {
+  const match = String(value || '').match(/-?\d+(?:\.\d+)?/);
+  if (!match) {
+    return '--';
+  }
+
+  return `${Number.parseFloat(match[0]).toFixed(1)}°`;
+}
+
 export function KioskHomeView({
   language,
   setLanguage,
@@ -45,13 +54,11 @@ export function KioskHomeView({
     <>
       <LanguageSwitcher language={language} setLanguage={setLanguage} />
       <aside className="home-sensors-overlay" aria-label={t.kiosk.temperatureSensorsLabel}>
-        <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor1Label}: ${temperature1}`}>
-          <span>T1</span>
-          <strong>{temperature1}</strong>
+        <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor1Label}: ${temperature1}`} title={`${t.kiosk.temperatureSensor1Label}: ${temperature1}`}>
+          <strong>{formatCompactTemperature(temperature1)}</strong>
         </article>
-        <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor2Label}: ${temperature2}`}>
-          <span>T2</span>
-          <strong>{temperature2}</strong>
+        <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor2Label}: ${temperature2}`} title={`${t.kiosk.temperatureSensor2Label}: ${temperature2}`}>
+          <strong>{formatCompactTemperature(temperature2)}</strong>
         </article>
       </aside>
 
