@@ -157,7 +157,7 @@
 
 .home-sensors-overlay {
   position: fixed;
-  top: 18px;
+  bottom: 18px;
   left: 18px;
   z-index: 2;
   display: flex;
@@ -916,7 +916,7 @@
 @media (max-width: 720px) {
   .home-sensors-overlay {
     position: static;
-    margin: 92px 20px 0;
+    margin: 20px 20px 0;
   }
 
   .session-input-wrap {
