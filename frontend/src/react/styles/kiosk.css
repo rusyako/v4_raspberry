@@ -180,11 +180,19 @@
   line-height: 1.4;
 }
 
+.home-card-info-content span {
+  font-size: 18px;
+}
+
 .home-card-info-content strong,
 .home-count-card strong {
   font-size: clamp(40px, 5vw, 64px);
   line-height: 1;
   flex-shrink: 0;
+}
+
+.home-card-info-content strong {
+  font-size: clamp(60px, 7.5vw, 96px);
 }
 
 .home-sensors-overlay {
