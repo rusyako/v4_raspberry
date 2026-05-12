@@ -106,6 +106,14 @@
   color: rgba(236, 244, 248, 0.82);
 }
 
+.home-title-soon {
+  margin: 0;
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .home-card-info {
   display: flex;
   flex-direction: column;
@@ -596,10 +604,16 @@
   }
 
   .home-sidebar {
-    grid-template-rows: minmax(120px, 0.8fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 25%);
     gap: 10px;
     height: 100%;
     align-self: stretch;
+  }
+
+  .home-card-info {
+    align-self: end;
+    height: 100%;
+    min-height: 0;
   }
 
   .home-card {
@@ -634,6 +648,10 @@
     font-size: 14px;
     line-height: 1.2;
     padding-inline: 4px;
+  }
+
+  .home-title-soon {
+    font-size: clamp(28px, 4vw, 40px);
   }
 
   .home-card-info {

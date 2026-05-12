@@ -100,8 +100,7 @@ export function KioskHomeView({
           <div className="home-sidebar">
             <section className="home-card home-card-title">
               <div className="home-title-visual">
-                <img src={KIOSK_IMAGES.kioskLogo} alt="Smart Box" className="home-title-logo" />
-                <p className="home-title-subtitle">{t.kiosk.subtitle}</p>
+                <p className="home-title-soon">Скоро...</p>
               </div>
             </section>
 
