@@ -106,16 +106,10 @@ export function KioskHomeView({
             </section>
 
             <section className="home-card home-card-info">
-              <div className="home-card-header home-card-header-column">
-                <h2>{t.kiosk.cardTitle}</h2>
-              </div>
-
-              <div className="home-count-card">
+              <div className="home-count-card home-count-card-standalone">
                 <span>{t.kiosk.stationCellsLabel}</span>
                 <strong>{stationCellsStatus}</strong>
               </div>
-
-              <p className="home-card-message">{t.kiosk.accessMessage}</p>
             </section>
           </div>
         </div>

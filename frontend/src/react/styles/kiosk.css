@@ -109,8 +109,8 @@
 .home-card-info {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 24px;
+  justify-content: center;
+  gap: 0;
   min-height: auto;
 }
 
@@ -145,6 +145,11 @@
   padding: 22px;
   border-radius: 24px;
   background: linear-gradient(135deg, rgba(49, 165, 255, 0.16), rgba(78, 240, 164, 0.16));
+  min-height: 0;
+}
+
+.home-count-card-standalone {
+  height: 100%;
   min-height: 0;
 }
 
