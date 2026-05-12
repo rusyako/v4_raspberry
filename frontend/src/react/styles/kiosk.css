@@ -316,8 +316,13 @@
   gap: 12px;
 }
 
-.home-borrowed-person strong {
-  font-size: 16px;
+.home-borrowed-person-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .home-borrowed-count {
@@ -351,7 +356,7 @@
 .home-borrowed-device-name,
 .home-borrowed-device-time {
   margin: 0;
-  font-size: 14px;
+  font-size: 21px;
   line-height: 1.4;
 }
 
@@ -798,8 +803,8 @@
     gap: 8px;
   }
 
-  .home-borrowed-person strong {
-    font-size: 16px;
+  .home-borrowed-person-name {
+    font-size: 24px;
     line-height: 1.2;
   }
 
@@ -822,7 +827,7 @@
 
   .home-borrowed-device-name,
   .home-borrowed-device-time {
-    font-size: 15px;
+    font-size: 22px;
     line-height: 1.3;
   }
 

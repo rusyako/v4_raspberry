@@ -62,6 +62,13 @@ function formatBorrowedDateTime(isoString, language) {
   }
 }
 
+function splitEmployeeName(fullName) {
+  if (!fullName) return [];
+  
+  const parts = String(fullName).trim().split(/\s+/);
+  return parts.filter(Boolean);
+}
+
 export function KioskHomeView({
   language,
   setLanguage,
@@ -100,7 +107,11 @@ export function KioskHomeView({
                 {groupedBorrowedRecords.map((group) => (
                   <li key={group.employeeUid} className="home-borrowed-item">
                     <div className="home-borrowed-person">
-                      <strong>{group.employeeName}</strong>
+                      <div className="home-borrowed-person-name">
+                        {splitEmployeeName(group.employeeName).map((part, index) => (
+                          <div key={index}>{part}</div>
+                        ))}
+                      </div>
                       <span className="home-borrowed-count">{group.devices.length}</span>
                     </div>
                     <ul className="home-borrowed-device-list">
