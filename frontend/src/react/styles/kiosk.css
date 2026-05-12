@@ -301,7 +301,7 @@
   text-align: center;
 }
 
-.language-switcher {
+.screen-home .language-switcher {
   position: fixed;
   top: var(--home-overlay-offset);
   right: var(--home-overlay-offset);
@@ -310,7 +310,7 @@
   gap: var(--home-overlay-gap);
 }
 
-.language-flag {
+.screen-home .language-flag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -322,12 +322,12 @@
   padding: 0;
 }
 
-.language-flag.active {
+.screen-home .language-flag.active {
   border-color: rgba(255, 255, 255, 0.95);
   background: rgba(255, 255, 255, 0.15);
 }
 
-.language-flag img {
+.screen-home .language-flag img {
   width: var(--home-flag-image-size);
   height: var(--home-flag-image-size);
   object-fit: contain;
@@ -572,7 +572,7 @@
   .screen-home {
     --home-overlay-control-size: 84px;
     --home-flag-image-size: 46px;
-    --home-temperature-font-size: 20px;
+    --home-temperature-font-size: 10px;
     --home-overlay-gap: 8px;
     --home-overlay-offset: 10px;
   }
