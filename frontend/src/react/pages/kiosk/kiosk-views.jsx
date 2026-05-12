@@ -109,7 +109,7 @@ export function KioskHomeView({
             </section>
 
             <section className="home-card home-card-info">
-              <div className="home-count-card home-count-card-standalone">
+              <div className="home-card-info-content">
                 <span>{t.kiosk.stationCellsLabel}</span>
                 <strong>{stationCellsStatus}</strong>
               </div>
@@ -124,7 +124,6 @@ export function KioskHomeView({
 export function KioskActionsView({ onTake, onReturn, language, setLanguage, t }) {
   return (
     <section className="actions-shell">
-      <LanguageSwitcher language={language} setLanguage={setLanguage} />
       <header className="actions-header">
         <p className="actions-kicker">{t.kiosk.sessionConfirmed}</p>
         <h1>{t.kiosk.stationTitle}</h1>
@@ -223,7 +222,6 @@ export function KioskSessionView({
 
   return (
     <section className="session-shell">
-      <LanguageSwitcher language={language} setLanguage={setLanguage} />
       <header className="session-header">
         <h1>{title}</h1>
         <p>{description}</p>
@@ -276,7 +274,6 @@ export function UnknownUserView({ language, setLanguage, t }) {
 
   return (
     <section className="unknown-shell">
-      <LanguageSwitcher language={language} setLanguage={setLanguage} />
       <div className="unknown-card">
         <h1>{t.kiosk.unknownUserTitle}</h1>
         <p>{t.kiosk.unknownUserText}</p>
