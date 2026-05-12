@@ -1,10 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { deleteJson, postJson, requestJson } from '../shared/api';
-import { LanguageSwitcher } from '../shared/language-switcher';
 import { Modal } from '../shared/modal';
-import { LANGUAGE_STORAGE_KEY } from '../shared/storage';
 import { Toast, useToast } from '../shared/toast';
-import { getTranslations, resolveLanguage } from '../shared/translations';
+import { getTranslations } from '../shared/translations';
 
 const UsersPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersPanel })));
 const UsersTable = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersTable })));
@@ -12,7 +10,6 @@ const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ def
 
 export function AdminPage() {
   const [adminToken, setAdminToken] = useState('');
-  const [language, setLanguage] = useState(resolveLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY) || 'en'));
   const [users, setUsers] = useState([]);
   const [laptops, setLaptops] = useState([]);
   const [borrowRecords, setBorrowRecords] = useState([]);
@@ -23,16 +20,7 @@ export function AdminPage() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
   const { toast, showToast, clearToast } = useToast();
-  const t = useMemo(() => getTranslations(language), [language]);
-
-  useEffect(() => {
-    const resolvedLanguage = resolveLanguage(language);
-    if (resolvedLanguage !== language) {
-      setLanguage(resolvedLanguage);
-      return;
-    }
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, resolvedLanguage);
-  }, [language]);
+  const t = useMemo(() => getTranslations('ru'), []);
 
   function authHeaders() {
     return adminToken ? { 'X-Admin-Token': adminToken } : {};
@@ -181,7 +169,6 @@ export function AdminPage() {
       {!adminToken ? (
         <div className="admin-login-wrap">
           <div className="admin-login-panel">
-            <LanguageSwitcher language={language} setLanguage={setLanguage} />
             <h1>{t.admin.accessTitle}</h1>
             <p>{t.admin.connectingText}</p>
             <div className="admin-actions">
@@ -191,7 +178,6 @@ export function AdminPage() {
         </div>
       ) : (
         <div className="admin-page">
-          <LanguageSwitcher language={language} setLanguage={setLanguage} />
           <header className="admin-hero">
             <div>
               <p className="admin-eyebrow">{t.admin.controlRoom}</p>
