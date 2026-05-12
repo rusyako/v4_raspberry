@@ -1,6 +1,6 @@
 .screen-home {
   --home-overlay-control-size: 112px;
-  --home-temperature-control-size: 88px;
+  --home-temperature-control-size: 44px;
   --home-overlay-control-border: 2px;
   --home-flag-image-size: 60px;
   --home-temperature-font-size: 28px;
@@ -572,7 +572,7 @@
 @media (max-width: 1024px) and (max-height: 600px) {
   .screen-home {
     --home-overlay-control-size: 84px;
-    --home-temperature-control-size: 64px;
+    --home-temperature-control-size: 32px;
     --home-flag-image-size: 46px;
     --home-temperature-font-size: 10px;
     --home-overlay-gap: 8px;

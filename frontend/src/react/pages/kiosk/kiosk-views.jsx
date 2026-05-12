@@ -82,7 +82,7 @@ export function KioskHomeView({
                     <ul className="home-borrowed-device-list">
                       {group.devices.map((device) => (
                         <li key={device.id} className="home-borrowed-device-item">
-                          <p className="home-borrowed-device-name">{device.device_name || '-'} <span>({device.device_number || '-'})</span></p>
+                          <p className="home-borrowed-device-name">{device.barcode || '-'}</p>
                           <p className="home-borrowed-device-time">{device.taken_at || '-'}</p>
                         </li>
                       ))}
