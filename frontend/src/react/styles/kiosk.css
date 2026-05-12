@@ -412,13 +412,13 @@
   height: var(--home-overlay-control-size);
   border-radius: 999px;
   border: var(--home-overlay-control-border) solid rgba(255, 255, 255, 0.25);
-  background: rgba(7, 18, 28, 0.34);
+  background: rgba(5, 16, 23, 0.8);
   padding: 0;
 }
 
 .screen-home .language-flag.active {
   border-color: rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(5, 16, 23, 0.95);
 }
 
 .screen-home .language-flag img {
@@ -676,7 +676,7 @@
     --home-flag-image-size: 46px;
     --home-temperature-font-size: 10px;
     --home-overlay-gap: 8px;
-    --home-overlay-offset: 10px;
+    --home-overlay-offset: 25px;
   }
 
   .home-shell {
@@ -804,7 +804,7 @@
   }
 
   .home-borrowed-person-name {
-    font-size: 24px;
+    font-size: 18px;
     line-height: 1.2;
   }
 
@@ -827,7 +827,7 @@
 
   .home-borrowed-device-name,
   .home-borrowed-device-time {
-    font-size: 22px;
+    font-size: 16px;
     line-height: 1.3;
   }
 
