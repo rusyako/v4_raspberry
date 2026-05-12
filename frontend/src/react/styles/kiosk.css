@@ -763,13 +763,13 @@
 
   .home-card-info-content span,
   .home-count-card span {
-    font-size: 6px;
+    font-size: 12px;
     line-height: 1.2;
   }
 
   .home-card-info-content strong,
   .home-count-card strong {
-    font-size: clamp(20px, 2.5vw, 32px);
+    font-size: clamp(40px, 5vw, 64px);
   }
 
   .home-card-message {
