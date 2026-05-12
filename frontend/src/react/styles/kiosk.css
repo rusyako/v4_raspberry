@@ -184,7 +184,7 @@
 }
 
 .home-card-info-content span {
-  font-size: 12px;
+  font-size: 6px;
 }
 
 .home-card-info-content strong,
@@ -195,7 +195,7 @@
 }
 
 .home-card-info-content strong {
-  font-size: clamp(40px, 5vw, 64px);
+  font-size: clamp(20px, 2.5vw, 32px);
 }
 
 .home-sensors-overlay {
