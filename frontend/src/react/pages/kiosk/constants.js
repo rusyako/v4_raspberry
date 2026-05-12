@@ -1,5 +1,4 @@
 import kioskLogo from '../../../assets/img/kiosk-logo.png';
-import { LANGUAGE_IMAGES } from '../../shared/language-options';
 
 export const POLL_INTERVAL_MS = 3000;
 export const HOME_STATE_POLL_DEBOUNCE_MS = 350;
@@ -19,6 +18,5 @@ export const KIOSK_IMAGES = {
 };
 
 export const KIOSK_PRELOAD_IMAGES = [
-  KIOSK_IMAGES.kioskLogo,
-  ...LANGUAGE_IMAGES
+  KIOSK_IMAGES.kioskLogo
 ];

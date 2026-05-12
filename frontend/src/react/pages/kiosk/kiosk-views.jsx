@@ -98,6 +98,10 @@ export function KioskHomeView({
           </section>
 
           <div className="home-sidebar">
+            <section className="home-card home-card-flags">
+              <LanguageSwitcher language={language} setLanguage={setLanguage} />
+            </section>
+
             <section className="home-card home-card-title">
               <div className="home-title-visual">
                 <p className="home-title-soon">Скоро...</p>

@@ -3,7 +3,7 @@ import { LANGUAGE_OPTIONS } from './language-options';
 export function LanguageSwitcher({ language, setLanguage, ariaLabel = 'Language switcher' }) {
   return (
     <div className="language-switcher" aria-label={ariaLabel}>
-      {LANGUAGE_OPTIONS.map(({ code, image, label }) => (
+      {LANGUAGE_OPTIONS.map(({ code, shortLabel, label }) => (
         <button
           key={code}
           type="button"
@@ -11,7 +11,7 @@ export function LanguageSwitcher({ language, setLanguage, ariaLabel = 'Language 
           onClick={() => setLanguage(code)}
           aria-label={label}
         >
-          <img src={image} alt={label} />
+          <span>{shortLabel}</span>
         </button>
       ))}
     </div>

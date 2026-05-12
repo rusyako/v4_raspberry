@@ -70,8 +70,15 @@
 }
 
 .home-card-title,
-.home-card-info {
+.home-card-info,
+.home-card-flags {
   min-height: 0;
+}
+
+.home-card-flags {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .home-card-title {
@@ -324,6 +331,12 @@
   gap: var(--home-overlay-gap);
 }
 
+.home-card-flags .language-switcher {
+  position: static;
+  justify-content: center;
+  width: 100%;
+}
+
 .screen-home .language-flag {
   display: inline-flex;
   align-items: center;
@@ -346,6 +359,13 @@
   height: var(--home-flag-image-size);
   object-fit: contain;
   border-radius: 999px;
+}
+
+.screen-home .language-flag span {
+  font-size: clamp(16px, 2vw, 24px);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .screen-actions {
@@ -604,10 +624,18 @@
   }
 
   .home-sidebar {
-    grid-template-rows: minmax(0, 1fr) minmax(0, 25%);
+    grid-template-rows: minmax(0, 20%) minmax(0, 1fr) minmax(0, 20%);
     gap: 10px;
     height: 100%;
     align-self: stretch;
+  }
+
+  .screen-home > .language-switcher {
+    display: none;
+  }
+
+  .home-card-flags {
+    align-self: start;
   }
 
   .home-card-info {
