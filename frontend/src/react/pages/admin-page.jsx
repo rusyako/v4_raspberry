@@ -6,6 +6,7 @@ import { getTranslations } from '../shared/translations';
 
 const UsersPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersPanel })));
 const UsersTable = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersTable })));
+const LaptopsTable = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsTable })));
 const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsPanel })));
 
 export function AdminPage() {
@@ -16,6 +17,7 @@ export function AdminPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [showUsersListModal, setShowUsersListModal] = useState(false);
+  const [showDevicesListModal, setShowDevicesListModal] = useState(false);
   const emptyUserForm = { guid: '', uid: '', first_name: '', last_name: '', name: '', email: '', description: '', category: '', is_admin: false };
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
@@ -188,6 +190,7 @@ export function AdminPage() {
               <button type="button" className="primary-button" onClick={() => setShowUserModal(true)}>{t.admin.addUser}</button>
               <button type="button" className="primary-button" onClick={() => setShowDeviceModal(true)}>{t.admin.addDevice}</button>
               <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.viewUsers}</button>
+              <button type="button" className="ghost-button" onClick={() => setShowDevicesListModal(true)}>{t.admin.viewDevices}</button>
               <button type="button" className="ghost-button" onClick={() => loadAdminData()}>{t.common.refresh}</button>
               <button type="button" className="danger-button" onClick={handleLogout}>{t.common.logout}</button>
             </div>
@@ -293,6 +296,16 @@ export function AdminPage() {
                 users={users}
                 t={t}
                 onRemove={removeUser}
+              />
+            </Suspense>
+          </Modal>
+
+          <Modal isOpen={showDevicesListModal} onClose={() => setShowDevicesListModal(false)} title={t.admin.registeredDevices} fullscreen>
+            <Suspense fallback={<div>Loading...</div>}>
+              <LaptopsTable
+                laptops={laptops}
+                t={t}
+                onRemove={removeLaptop}
               />
             </Suspense>
           </Modal>

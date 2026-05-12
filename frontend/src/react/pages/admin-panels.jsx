@@ -236,6 +236,50 @@ export const UsersTable = memo(function UsersTable({ users, t, onRemove }) {
   );
 });
 
+export const LaptopsTable = memo(function LaptopsTable({ laptops, t, onRemove }) {
+  return (
+    <section className="admin-panel users-table-panel">
+      <div className="admin-panel-head">
+        <h2>{t.admin.registeredDevices}</h2>
+      </div>
+      <div className="admin-table-wrap users-table-wrap">
+        <table className="admin-table users-table">
+          <thead>
+            <tr>
+              <th>{t.admin.deviceNameLabel}</th>
+              <th>{t.admin.barcodeLabel}</th>
+              <th>{t.admin.deviceNumberLabel}</th>
+              <th>{t.admin.columns.status}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {laptops.length ? laptops.map((laptop) => (
+              <tr key={`${laptop.name}:${laptop.barcode}`}>
+                <td><strong>{laptop.name || '-'}</strong></td>
+                <td><code>{laptop.barcode || '-'}</code></td>
+                <td><code>{laptop.device_number || '-'}</code></td>
+                <td>
+                  <span className={`status-badge ${laptop.status === 'available' ? 'status-available' : 'status-unavailable'}`}>
+                    {laptop.status === 'available' ? t.admin.statusAvailable : t.admin.statusUnavailable}
+                  </span>
+                </td>
+                <td>
+                  <button type="button" className="danger-button small" onClick={() => onRemove(laptop.name)}>{t.common.remove}</button>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan="5" className="admin-empty">{t.admin.noDevices}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+});
+
 export const LaptopsPanel = memo(function LaptopsPanel({
   laptopForm,
   setLaptopForm,
