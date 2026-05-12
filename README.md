@@ -114,6 +114,20 @@ nano .env
 - `DOCKER_PRIVILEGED=false`
 - `ENABLE_LOCAL_DEBUG_SDK=false` (для прод/киоска)
 
+Если нужно открыть `/admin` для всех устройств в локальной сети без admin-card, включи:
+
+```env
+ENABLE_LOCAL_DEBUG_SDK=true
+```
+
+В этом режиме доступ к `/admin` будет автоматически разрешён для запросов из `localhost` и private LAN ranges, например:
+
+- `192.168.x.x`
+- `10.x.x.x`
+- `172.16.x.x` - `172.31.x.x`
+
+Важно: это снижает защиту админки. Используй только в доверенной локальной сети.
+
 ## 3.0) Быстрый запуск на обычном устройстве без Raspberry Pi hardware
 
 Если нужно просто поднять проект на другом компьютере без `RC522`, реле и GPIO, достаточно Docker.
@@ -749,6 +763,67 @@ sudo docker compose logs --tail=100 smart-box
 - `smart-box.service` -> `active (exited)`
 - `smart-box-rc522-reader.service` -> `active (running)`
 - `smart-box-ad-sync.timer` -> `active (waiting)`
+
+### 10.3.1) Автооткрытие сайта в Chromium kiosk mode
+
+Рекомендуемый вариант для Raspberry Pi kiosk:
+
+- Docker и backend поднимаются через `smart-box.service`
+- RFID reader поднимается через `smart-box-rc522-reader.service`
+- Raspberry Pi загружается в Desktop с autologin
+- Chromium автоматически открывает `http://localhost:5000` в fullscreen kiosk mode
+
+Для Raspberry Pi OS / Debian `trixie` обычно нужен пакет `chromium`, а не `chromium-browser`:
+
+```bash
+sudo apt update
+sudo apt install -y chromium unclutter
+which chromium
+```
+
+Включи автологин в Desktop:
+
+```bash
+sudo raspi-config
+```
+
+Дальше:
+
+- `System Options`
+- `Boot / Auto Login`
+- `Desktop Autologin`
+
+Создай autostart-файл:
+
+```bash
+mkdir -p /home/admin/.config/lxsession/LXDE-pi
+cat > /home/admin/.config/lxsession/LXDE-pi/autostart <<'EOF'
+@xset s off
+@xset -dpms
+@xset s noblank
+@unclutter -idle 0
+@bash -c 'sleep 10; chromium --kiosk --incognito --disable-infobars --noerrdialogs --disable-session-crashed-bubble http://localhost:5000'
+EOF
+```
+
+Что делает этот autostart:
+
+- отключает screen saver и blank screen
+- прячет курсор мыши
+- ждёт `10` секунд, пока backend поднимется
+- открывает Smart Box в полном экране без браузерных панелей
+
+Перезагрузка для проверки:
+
+```bash
+sudo reboot
+```
+
+Если Chromium открывается слишком рано, увеличь задержку, например до `15` секунд:
+
+```text
+@bash -c 'sleep 15; chromium --kiosk --incognito --disable-infobars --noerrdialogs --disable-session-crashed-bubble http://localhost:5000'
+```
 
 ### 10.4) Обновление уже установленной Raspberry Pi
 

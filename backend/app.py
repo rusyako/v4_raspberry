@@ -3,6 +3,7 @@ import atexit
 import csv
 import hashlib
 import io
+import ipaddress
 import json
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -568,6 +569,22 @@ def is_local_request():
     return remote_addr in {'127.0.0.1', '::1', '::ffff:127.0.0.1'}
 
 
+def is_local_network_request():
+    if is_local_request():
+        return True
+
+    remote_addr = (request.remote_addr or '').strip()
+    if not remote_addr:
+        return False
+
+    try:
+        remote_ip = ipaddress.ip_address(remote_addr)
+    except ValueError:
+        return False
+
+    return remote_ip.is_private
+
+
 def queue_uid_scan(uid):
     global last_detected_uid
 
@@ -637,7 +654,7 @@ def register_unknown_user_scan(uid, client_session_id=None):
 
 
 def require_admin():
-    if ENABLE_LOCAL_DEBUG_SDK and is_local_request():
+    if ENABLE_LOCAL_DEBUG_SDK and is_local_network_request():
         session['admin_uid_bypass'] = True
         if not is_admin_session_active():
             create_admin_session()
@@ -1324,7 +1341,7 @@ def legacy_check_redirect_state():
 @app.route('/admin')
 def admin_page():
     mark_client_active()
-    if ENABLE_LOCAL_DEBUG_SDK and is_local_request():
+    if ENABLE_LOCAL_DEBUG_SDK and is_local_network_request():
         session['admin_uid_bypass'] = True
         session['redirect_to_admin_page'] = True
     else:
@@ -1335,7 +1352,7 @@ def admin_page():
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
     mark_client_active()
-    if ENABLE_LOCAL_DEBUG_SDK and is_local_request():
+    if ENABLE_LOCAL_DEBUG_SDK and is_local_network_request():
         session['admin_uid_bypass'] = True
 
     if not session.get('admin_uid_bypass'):
@@ -1365,7 +1382,7 @@ def admin_logout():
 
 @app.route('/admin/overview', methods=['GET'])
 def admin_overview():
-    if ENABLE_LOCAL_DEBUG_SDK and is_local_request():
+    if ENABLE_LOCAL_DEBUG_SDK and is_local_network_request():
         session['admin_uid_bypass'] = True
         if not is_admin_session_active():
             create_admin_session()
