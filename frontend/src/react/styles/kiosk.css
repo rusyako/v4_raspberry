@@ -1,8 +1,10 @@
 .screen-home {
-  --home-overlay-control-size: 192px;
+  --home-overlay-control-size: 112px;
   --home-overlay-control-border: 2px;
-  --home-flag-image-size: 104px;
-  --home-temperature-font-size: 80px;
+  --home-flag-image-size: 60px;
+  --home-temperature-font-size: 28px;
+  --home-overlay-gap: 12px;
+  --home-overlay-offset: 18px;
   color: #eef8ff;
   background: linear-gradient(115deg, #041520, #0d2f40);
   height: 100vh;
@@ -161,11 +163,11 @@
 
 .home-sensors-overlay {
   position: fixed;
-  bottom: 18px;
-  left: 18px;
+  bottom: var(--home-overlay-offset);
+  left: var(--home-overlay-offset);
   z-index: 2;
   display: flex;
-  gap: 14px;
+  gap: var(--home-overlay-gap);
 }
 
 .home-sensors-overlay-item {
@@ -301,11 +303,11 @@
 
 .language-switcher {
   position: fixed;
-  top: 18px;
-  right: 18px;
+  top: var(--home-overlay-offset);
+  right: var(--home-overlay-offset);
   z-index: 2;
   display: flex;
-  gap: 14px;
+  gap: var(--home-overlay-gap);
 }
 
 .language-flag {
@@ -566,32 +568,19 @@
   min-height: 50px;
 }
 
-@media (max-width: 1100px) and (max-height: 640px) {
+@media (max-width: 1024px) and (max-height: 600px) {
   .screen-home {
-    --home-overlay-control-size: 176px;
-    --home-flag-image-size: 96px;
-    --home-temperature-font-size: 40px;
+    --home-overlay-control-size: 84px;
+    --home-flag-image-size: 46px;
+    --home-temperature-font-size: 20px;
+    --home-overlay-gap: 8px;
+    --home-overlay-offset: 10px;
   }
 
   .home-shell {
     width: min(100vw, 1024px);
     padding: 12px;
     align-items: stretch;
-  }
-
-  .language-switcher,
-  .home-sensors-overlay {
-    gap: 10px;
-  }
-
-  .language-switcher {
-    top: 12px;
-    right: 12px;
-  }
-
-  .home-sensors-overlay {
-    bottom: 12px;
-    left: 12px;
   }
 
   .home-content-grid {
@@ -730,22 +719,6 @@
   .home-borrowed-empty {
     font-size: 14px;
     line-height: 1.2;
-  }
-
-  .language-switcher {
-    top: 10px;
-    right: 10px;
-    gap: 6px;
-  }
-
-  .language-flag {
-    width: 34px;
-    height: 34px;
-  }
-
-  .language-flag img {
-    width: 18px;
-    height: 18px;
   }
 
   .actions-shell,
