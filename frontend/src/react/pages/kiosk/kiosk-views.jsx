@@ -139,7 +139,7 @@ export function KioskHomeView({
 
             <section className="home-card home-card-title">
               <div className="home-title-visual">
-                <p className="home-title-soon">Скоро...</p>
+                <img src={KIOSK_IMAGES.comingSoonGif} alt="Coming soon" className="home-coming-soon-image" />
               </div>
             </section>
 

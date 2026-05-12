@@ -1,4 +1,5 @@
 import kioskLogo from '../../../assets/img/kiosk-logo.png';
+import comingSoonGif from '../../../assets/img/coming-soon.gif';
 
 export const POLL_INTERVAL_MS = 3000;
 export const HOME_STATE_POLL_DEBOUNCE_MS = 350;
@@ -14,9 +15,11 @@ export const IT_SUPPORT_PHONE = String(import.meta.env.VITE_IT_SUPPORT_PHONE || 
 export const BARCODE_PATTERN = /^[a-zA-Z0-9-\s]+$/;
 
 export const KIOSK_IMAGES = {
-  kioskLogo
+  kioskLogo,
+  comingSoonGif
 };
 
 export const KIOSK_PRELOAD_IMAGES = [
-  KIOSK_IMAGES.kioskLogo
+  KIOSK_IMAGES.kioskLogo,
+  KIOSK_IMAGES.comingSoonGif
 ];

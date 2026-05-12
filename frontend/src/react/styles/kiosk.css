@@ -124,6 +124,12 @@
   letter-spacing: 0.02em;
 }
 
+.home-coming-soon-image {
+  width: 250px;
+  height: 300px;
+  object-fit: contain;
+}
+
 .home-card-info {
   display: flex;
   flex-direction: column;
