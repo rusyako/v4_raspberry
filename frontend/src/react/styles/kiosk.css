@@ -1,4 +1,6 @@
 .screen-home {
+  --home-overlay-control-size: 96px;
+  --home-overlay-control-border: 2px;
   color: #eef8ff;
   background: linear-gradient(115deg, #041520, #0d2f40);
   height: 100vh;
@@ -161,23 +163,23 @@
   left: 18px;
   z-index: 2;
   display: flex;
-  gap: 10px;
+  gap: 14px;
 }
 
 .home-sensors-overlay-item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: var(--home-overlay-control-size);
+  height: var(--home-overlay-control-size);
   border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: var(--home-overlay-control-border) solid rgba(255, 255, 255, 0.25);
   background: rgba(7, 18, 28, 0.34);
   box-sizing: border-box;
 }
 
 .home-sensors-overlay-item strong {
-  font-size: 11px;
+  font-size: 40px;
   line-height: 1;
   font-weight: 700;
 }
@@ -301,17 +303,17 @@
   right: 18px;
   z-index: 2;
   display: flex;
-  gap: 10px;
+  gap: 14px;
 }
 
 .language-flag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: var(--home-overlay-control-size);
+  height: var(--home-overlay-control-size);
   border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: var(--home-overlay-control-border) solid rgba(255, 255, 255, 0.25);
   background: rgba(7, 18, 28, 0.34);
   padding: 0;
 }
@@ -322,8 +324,8 @@
 }
 
 .language-flag img {
-  width: 26px;
-  height: 26px;
+  width: 52px;
+  height: 52px;
   object-fit: contain;
   border-radius: 999px;
 }
