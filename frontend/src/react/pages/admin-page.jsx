@@ -8,8 +8,8 @@ import { getTranslations } from '../shared/translations';
 const UsersPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersPanel })));
 const UsersTable = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersTable })));
 const LaptopsTable = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsTable })));
-const AdSyncLogPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AdSyncLogPanel })));
 const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsPanel })));
+const AdSyncLogPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AdSyncLogPanel })));
 
 export function AdminPage() {
   const [adminToken, setAdminToken] = useState('');
@@ -22,11 +22,36 @@ export function AdminPage() {
   const [showDevicesListModal, setShowDevicesListModal] = useState(false);
   const [showAdSyncLogModal, setShowAdSyncLogModal] = useState(false);
   const [adSyncLogLines, setAdSyncLogLines] = useState([]);
+  const [borrowStatusFilter, setBorrowStatusFilter] = useState('all');
+  const [borrowSearchText, setBorrowSearchText] = useState('');
   const emptyUserForm = { guid: '', uid: '', first_name: '', last_name: '', name: '', email: '', description: '', category: '', is_admin: false };
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
   const { toast, showToast, clearToast } = useToast();
   const t = useMemo(() => getTranslations('ru'), []);
+
+  const filteredBorrowRecords = useMemo(() => {
+    let filtered = borrowRecords;
+    if (borrowStatusFilter === 'active') {
+      filtered = filtered.filter(r => r.status === 'active');
+    } else if (borrowStatusFilter === 'returned') {
+      filtered = filtered.filter(r => r.status === 'returned');
+    }
+    if (borrowSearchText.trim()) {
+      const query = borrowSearchText.trim().toLowerCase();
+      filtered = filtered.filter(r =>
+        String(r.employee_name || '').toLowerCase().includes(query) ||
+        String(r.employee_email || '').toLowerCase().includes(query) ||
+        String(r.device_number || '').toLowerCase().includes(query) ||
+        String(r.barcode || '').toLowerCase().includes(query) ||
+        String(r.device_name || '').toLowerCase().includes(query)
+      );
+    }
+    return filtered;
+  }, [borrowRecords, borrowStatusFilter, borrowSearchText]);
+
+  const activeCount = borrowRecords.filter(r => r.status === 'active').length;
+  const returnedCount = borrowRecords.filter(r => r.status === 'returned').length;
 
   function authHeaders() {
     return adminToken ? { 'X-Admin-Token': adminToken } : {};
@@ -218,16 +243,8 @@ export function AdminPage() {
             <div>
               <p className="admin-eyebrow">{t.admin.controlRoom}</p>
               <h1>{t.admin.panelTitle}</h1>
-              <p>{t.admin.panelSubtitle}</p>
             </div>
-            <div className="admin-actions">
-              <button type="button" className="primary-button" onClick={() => setShowUserModal(true)}>{t.admin.addUser}</button>
-              <button type="button" className="primary-button" onClick={() => setShowDeviceModal(true)}>{t.admin.addDevice}</button>
-              <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.viewUsers}</button>
-              <button type="button" className="ghost-button" onClick={() => setShowDevicesListModal(true)}>{t.admin.viewDevices}</button>
-              <button type="button" className="ghost-button" onClick={handlePruneUsers}>{t.admin.pruneUsers}</button>
-              <button type="button" className="ghost-button" onClick={handleRunAdSync}>{t.admin.runAdSync}</button>
-              <button type="button" className="ghost-button" onClick={openAdSyncLog}>{t.admin.viewAdSyncLog}</button>
+            <div className="admin-hero-actions">
               <button type="button" className="ghost-button" onClick={() => loadAdminData()}>{t.common.refresh}</button>
               <button type="button" className="danger-button" onClick={handleLogout}>{t.common.logout}</button>
             </div>
@@ -243,53 +260,98 @@ export function AdminPage() {
               <span className="admin-stat-label">{t.admin.stats.totalDevices}</span>
             </div>
             <div className="admin-stat-card">
-              <span className="admin-stat-value">{borrowRecords.filter(r => r.status === 'active').length}</span>
-              <span className="admin-stat-label">{t.admin.stats.activeLoans}</span>
+              <span className="admin-stat-value">{borrowRecords.length}</span>
+              <span className="admin-stat-label">{t.admin.borrowRecordsTitle}</span>
+            </div>
+          </div>
+
+          <div className="admin-toolbar">
+            <div className="admin-toolbar-group">
+              <button type="button" className="primary-button" onClick={() => setShowUserModal(true)}>{t.admin.addUser}</button>
+              <button type="button" className="primary-button" onClick={() => setShowDeviceModal(true)}>{t.admin.addDevice}</button>
+            </div>
+            <div className="admin-toolbar-group">
+              <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.registeredUsers}</button>
+              <button type="button" className="ghost-button" onClick={() => setShowDevicesListModal(true)}>{t.admin.registeredDevices}</button>
+            </div>
+            <div className="admin-toolbar-group">
+              <button type="button" className="ghost-button" onClick={handleRunAdSync}>{t.admin.runAdSync}</button>
+              <button type="button" className="ghost-button" onClick={handlePruneUsers}>{t.admin.pruneUsers}</button>
+              <button type="button" className="ghost-button" onClick={openAdSyncLog}>{t.admin.viewAdSyncLog}</button>
             </div>
           </div>
 
           <section className="admin-panel admin-wide-panel">
-            <div className="admin-panel-head">
+            <div className="admin-panel-head admin-panel-head-with-filters">
               <h2>{t.admin.borrowRecordsTitle}</h2>
+              <div className="admin-filter-row">
+                <input
+                  type="text"
+                  className="admin-filter-input"
+                  placeholder={t.admin.searchPlaceholder}
+                  value={borrowSearchText}
+                  onChange={(e) => setBorrowSearchText(e.target.value)}
+                />
+                <div className="admin-filter-tabs">
+                  <button
+                    type="button"
+                    className={`admin-filter-tab ${borrowStatusFilter === 'all' ? 'admin-filter-tab-active' : ''}`}
+                    onClick={() => setBorrowStatusFilter('all')}
+                  >
+                    {t.admin.filterAll} ({borrowRecords.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-filter-tab ${borrowStatusFilter === 'active' ? 'admin-filter-tab-active' : ''}`}
+                    onClick={() => setBorrowStatusFilter('active')}
+                  >
+                    {t.admin.filterActive} ({activeCount})
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-filter-tab ${borrowStatusFilter === 'returned' ? 'admin-filter-tab-active' : ''}`}
+                    onClick={() => setBorrowStatusFilter('returned')}
+                  >
+                    {t.admin.filterReturned} ({returnedCount})
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
                   <tr>
                     <th>{t.admin.columns.id}</th>
-                    <th>{t.admin.columns.uid}</th>
                     <th>{t.admin.columns.name}</th>
-                    <th>{t.admin.columns.email}</th>
-                    <th>{t.admin.columns.deviceNumber}</th>
-                    <th>{t.admin.columns.device}</th>
                     <th>{t.admin.columns.barcode}</th>
+                    <th>{t.admin.columns.device}</th>
                     <th>{t.admin.columns.taken}</th>
                     <th>{t.admin.columns.returned}</th>
                     <th>{t.admin.columns.status}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {borrowRecords.length === 0 ? (
+                  {filteredBorrowRecords.length === 0 ? (
                     <tr>
-                      <td colSpan="10" style={{ textAlign: 'center', padding: '20px', color: '#aac7d8' }}>
+                      <td colSpan="7" className="admin-table-empty">
                         {t.admin.noBorrowRecords}
                       </td>
                     </tr>
                   ) : (
-                    borrowRecords.map((record) => (
+                    filteredBorrowRecords.map((record) => (
                       <tr key={record.id}>
-                        <td>{record.id}</td>
-                        <td>{record.employee_uid}</td>
-                        <td>{record.employee_name}</td>
-                        <td>{record.employee_email || '-'}</td>
-                        <td>{record.device_number}</td>
-                        <td>{record.device_name || '-'}</td>
-                        <td>{record.barcode || '-'}</td>
+                        <td className="admin-cell-id">{record.id}</td>
+                        <td>
+                          <span className="admin-cell-name">{record.employee_name || '-'}</span>
+                          <span className="admin-cell-sub">{record.employee_email || record.employee_uid || '-'}</span>
+                        </td>
+                        <td><code>{record.barcode || '-'}</code></td>
+                        <td>{record.device_name || record.device_number || '-'}</td>
                         <td>{formatDateTimeGmtPlus5(record.taken_at, { language: 'ru' })}</td>
                         <td>{formatDateTimeGmtPlus5(record.returned_at, { language: 'ru' })}</td>
                         <td>
-                          <span className={`status-badge ${record.status === 'active' ? 'status-admin' : 'status-available'}`}>
-                            {record.status}
+                          <span className={`status-badge ${record.status === 'active' ? 'status-active' : 'status-returned'}`}>
+                            {record.status === 'active' ? t.admin.statusActive : t.admin.statusReturned}
                           </span>
                         </td>
                       </tr>
@@ -301,7 +363,7 @@ export function AdminPage() {
           </section>
 
           <Modal isOpen={showUserModal} onClose={() => setShowUserModal(false)} title={t.admin.addUser}>
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={<div className="admin-loading">...</div>}>
               <UsersPanel
                 userForm={userForm}
                 setUserForm={setUserForm}
@@ -315,7 +377,7 @@ export function AdminPage() {
           </Modal>
 
           <Modal isOpen={showDeviceModal} onClose={() => setShowDeviceModal(false)} title={t.admin.addDevice}>
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={<div className="admin-loading">...</div>}>
               <LaptopsPanel
                 laptopForm={laptopForm}
                 setLaptopForm={setLaptopForm}
@@ -328,7 +390,7 @@ export function AdminPage() {
           </Modal>
 
           <Modal isOpen={showUsersListModal} onClose={() => setShowUsersListModal(false)} title={t.admin.registeredUsers} fullscreen>
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={<div className="admin-loading">...</div>}>
               <UsersTable
                 users={users}
                 t={t}
@@ -338,7 +400,7 @@ export function AdminPage() {
           </Modal>
 
           <Modal isOpen={showDevicesListModal} onClose={() => setShowDevicesListModal(false)} title={t.admin.registeredDevices} fullscreen>
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={<div className="admin-loading">...</div>}>
               <LaptopsTable
                 laptops={laptops}
                 t={t}
@@ -348,7 +410,7 @@ export function AdminPage() {
           </Modal>
 
           <Modal isOpen={showAdSyncLogModal} onClose={() => setShowAdSyncLogModal(false)} title={t.admin.adSyncLogTitle} fullscreen>
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={<div className="admin-loading">...</div>}>
               <AdSyncLogPanel
                 lines={adSyncLogLines}
                 t={t}
