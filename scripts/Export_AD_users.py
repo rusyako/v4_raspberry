@@ -96,6 +96,15 @@ def compose_full_name(first_name, last_name, fallback=''):
     return full_name or str(fallback or '').strip()
 
 
+def prefer_incoming_or_existing(incoming_value, existing_value):
+    incoming_text = str(incoming_value or '').strip()
+    if incoming_text:
+        return incoming_text
+
+    existing_text = str(existing_value or '').strip()
+    return existing_text or None
+
+
 def get_entry_value(entry, attribute_name):
     value = getattr(entry, attribute_name, '')
     if hasattr(value, 'value'):
@@ -172,10 +181,14 @@ def ensure_users_schema(connection):
 
 def upsert_user(connection, user_record):
     cursor = connection.cursor()
-    cursor.execute('SELECT guid FROM users WHERE guid = ? LIMIT 1;', (user_record['guid'],))
+    cursor.execute('SELECT guid, uid, uid_hex, uid_dec FROM users WHERE guid = ? LIMIT 1;', (user_record['guid'],))
     existing_user = cursor.fetchone()
 
     if existing_user:
+        next_uid = prefer_incoming_or_existing(user_record['uid'], existing_user['uid'])
+        next_uid_hex = prefer_incoming_or_existing(user_record['uid_hex'], existing_user['uid_hex'])
+        next_uid_dec = prefer_incoming_or_existing(user_record['uid_dec'], existing_user['uid_dec'])
+
         cursor.execute(
             '''
             UPDATE users
@@ -183,9 +196,9 @@ def upsert_user(connection, user_record):
             WHERE guid = ?;
             ''',
             (
-                user_record['uid'],
-                user_record['uid_hex'],
-                user_record['uid_dec'],
+                next_uid,
+                next_uid_hex,
+                next_uid_dec,
                 user_record['name'],
                 user_record['first_name'],
                 user_record['last_name'],
@@ -231,10 +244,36 @@ def write_csv(records, csv_path):
         writer.writerows(records)
 
 
+def prune_unassigned_users(connection):
+    cursor = connection.cursor()
+    cursor.execute(
+        '''
+        DELETE FROM users
+        WHERE COALESCE(is_admin, 0) = 0
+          AND uid IS NOT NULL
+          AND uid NOT IN (
+              SELECT DISTINCT uid
+              FROM laptop_bookings
+          )
+          AND uid NOT IN (
+              SELECT DISTINCT employee_uid
+              FROM borrow_records
+              WHERE status = 'active'
+          );
+        '''
+    )
+    return cursor.rowcount
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description='Export Active Directory users into Smart Box database or CSV.')
     parser.add_argument('--csv', default='', help='Write normalized AD users to CSV instead of database.')
     parser.add_argument('--db', default=DB_PATH, help='SQLite database path.')
+    parser.add_argument(
+        '--prune-unassigned-users',
+        action='store_true',
+        help='Delete non-admin users who do not have active booked equipment.'
+    )
     return parser
 
 
@@ -325,9 +364,13 @@ def main():
         if args.csv:
             write_csv(export_records, args.csv or EXPORT_CSV_PATH)
         else:
+            deleted_count = 0
+            if args.prune_unassigned_users:
+                deleted_count = prune_unassigned_users(connection)
             connection.commit()
         print(
-            f'[+] Импорт завершен. Добавлено: {inserted_count}, обновлено: {updated_count}, пропущено: {skipped_count}. База: {target_db_path}'
+            f'[+] Импорт завершен. Добавлено: {inserted_count}, обновлено: {updated_count}, '
+            f'пропущено: {skipped_count}, удалено: {deleted_count if not args.csv else 0}. База: {target_db_path}'
         )
 
 
