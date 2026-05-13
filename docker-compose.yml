@@ -43,5 +43,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  smart-box-data:
-  smart-box-logs:
+  - smart-box-data:/app/data
+  - smart-box-logs:/app/logs
+  - ./.env.ad:/app/.env.ad:ro
