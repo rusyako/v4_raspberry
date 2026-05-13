@@ -313,6 +313,7 @@ docker exec smart-box python manage_db.py list-borrow-records
 ## 6.1) Логика доступа в админку
 
 - Переход по ссылке `/admin` открывает админку сразу, без PIN.
+- Время в админке (`taken_at`, `returned_at`) отображается во фронтенде в часовом поясе `GMT+5`.
 
 ## 7) Проверка RC522 на Raspberry Pi
 
@@ -391,6 +392,17 @@ python3 scripts/rc522_reader.py
 - `scripts/smart-box-ad-sync.timer` - запускает ночной AD sync каждый день в `02:00`
 - `scripts/smart-box-ad-sync.service` - one-shot service для импорта AD
 - `scripts/install_autostart.sh` - ставит и включает все unit-файлы сразу
+
+Ночной сценарий работает так:
+
+1. В `02:00` timer запускает `scripts/sync_ad_users.sh`
+2. Скрипт сначала выполняет `Export_AD_users.py --prune-only`
+3. Затем тем же запуском выполняет обычный импорт `Export_AD_users.py`
+
+Это означает:
+
+- сначала удаляются обычные пользователи без активной техники
+- затем из AD снова подтягиваются актуальные пользователи из разрешённых OU
 
 Установка:
 

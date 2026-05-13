@@ -61,6 +61,7 @@ FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY') or 'smart-box-dev-secret-key'
 ENABLE_WEBVIEW = os.getenv('ENABLE_WEBVIEW', 'false').lower() == 'true'
 ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv('ADMIN_SESSION_TIMEOUT_SECONDS', '1800'))
 ENABLE_LOCAL_DEBUG_SDK = os.getenv('ENABLE_LOCAL_DEBUG_SDK', 'true').lower() == 'true'
+APP_TIMEZONE_LABEL = os.getenv('APP_TIMEZONE_LABEL', 'GMT+5').strip()
 
 stop_event = threading.Event()
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -696,6 +697,16 @@ def fetch_admin_dashboard_data():
         return users, laptops, borrow_records
     finally:
         connection.close()
+
+
+def read_text_file_tail(file_path, max_lines=300):
+    if not os.path.exists(file_path):
+        return []
+
+    with open(file_path, 'r', encoding='utf-8', errors='replace') as source_file:
+        lines = source_file.readlines()
+
+    return [line.rstrip('\n') for line in lines[-max_lines:]]
 
 
 def fetch_active_borrow_records(limit=200):
@@ -1393,6 +1404,16 @@ def admin_overview():
 
     users, laptops, borrow_records = fetch_admin_dashboard_data()
     return success_response(users=users, laptops=laptops, borrow_records=borrow_records)
+
+
+@app.route('/admin/ad-sync-log', methods=['GET'])
+def admin_ad_sync_log():
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
+    log_path = os.path.join(LOG_DIR, 'ad-sync.log')
+    return success_response(lines=read_text_file_tail(log_path))
 
 
 @app.route('/admin/users', methods=['POST'])

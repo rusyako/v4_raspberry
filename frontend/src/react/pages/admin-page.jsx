@@ -1,12 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { deleteJson, postJson, requestJson } from '../shared/api';
 import { Modal } from '../shared/modal';
+import { formatDateTimeGmtPlus5 } from '../shared/time';
 import { Toast, useToast } from '../shared/toast';
 import { getTranslations } from '../shared/translations';
 
 const UsersPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersPanel })));
 const UsersTable = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersTable })));
 const LaptopsTable = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsTable })));
+const AdSyncLogPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AdSyncLogPanel })));
 const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsPanel })));
 
 export function AdminPage() {
@@ -18,6 +20,8 @@ export function AdminPage() {
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [showUsersListModal, setShowUsersListModal] = useState(false);
   const [showDevicesListModal, setShowDevicesListModal] = useState(false);
+  const [showAdSyncLogModal, setShowAdSyncLogModal] = useState(false);
+  const [adSyncLogLines, setAdSyncLogLines] = useState([]);
   const emptyUserForm = { guid: '', uid: '', first_name: '', last_name: '', name: '', email: '', description: '', category: '', is_admin: false };
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
@@ -165,6 +169,16 @@ export function AdminPage() {
     }
   }
 
+  async function openAdSyncLog() {
+    try {
+      const data = await requestJson('/admin/ad-sync-log', authHeaders());
+      setAdSyncLogLines(data.lines || []);
+      setShowAdSyncLogModal(true);
+    } catch (error) {
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
+    }
+  }
+
   return (
     <div className="admin-screen">
       <Toast toast={toast} onClose={clearToast} />
@@ -191,6 +205,7 @@ export function AdminPage() {
               <button type="button" className="primary-button" onClick={() => setShowDeviceModal(true)}>{t.admin.addDevice}</button>
               <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.viewUsers}</button>
               <button type="button" className="ghost-button" onClick={() => setShowDevicesListModal(true)}>{t.admin.viewDevices}</button>
+              <button type="button" className="ghost-button" onClick={openAdSyncLog}>{t.admin.viewAdSyncLog}</button>
               <button type="button" className="ghost-button" onClick={() => loadAdminData()}>{t.common.refresh}</button>
               <button type="button" className="danger-button" onClick={handleLogout}>{t.common.logout}</button>
             </div>
@@ -248,8 +263,8 @@ export function AdminPage() {
                         <td>{record.device_number}</td>
                         <td>{record.device_name || '-'}</td>
                         <td>{record.barcode || '-'}</td>
-                        <td>{record.taken_at ? new Date(record.taken_at).toLocaleString() : '-'}</td>
-                        <td>{record.returned_at ? new Date(record.returned_at).toLocaleString() : '-'}</td>
+                        <td>{formatDateTimeGmtPlus5(record.taken_at, { language: 'ru' })}</td>
+                        <td>{formatDateTimeGmtPlus5(record.returned_at, { language: 'ru' })}</td>
                         <td>
                           <span className={`status-badge ${record.status === 'active' ? 'status-admin' : 'status-available'}`}>
                             {record.status}
@@ -306,6 +321,15 @@ export function AdminPage() {
                 laptops={laptops}
                 t={t}
                 onRemove={removeLaptop}
+              />
+            </Suspense>
+          </Modal>
+
+          <Modal isOpen={showAdSyncLogModal} onClose={() => setShowAdSyncLogModal(false)} title={t.admin.adSyncLogTitle} fullscreen>
+            <Suspense fallback={<div>Loading...</div>}>
+              <AdSyncLogPanel
+                lines={adSyncLogLines}
+                t={t}
               />
             </Suspense>
           </Modal>

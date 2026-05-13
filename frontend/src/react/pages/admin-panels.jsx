@@ -280,6 +280,21 @@ export const LaptopsTable = memo(function LaptopsTable({ laptops, t, onRemove })
   );
 });
 
+export const AdSyncLogPanel = memo(function AdSyncLogPanel({ lines, t }) {
+  return (
+    <section className="admin-panel users-table-panel">
+      <div className="admin-panel-head">
+        <h2>{t.admin.adSyncLogTitle}</h2>
+      </div>
+      <div className="admin-log-viewer">
+        {lines.length ? lines.map((line, index) => (
+          <div key={`${index}-${line.slice(0, 24)}`} className="admin-log-line">{line}</div>
+        )) : <div className="admin-empty">{t.admin.adSyncLogEmpty}</div>}
+      </div>
+    </section>
+  );
+});
+
 export const LaptopsPanel = memo(function LaptopsPanel({
   laptopForm,
   setLaptopForm,

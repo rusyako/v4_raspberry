@@ -21,4 +21,10 @@ for env_name in AD_SERVER AD_USER AD_PASSWORD AD_SEARCH_BASE AD_EXPORT_CSV_PATH 
   fi
 done
 
-docker compose exec -T "${docker_env_args[@]}" smart-box python /app/scripts/Export_AD_users.py >> "$LOG_DIR/ad-sync.log" 2>&1
+{
+  printf '[%s] Start prune-only cleanup\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+  docker compose exec -T "${docker_env_args[@]}" smart-box python /app/scripts/Export_AD_users.py --prune-only
+
+  printf '[%s] Start AD import\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+  docker compose exec -T "${docker_env_args[@]}" smart-box python /app/scripts/Export_AD_users.py
+} >> "$LOG_DIR/ad-sync.log" 2>&1

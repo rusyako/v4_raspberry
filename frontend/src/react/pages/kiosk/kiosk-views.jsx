@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { postJson } from '../../shared/api';
 import { LanguageSwitcher } from '../../shared/language-switcher';
 import { writeStoredArray } from '../../shared/storage';
+import { formatDateTimeGmtPlus5 } from '../../shared/time';
 import { BARCODE_PATTERN, IT_SUPPORT_EMAIL, IT_SUPPORT_PHONE, IT_SUPPORT_REQUEST_URL, KIOSK_IMAGES } from './constants';
 
 function groupBorrowedRecordsByEmployee(records) {
@@ -36,30 +37,6 @@ function formatCompactTemperature(value) {
   }
 
   return `${Number.parseFloat(match[0]).toFixed(1)}°`;
-}
-
-function formatBorrowedDateTime(isoString, language) {
-  if (!isoString) return '--';
-
-  try {
-    const date = new Date(isoString);
-    const day = date.getDate();
-    const month = date.getMonth();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-
-    const monthNames = {
-      ru: ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
-      en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-      kz: ['қаң', 'ақп', 'нау', 'сәу', 'мам', 'мау', 'шіл', 'там', 'қыр', 'қаз', 'қар', 'жел']
-    };
-
-    const monthName = monthNames[language] ? monthNames[language][month] : monthNames.en[month];
-
-    return `${day} ${monthName} • ${hours}:${minutes}`;
-  } catch {
-    return isoString;
-  }
 }
 
 function splitEmployeeName(fullName) {
@@ -118,7 +95,7 @@ export function KioskHomeView({
                       {group.devices.map((device) => (
                         <li key={device.id} className="home-borrowed-device-item">
                           <p className="home-borrowed-device-name">{device.barcode || '-'}</p>
-                          <p className="home-borrowed-device-time">{formatBorrowedDateTime(device.taken_at, language)}</p>
+                          <p className="home-borrowed-device-time">{formatDateTimeGmtPlus5(device.taken_at, { language, compact: true })}</p>
                         </li>
                       ))}
                     </ul>

@@ -39,6 +39,28 @@
   overflow-x: auto;
 }
 
+.admin-log-viewer {
+  max-height: 70vh;
+  overflow: auto;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-log-line {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #d8e8f2;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.admin-log-line + .admin-log-line {
+  margin-top: 8px;
+}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
