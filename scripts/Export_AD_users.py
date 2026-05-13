@@ -112,10 +112,7 @@ def validate_required_fields(record):
 
 
 def detect_category(distinguished_name):
-    if 'OU=Students' in distinguished_name:
-        return 'Students'
-
-    if 'OU=IT Departament' in distinguished_name:
+    if 'OU=IT Departament' in distinguished_name or 'OU=IT Department' in distinguished_name:
         return 'IT'
 
     if 'OU=Staff' in distinguished_name:
