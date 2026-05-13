@@ -270,6 +270,11 @@ def build_parser():
     parser.add_argument('--csv', default='', help='Write normalized AD users to CSV instead of database.')
     parser.add_argument('--db', default=DB_PATH, help='SQLite database path.')
     parser.add_argument(
+        '--prune-only',
+        action='store_true',
+        help='Only delete non-admin users without active booked equipment, without connecting to AD.'
+    )
+    parser.add_argument(
         '--prune-unassigned-users',
         action='store_true',
         help='Delete non-admin users who do not have active booked equipment.'
@@ -281,7 +286,6 @@ def main():
     args = build_parser().parse_args()
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    server = Server(AD_SERVER, get_info=ALL)
     target_db_path = args.db
     export_records = []
 
@@ -293,6 +297,17 @@ def main():
         inserted_count = 0
         updated_count = 0
         skipped_count = 0
+        deleted_count = 0
+
+        if args.prune_only:
+            deleted_count = prune_unassigned_users(connection)
+            connection.commit()
+            print(
+                f'[+] Очистка завершена. Удалено: {deleted_count}. База: {target_db_path}'
+            )
+            return
+
+        server = Server(AD_SERVER, get_info=ALL)
 
         with Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True) as conn:
             search_filter = '(&(objectClass=user)(objectCategory=person)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
@@ -364,7 +379,6 @@ def main():
         if args.csv:
             write_csv(export_records, args.csv or EXPORT_CSV_PATH)
         else:
-            deleted_count = 0
             if args.prune_unassigned_users:
                 deleted_count = prune_unassigned_users(connection)
             connection.commit()
