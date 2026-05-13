@@ -1,10 +1,10 @@
 .screen-home {
-  --home-overlay-control-size: 112px;
-  --home-temperature-control-size: 44px;
+  --home-overlay-control-size: 72px;
+  --home-temperature-control-size: 56px;
   --home-overlay-control-border: 2px;
-  --home-flag-image-size: 60px;
-  --home-temperature-font-size: 28px;
-  --home-overlay-gap: 12px;
+  --home-flag-image-size: 40px;
+  --home-temperature-font-size: 18px;
+  --home-overlay-gap: 10px;
   --home-overlay-offset: 18px;
   color: #eef8ff;
   background: linear-gradient(115deg, #041520, #0d2f40);
@@ -43,7 +43,7 @@
 
 .home-sidebar {
   display: grid;
-  grid-template-rows: minmax(0, 3fr) minmax(0, 4fr);
+  grid-template-rows: minmax(0, 20%) minmax(0, 1fr) minmax(0, 20%);
   align-self: center;
   gap: 28px;
   width: 100%;
@@ -190,7 +190,7 @@
 }
 
 .home-card-info-content span {
-  font-size: 6px;
+  font-size: 10px;
 }
 
 .home-card-info-content strong,
@@ -201,7 +201,7 @@
 }
 
 .home-card-info-content strong {
-  font-size: clamp(20px, 2.5vw, 32px);
+  font-size: clamp(32px, 4vw, 48px);
 }
 
 .home-sensors-overlay {
@@ -326,7 +326,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -362,7 +362,7 @@
 .home-borrowed-device-name,
 .home-borrowed-device-time {
   margin: 0;
-  font-size: 21px;
+  font-size: 14px;
   line-height: 1.4;
 }
 
