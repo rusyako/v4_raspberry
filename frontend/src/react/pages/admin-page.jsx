@@ -179,6 +179,26 @@ export function AdminPage() {
     }
   }
 
+  async function handlePruneUsers() {
+    try {
+      const data = await postJson('/admin/ad-sync/prune', {}, authHeaders());
+      await loadAdminData();
+      showToast('success', t.admin.toasts.pruneUsersTitle, data.message);
+    } catch (error) {
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
+    }
+  }
+
+  async function handleRunAdSync() {
+    try {
+      const data = await postJson('/admin/ad-sync/run', {}, authHeaders());
+      await loadAdminData();
+      showToast('success', t.admin.toasts.adSyncRunTitle, data.message);
+    } catch (error) {
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
+    }
+  }
+
   return (
     <div className="admin-screen">
       <Toast toast={toast} onClose={clearToast} />
@@ -205,6 +225,8 @@ export function AdminPage() {
               <button type="button" className="primary-button" onClick={() => setShowDeviceModal(true)}>{t.admin.addDevice}</button>
               <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.viewUsers}</button>
               <button type="button" className="ghost-button" onClick={() => setShowDevicesListModal(true)}>{t.admin.viewDevices}</button>
+              <button type="button" className="ghost-button" onClick={handlePruneUsers}>{t.admin.pruneUsers}</button>
+              <button type="button" className="ghost-button" onClick={handleRunAdSync}>{t.admin.runAdSync}</button>
               <button type="button" className="ghost-button" onClick={openAdSyncLog}>{t.admin.viewAdSyncLog}</button>
               <button type="button" className="ghost-button" onClick={() => loadAdminData()}>{t.common.refresh}</button>
               <button type="button" className="danger-button" onClick={handleLogout}>{t.common.logout}</button>

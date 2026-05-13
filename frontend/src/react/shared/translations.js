@@ -89,6 +89,8 @@ export const DICTIONARY = {
       viewUsers: 'View Users',
       registeredDevices: 'Registered Devices',
       viewDevices: 'View Devices',
+      pruneUsers: 'Prune Users',
+      runAdSync: 'Run AD Sync',
       adSyncLogTitle: 'AD Sync Log',
       adSyncLogEmpty: 'There are no AD sync log entries yet.',
       viewAdSyncLog: 'View AD Sync Log',
@@ -136,6 +138,8 @@ export const DICTIONARY = {
         userRemovedTitle: 'Қолданушы жойылды',
         deviceAddedTitle: 'Құрылғы қосылды',
         deviceRemovedTitle: 'Құрылғы жойылды',
+        pruneUsersTitle: 'Пайдаланушыларды тазалау',
+        adSyncRunTitle: 'AD синхрондау',
         importSuccessTitle: 'Импорт аяқталды',
         adminErrorTitle: 'Қате'
       }
@@ -231,6 +235,8 @@ export const DICTIONARY = {
       viewUsers: 'Просмотр пользователей',
       registeredDevices: 'Зарегистрированные устройства',
       viewDevices: 'Просмотр устройств',
+      pruneUsers: 'Очистить пользователей',
+      runAdSync: 'Синхронизировать AD',
       adSyncLogTitle: 'Лог синхронизации AD',
       adSyncLogEmpty: 'Лог синхронизации AD пока пуст.',
       viewAdSyncLog: 'Просмотр лога AD',
@@ -281,6 +287,8 @@ export const DICTIONARY = {
         deviceAddedTitle: 'Устройство добавлено',
         userRemovedTitle: 'Пользователь удалён',
         deviceRemovedTitle: 'Устройство удалено',
+        pruneUsersTitle: 'Очистка пользователей',
+        adSyncRunTitle: 'Синхронизация AD',
         adminErrorTitle: 'Ошибка админ-панели'
       }
     }

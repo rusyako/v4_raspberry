@@ -10,6 +10,8 @@ from logging.handlers import TimedRotatingFileHandler
 import os
 import re
 import sqlite3
+import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -707,6 +709,14 @@ def read_text_file_tail(file_path, max_lines=300):
         lines = source_file.readlines()
 
     return [line.rstrip('\n') for line in lines[-max_lines:]]
+
+
+def run_ad_sync_script(arguments):
+    script_path = os.path.join(PROJECT_ROOT, 'scripts', 'Export_AD_users.py')
+    command = [sys.executable, script_path, *arguments]
+    completed = subprocess.run(command, capture_output=True, text=True)
+    output = '\n'.join(part for part in [completed.stdout.strip(), completed.stderr.strip()] if part).strip()
+    return completed.returncode, output
 
 
 def fetch_active_borrow_records(limit=200):
@@ -1414,6 +1424,32 @@ def admin_ad_sync_log():
 
     log_path = os.path.join(LOG_DIR, 'ad-sync.log')
     return success_response(lines=read_text_file_tail(log_path))
+
+
+@app.route('/admin/ad-sync/prune', methods=['POST'])
+def admin_ad_sync_prune():
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
+    return_code, output = run_ad_sync_script(['--prune-only'])
+    if return_code != 0:
+        return error_response(output or 'Не удалось выполнить очистку пользователей. / Failed to prune users.', 500)
+
+    return success_response(output or 'Очистка пользователей завершена. / User prune completed.')
+
+
+@app.route('/admin/ad-sync/run', methods=['POST'])
+def admin_ad_sync_run():
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
+    return_code, output = run_ad_sync_script([])
+    if return_code != 0:
+        return error_response(output or 'Не удалось выполнить синхронизацию AD. / Failed to run AD sync.', 500)
+
+    return success_response(output or 'Синхронизация AD завершена. / AD sync completed.')
 
 
 @app.route('/admin/users', methods=['POST'])
