@@ -248,17 +248,18 @@ def prune_unassigned_users(connection):
     cursor = connection.cursor()
     cursor.execute(
         '''
-        DELETE FROM users
-        WHERE COALESCE(is_admin, 0) = 0
-          AND uid IS NOT NULL
-          AND uid NOT IN (
-              SELECT DISTINCT uid
-              FROM laptop_bookings
+        DELETE FROM users AS u
+        WHERE COALESCE(u.is_admin, 0) = 0
+          AND NOT EXISTS (
+              SELECT 1
+              FROM laptop_bookings lb
+              WHERE lb.uid = u.uid
           )
-          AND uid NOT IN (
-              SELECT DISTINCT employee_uid
-              FROM borrow_records
-              WHERE status = 'active'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM borrow_records br
+              WHERE br.employee_uid = u.uid
+                AND br.status = 'active'
           );
         '''
     )
