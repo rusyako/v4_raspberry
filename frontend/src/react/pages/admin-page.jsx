@@ -84,15 +84,6 @@ export function AdminPage() {
     }
   };
 
-  const sortedLaptopRows = useMemo(() => {
-    const sorted = [...laptopRows];
-    sorted.sort((a, b) => {
-      const va = String(a[deviceSortKey] || '');
-      const vb = String(b[deviceSortKey] || '');
-      return deviceSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-    });
-    return sorted;
-  }, [laptopRows, deviceSortKey, deviceSortDir]);
   const laptopRows = useMemo(() => laptops.map((laptop) => {
     const activeRecord = borrowRecords.find((record) => record.status === 'active' && (record.device_number === laptop.device_number || record.barcode === laptop.barcode));
     return {
@@ -103,6 +94,16 @@ export function AdminPage() {
       canAssign: Boolean(activeRecord)
     };
   }), [laptops, borrowRecords, t]);
+
+  const sortedLaptopRows = useMemo(() => {
+    const sorted = [...laptopRows];
+    sorted.sort((a, b) => {
+      const va = String(a[deviceSortKey] || '');
+      const vb = String(b[deviceSortKey] || '');
+      return deviceSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    return sorted;
+  }, [laptopRows, deviceSortKey, deviceSortDir]);
 
   function authHeaders() {
     return adminToken ? { 'X-Admin-Token': adminToken } : {};
