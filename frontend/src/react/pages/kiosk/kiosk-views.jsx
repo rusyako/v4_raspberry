@@ -202,6 +202,7 @@ export function KioskSessionView({
     const data = await postJson('/check_laptop', { barcode });
     if (data.current_borrower) {
       showToast('info', t.kiosk.deviceBorrowedTitle, t.kiosk.deviceBorrowedText.replace('{name}', data.current_borrower.name));
+      throw new Error(t.kiosk.deviceBorrowedTitle);
     }
   }
 

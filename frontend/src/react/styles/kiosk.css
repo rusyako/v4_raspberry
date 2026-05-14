@@ -248,8 +248,8 @@
   margin: 22px 0 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  gap: 10px;
+  columns: 3;
+  column-gap: 10px;
   flex: 1;
   align-content: start;
   min-height: 0;
@@ -259,7 +259,7 @@
 }
 
 .home-borrowed-list-three-cols {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* kept for compatibility, columns already set to 3 above */
 }
 
 .home-borrowed-item {
@@ -267,6 +267,8 @@
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(152, 201, 231, 0.1);
+  break-inside: avoid;
+  margin-bottom: 10px;
 }
 
 .home-borrowed-person {
@@ -829,18 +831,19 @@
 
   .home-borrowed-list {
     margin-top: 10px;
-    gap: 8px;
+    column-gap: 8px;
     max-height: none;
     padding-right: 2px;
   }
 
-  .home-borrowed-list-three-cols {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .home-borrowed-item {
+    margin-bottom: 8px;
     padding: 10px;
     border-radius: 14px;
+  }
+
+  .home-borrowed-list-three-cols {
+    columns: 3;
   }
 
   .home-borrowed-person {
@@ -998,7 +1001,11 @@
   .session-list {
     margin-top: 14px;
     gap: 12px;
-    overflow-y: auto;
+    grid-template-rows: repeat(3, auto);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(200px, 1fr);
+    overflow-x: auto;
+    overflow-y: hidden;
     min-height: 0;
   }
 
@@ -1122,7 +1129,7 @@
   }
 
   .home-borrowed-list-three-cols {
-    grid-template-columns: 1fr;
+    columns: 1;
   }
 
   .home-count-card {

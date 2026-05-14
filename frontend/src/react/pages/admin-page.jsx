@@ -10,6 +10,7 @@ const UsersTable = lazy(() => import('./admin-panels').then((module) => ({ defau
 const LaptopsTable = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsTable })));
 const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.LaptopsPanel })));
 const AdSyncLogPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AdSyncLogPanel })));
+const AnalysisPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AnalysisPanel })));
 
 export function AdminPage() {
   const [adminToken, setAdminToken] = useState('');
@@ -22,6 +23,8 @@ export function AdminPage() {
   const [showDevicesListModal, setShowDevicesListModal] = useState(false);
   const [showAdSyncLogModal, setShowAdSyncLogModal] = useState(false);
   const [adSyncLogLines, setAdSyncLogLines] = useState([]);
+  const [showAdManageModal, setShowAdManageModal] = useState(false);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [borrowStatusFilter, setBorrowStatusFilter] = useState('all');
   const [borrowSearchText, setBorrowSearchText] = useState('');
   const emptyUserForm = { guid: '', uid: '', first_name: '', last_name: '', name: '', email: '', description: '', category: '', is_admin: false };
@@ -185,6 +188,9 @@ export function AdminPage() {
   }
 
   async function removeLaptop(name) {
+    if (!window.confirm(t.admin.confirmDeleteDevice.replace('{name}', name))) {
+      return;
+    }
     try {
       const data = await deleteJson(`/admin/laptops/${encodeURIComponent(name)}`, authHeaders());
       await loadAdminData();
@@ -192,6 +198,13 @@ export function AdminPage() {
     } catch (error) {
       showToast('error', t.admin.toasts.adminErrorTitle, error.message);
     }
+  }
+
+  function handleOpenDevicesList() {
+    if (!window.confirm(t.admin.confirmOpenDevices)) {
+      return;
+    }
+    setShowDevicesListModal(true);
   }
 
   async function openAdSyncLog() {
@@ -267,17 +280,12 @@ export function AdminPage() {
 
           <div className="admin-toolbar">
             <div className="admin-toolbar-group">
-              <button type="button" className="primary-button" onClick={() => setShowUserModal(true)}>{t.admin.addUser}</button>
-              <button type="button" className="primary-button" onClick={() => setShowDeviceModal(true)}>{t.admin.addDevice}</button>
+              <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.viewUsers}</button>
+              <button type="button" className="ghost-button" onClick={handleOpenDevicesList}>{t.admin.viewDevices}</button>
             </div>
             <div className="admin-toolbar-group">
-              <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.registeredUsers}</button>
-              <button type="button" className="ghost-button" onClick={() => setShowDevicesListModal(true)}>{t.admin.registeredDevices}</button>
-            </div>
-            <div className="admin-toolbar-group">
-              <button type="button" className="ghost-button" onClick={handleRunAdSync}>{t.admin.runAdSync}</button>
-              <button type="button" className="ghost-button" onClick={handlePruneUsers}>{t.admin.pruneUsers}</button>
-              <button type="button" className="ghost-button" onClick={openAdSyncLog}>{t.admin.viewAdSyncLog}</button>
+              <button type="button" className="ghost-button" onClick={() => setShowAnalysisModal(true)}>{t.admin.analysis}</button>
+              <button type="button" className="ghost-button" onClick={() => setShowAdManageModal(true)}>{t.admin.adManage}</button>
             </div>
           </div>
 
@@ -403,10 +411,36 @@ export function AdminPage() {
 
           <Modal isOpen={showDevicesListModal} onClose={() => setShowDevicesListModal(false)} title={t.admin.registeredDevices} fullscreen>
             <Suspense fallback={<div className="admin-loading">...</div>}>
-              <LaptopsTable
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="primary-button" onClick={() => { setShowDevicesListModal(false); setShowDeviceModal(true); }}>{t.admin.addDevice}</button>
+                </div>
+                <LaptopsTable
+                  laptops={laptops}
+                  t={t}
+                  onRemove={removeLaptop}
+                />
+              </div>
+            </Suspense>
+          </Modal>
+
+          <Modal isOpen={showAdManageModal} onClose={() => setShowAdManageModal(false)} title={t.admin.adManage}>
+            <Suspense fallback={<div className="admin-loading">...</div>}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button type="button" className="primary-button" onClick={() => { setShowAdManageModal(false); handleRunAdSync(); }}>{t.admin.runAdSync}</button>
+                <button type="button" className="danger-button" onClick={() => { setShowAdManageModal(false); handlePruneUsers(); }}>{t.admin.pruneUsers}</button>
+                <button type="button" className="ghost-button" onClick={() => { setShowAdManageModal(false); openAdSyncLog(); }}>{t.admin.viewAdSyncLog}</button>
+              </div>
+            </Suspense>
+          </Modal>
+
+          <Modal isOpen={showAnalysisModal} onClose={() => setShowAnalysisModal(false)} title={t.admin.analysis} fullscreen>
+            <Suspense fallback={<div className="admin-loading">...</div>}>
+              <AnalysisPanel
+                users={users}
                 laptops={laptops}
+                borrowRecords={borrowRecords}
                 t={t}
-                onRemove={removeLaptop}
               />
             </Suspense>
           </Modal>

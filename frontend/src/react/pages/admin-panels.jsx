@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 
 function reverseUidHexBytes(hexUid) {
   const pairs = [];
@@ -237,6 +237,166 @@ export const UsersTable = memo(function UsersTable({ users, t, onRemove }) {
         </table>
       </div>
     </section>
+  );
+});
+
+export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borrowRecords, t }) {
+  const stats = useMemo(() => {
+    const total = borrowRecords.length;
+    const active = borrowRecords.filter(r => r.status === 'active').length;
+    const returned = total - active;
+    const availableDevices = laptops.filter(l => l.status === 'available').length;
+    const unavailableDevices = laptops.length - availableDevices;
+
+    const userBorrowCounts = {};
+    borrowRecords.forEach(r => {
+      const key = r.employee_name || r.employee_uid;
+      userBorrowCounts[key] = (userBorrowCounts[key] || 0) + 1;
+    });
+    const topBorrowers = Object.entries(userBorrowCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const deviceBorrowCounts = {};
+    borrowRecords.forEach(r => {
+      const key = r.device_name || r.barcode || r.device_number;
+      deviceBorrowCounts[key] = (deviceBorrowCounts[key] || 0) + 1;
+    });
+    const topDevices = Object.entries(deviceBorrowCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const monthlyCounts = {};
+    borrowRecords.forEach(r => {
+      if (!r.taken_at) return;
+      const key = String(r.taken_at).slice(0, 7);
+      monthlyCounts[key] = (monthlyCounts[key] || 0) + 1;
+    });
+    const monthly = Object.entries(monthlyCounts).sort((a, b) => a[0].localeCompare(b[0])).slice(-6);
+
+    const activeUsers = new Set(borrowRecords.filter(r => r.status === 'active').map(r => r.employee_uid)).size;
+    const returnRate = total > 0 ? Math.round((returned / total) * 100) : 0;
+    const avgBorrowDays = (() => {
+      const withReturn = borrowRecords.filter(r => r.status === 'returned' && r.taken_at && r.returned_at);
+      if (!withReturn.length) return 0;
+      const totalDays = withReturn.reduce((sum, r) => {
+        const d = (new Date(r.returned_at) - new Date(r.taken_at)) / 86400000;
+        return sum + Math.max(0, d);
+      }, 0);
+      return Math.round(totalDays / withReturn.length);
+    })();
+
+    return { total, active, returned, availableDevices, unavailableDevices, topBorrowers, topDevices, monthly, activeUsers, returnRate, avgBorrowDays, laptopsCount: laptops.length, usersCount: users.length };
+  }, [users, laptops, borrowRecords]);
+
+  const maxBorrow = stats.topBorrowers.length ? stats.topBorrowers[0][1] : 1;
+  const maxDevice = stats.topDevices.length ? stats.topDevices[0][1] : 1;
+  const maxMonthly = stats.monthly.length ? Math.max(...stats.monthly.map(m => m[1])) : 1;
+
+  const monthNames = { ru: ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'] };
+
+  return (
+    <div className="analysis-panel">
+      <div className="analysis-stats-grid">
+        <div className="analysis-stat-card">
+          <span className="analysis-stat-value">{stats.usersCount}</span>
+          <span className="analysis-stat-label">{t.admin.stats.totalUsers}</span>
+        </div>
+        <div className="analysis-stat-card">
+          <span className="analysis-stat-value">{stats.laptopsCount}</span>
+          <span className="analysis-stat-label">{t.admin.stats.totalDevices}</span>
+        </div>
+        <div className="analysis-stat-card">
+          <span className="analysis-stat-value">{stats.active}</span>
+          <span className="analysis-stat-label">{t.admin.stats.activeLoans}</span>
+        </div>
+        <div className="analysis-stat-card">
+          <span className="analysis-stat-value">{stats.returnRate}%</span>
+          <span className="analysis-stat-label">{t.admin.returnRate}</span>
+        </div>
+      </div>
+
+      <div className="analysis-grid">
+        <section className="admin-panel">
+          <h3>{t.admin.deviceStatusChart}</h3>
+          <div className="analysis-bar-wrap">
+            <div className="analysis-bar-row">
+              <span>{t.admin.statusAvailable}</span>
+              <div className="analysis-bar-track">
+                <div className="analysis-bar-fill analysis-bar-green" style={{ width: `${stats.laptopsCount ? (stats.availableDevices / stats.laptopsCount) * 100 : 0}%` }} />
+              </div>
+              <strong>{stats.availableDevices}</strong>
+            </div>
+            <div className="analysis-bar-row">
+              <span>{t.admin.statusUnavailable}</span>
+              <div className="analysis-bar-track">
+                <div className="analysis-bar-fill analysis-bar-red" style={{ width: `${stats.laptopsCount ? (stats.unavailableDevices / stats.laptopsCount) * 100 : 0}%` }} />
+              </div>
+              <strong>{stats.unavailableDevices}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="admin-panel">
+          <h3>{t.admin.topBorrowers}</h3>
+          {stats.topBorrowers.map(([name, count], i) => (
+            <div key={name} className="analysis-bar-row">
+              <span className="analysis-rank">{i + 1}.</span>
+              <span className="analysis-name">{name}</span>
+              <div className="analysis-bar-track">
+                <div className="analysis-bar-fill analysis-bar-blue" style={{ width: `${(count / maxBorrow) * 100}%` }} />
+              </div>
+              <strong>{count}</strong>
+            </div>
+          ))}
+          {!stats.topBorrowers.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
+        </section>
+
+        <section className="admin-panel">
+          <h3>{t.admin.monthlyActivity}</h3>
+          <div className="analysis-chart-bars">
+            {stats.monthly.map(([month, count]) => {
+              const [y, m] = month.split('-');
+              const label = `${parseInt(m)}${monthNames.ru[parseInt(m) - 1] ? ' ' + monthNames.ru[parseInt(m) - 1] : ''}`;
+              return (
+                <div key={month} className="analysis-chart-item">
+                  <span className="analysis-chart-value">{count}</span>
+                  <div className="analysis-chart-bar" style={{ height: `${(count / maxMonthly) * 100}%` }} />
+                  <span className="analysis-chart-label">{label}</span>
+                </div>
+              );
+            })}
+            {!stats.monthly.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
+          </div>
+        </section>
+
+        <section className="admin-panel">
+          <h3>{t.admin.topDevices}</h3>
+          {stats.topDevices.map(([name, count], i) => (
+            <div key={name} className="analysis-bar-row">
+              <span className="analysis-rank">{i + 1}.</span>
+              <span className="analysis-name">{name}</span>
+              <div className="analysis-bar-track">
+                <div className="analysis-bar-fill analysis-bar-purple" style={{ width: `${(count / maxDevice) * 100}%` }} />
+              </div>
+              <strong>{count}</strong>
+            </div>
+          ))}
+          {!stats.topDevices.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
+        </section>
+      </div>
+
+      <div className="analysis-insights">
+        <div className="analysis-insight-card">
+          <span>{stats.activeUsers}</span>
+          <small>{t.admin.activeUsers}</small>
+        </div>
+        <div className="analysis-insight-card">
+          <span>{stats.avgBorrowDays} дн</span>
+          <small>{t.admin.avgBorrowDays}</small>
+        </div>
+      </div>
+    </div>
   );
 });
 
