@@ -418,6 +418,7 @@ def build_home_state(client_session_id, user_actions_redirect=False, user_action
 
     return {
         'admin_redirect': bool(session.get('redirect_to_admin_page')),
+        'is_admin_user': bool(session.get('admin_uid_bypass')),
         'redirect': bool(user_actions_redirect),
         'user_actions_redirect': bool(user_actions_redirect),
         'user_actions_event_id': int(user_actions_event_id or 0),
@@ -525,7 +526,7 @@ def activate_user_session(uid, is_admin):
     if is_admin:
         create_admin_session()
         session['admin_uid_bypass'] = True
-        session['redirect_to_admin_page'] = True
+        create_user_actions_event()
         return True, 'Администратор распознан. / Administrator recognized.'
 
     session.pop('redirect_to_admin_page', None)

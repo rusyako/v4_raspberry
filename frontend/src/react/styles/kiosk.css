@@ -481,8 +481,10 @@
 
 .actions-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 360px));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
+  max-width: 1100px;
+  width: 100%;
 }
 
 .actions-card {
@@ -513,6 +515,10 @@
 
 .actions-card.danger {
   background: linear-gradient(135deg, #c33737, #e06b48);
+}
+
+.actions-card.admin-action {
+  background: linear-gradient(135deg, #6b3fa0, #9b59b6);
 }
 
 .screen-session {
@@ -875,8 +881,8 @@
   }
 
   .actions-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(100%, 760px);
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    width: min(100%, 900px);
     gap: 12px;
   }
 

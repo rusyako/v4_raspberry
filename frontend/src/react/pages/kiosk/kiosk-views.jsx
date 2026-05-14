@@ -137,7 +137,7 @@ export function KioskHomeView({
   );
 }
 
-export function KioskActionsView({ onTake, onReturn, language, setLanguage, t }) {
+export function KioskActionsView({ onTake, onReturn, onAdmin, isAdminUser, language, setLanguage, t }) {
   return (
     <section className="actions-shell">
       <header className="actions-header">
@@ -155,6 +155,12 @@ export function KioskActionsView({ onTake, onReturn, language, setLanguage, t })
           <span>{t.kiosk.return}</span>
           <small>{t.kiosk.returnHint}</small>
         </button>
+        {isAdminUser && (
+          <button type="button" className="actions-card admin-action" onClick={onAdmin}>
+            <span>{t.kiosk.adminPanel}</span>
+            <small>{t.kiosk.adminPanelHint}</small>
+          </button>
+        )}
       </div>
     </section>
   );

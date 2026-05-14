@@ -32,6 +32,7 @@ export function KioskPage() {
     stationCellsStatus,
     temperature1,
     temperature2,
+    isAdminUser,
     activeBorrowedRecords,
     isActiveBorrowedLoading,
     view,
@@ -43,6 +44,7 @@ export function KioskPage() {
     clearSessionAndGoHome,
     goToCheckout,
     goToReturn,
+    goToAdmin,
     submitTake,
     submitReturn
   } = useKioskController(showToast);
@@ -71,7 +73,7 @@ export function KioskPage() {
 
       {view === 'unknown' ? <UnknownUserView language={language} setLanguage={setLanguage} t={t} /> : null}
 
-      {view === 'actions' ? <KioskActionsView onTake={goToCheckout} onReturn={goToReturn} language={language} setLanguage={setLanguage} t={t} /> : null}
+      {view === 'actions' ? <KioskActionsView onTake={goToCheckout} onReturn={goToReturn} onAdmin={goToAdmin} isAdminUser={isAdminUser} language={language} setLanguage={setLanguage} t={t} /> : null}
 
       {view === 'checkout' ? (
         <KioskSessionView

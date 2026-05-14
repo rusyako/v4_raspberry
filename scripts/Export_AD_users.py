@@ -134,6 +134,10 @@ def detect_category(distinguished_name):
     return 'Other'
 
 
+def is_it_department(distinguished_name):
+    return 'OU=IT Departament' in distinguished_name or 'OU=IT Department' in distinguished_name
+
+
 def ensure_users_schema(connection):
     cursor = connection.cursor()
     cursor.execute(
@@ -192,7 +196,7 @@ def upsert_user(connection, user_record):
         cursor.execute(
             '''
             UPDATE users
-            SET uid = ?, uid_hex = ?, uid_dec = ?, name = ?, first_name = ?, last_name = ?, email = ?, description = ?, category = ?
+            SET uid = ?, uid_hex = ?, uid_dec = ?, name = ?, first_name = ?, last_name = ?, email = ?, description = ?, category = ?, is_admin = ?
             WHERE guid = ?;
             ''',
             (
@@ -205,6 +209,7 @@ def upsert_user(connection, user_record):
                 user_record['email'],
                 user_record['description'],
                 user_record['category'],
+                user_record.get('is_admin', 0),
                 user_record['guid'],
             )
         )
@@ -226,8 +231,8 @@ def upsert_user(connection, user_record):
             user_record['email'],
             user_record['description'],
             user_record['category'],
-            'user',
-            0
+            'admin' if user_record.get('is_admin') else 'user',
+            user_record.get('is_admin', 0)
         )
     )
     return 'inserted'
@@ -352,7 +357,8 @@ def main():
                     'last_name': last_name,
                     'email': email,
                     'description': description or None,
-                    'category': description or category
+                    'category': description or category,
+                    'is_admin': 1 if is_it_department(distinguished_name) else 0
                 }
 
                 missing_fields = validate_required_fields(user_record)

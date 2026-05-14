@@ -26,6 +26,7 @@ export function useKioskController(showToast) {
   const [stationCellsStatus, setStationCellsStatus] = useState('0/0');
   const [temperature1, setTemperature1] = useState('--.-°C');
   const [temperature2, setTemperature2] = useState('--.-°C');
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [activeBorrowedRecords, setActiveBorrowedRecords] = useState([]);
   const [isActiveBorrowedLoading, setIsActiveBorrowedLoading] = useState(false);
   const [hasLoadedActiveBorrowedRecords, setHasLoadedActiveBorrowedRecords] = useState(false);
@@ -86,6 +87,7 @@ export function useKioskController(showToast) {
         setStationCellsStatus(data.station_cells_status || data.laptop_count || '0/0');
         setTemperature1(data.temperature_1 || '--.-°C');
         setTemperature2(data.temperature_2 || '--.-°C');
+        setIsAdminUser(Boolean(data.is_admin_user));
 
         if (data.admin_redirect) {
           window.location.href = '/admin';
@@ -301,6 +303,10 @@ export function useKioskController(showToast) {
     setView('home');
   }
 
+  async function goToAdmin() {
+    window.location.href = '/admin';
+  }
+
   async function goToCheckout() {
     try {
       const data = await requestJson('/get_laptop_status');
@@ -384,6 +390,7 @@ export function useKioskController(showToast) {
     stationCellsStatus,
     temperature1,
     temperature2,
+    isAdminUser,
     activeBorrowedRecords,
     isActiveBorrowedLoading,
     view,
@@ -395,6 +402,7 @@ export function useKioskController(showToast) {
     clearSessionAndGoHome,
     goToCheckout,
     goToReturn,
+    goToAdmin,
     submitTake,
     submitReturn
   };
