@@ -248,8 +248,8 @@
   margin: 22px 0 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   flex: 1;
   align-content: start;
@@ -260,13 +260,10 @@
 }
 
 .home-borrowed-item {
-  width: 320px;
-  max-width: 100%;
   padding: 14px 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(152, 201, 231, 0.1);
-  flex-shrink: 0;
 }
 
 .home-borrowed-person {
@@ -603,6 +600,19 @@
   color: white;
 }
 
+.session-return-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  min-height: 0;
+}
+
+.session-return-grid > .session-preload-card,
+.session-return-grid > .session-list-card {
+  margin-top: 0;
+  height: 100%;
+}
+
 .session-list-card {
   margin-top: 24px;
   padding: 22px;
@@ -652,6 +662,7 @@
 .session-preload-item {
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 8px 14px;
   border-radius: 12px;
@@ -661,12 +672,24 @@
 }
 
 .session-preload-scanned {
-  background: rgba(80, 200, 120, 0.12);
-  color: #70ea97;
+  background: linear-gradient(135deg, rgba(46, 153, 96, 0.28), rgba(112, 234, 151, 0.18));
+  border: 1px solid rgba(112, 234, 151, 0.38);
+  color: #dfffe8;
+  box-shadow: inset 0 0 0 1px rgba(112, 234, 151, 0.1);
 }
 
 .session-preload-check {
-  font-size: 14px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(112, 234, 151, 0.16);
+  color: #70ea97;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.session-preload-empty {
+  color: rgba(240, 248, 255, 0.64);
 }
 
 .session-list-head {
@@ -893,7 +916,6 @@
   }
 
   .home-borrowed-item {
-    width: 240px;
     padding: 10px;
     border-radius: 14px;
   }
@@ -999,6 +1021,11 @@
     padding: 16px;
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 16px;
+  }
+
+  .session-return-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 16px;
   }
 
@@ -1169,6 +1196,10 @@
 }
 
 @media (max-width: 900px) {
+  .session-return-grid {
+    grid-template-columns: 1fr;
+  }
+
   .home-shell {
     min-height: 100vh;
     height: auto;
@@ -1200,11 +1231,7 @@
   }
 
   .home-borrowed-list-three-cols {
-    width: 100%;
-  }
-
-  .home-borrowed-item {
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 
   .home-count-card {

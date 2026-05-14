@@ -478,6 +478,7 @@ def clear_user_session():
     session.pop('current_user_uid', None)
     session.pop('user_actions_event_id', None)
     session.pop('user_actions_event_ack', None)
+    clear_admin_session()
 
 
 def get_target_session_id_for_hardware_event():

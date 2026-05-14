@@ -252,6 +252,9 @@ export function KioskSessionView({
 
   return (
     <section className="session-shell">
+      <button type="button" className="actions-close-btn" onClick={onCancel} aria-label={t.common.backHome}>
+        ×
+      </button>
       <header className="session-header">
         <h1>{title}</h1>
         <p>{description}</p>
@@ -271,40 +274,61 @@ export function KioskSessionView({
         </button>
       </div>
 
-      {mode === 'return' && userBorrowedDevices.length > 0 && (
-        <section className="session-preload-card">
-          <div className="session-preload-head">
-            <h2>{t.kiosk.yourDevices}</h2>
-            <span>{userBorrowedDevices.length}</span>
+      {mode === 'return' ? (
+        <div className="session-return-grid">
+          <section className="session-preload-card">
+            <div className="session-preload-head">
+              <h2>{t.kiosk.returnAssignedTitle.replace('{count}', String(userBorrowedDevices.length))}</h2>
+              <span>{userBorrowedDevices.length}</span>
+            </div>
+            <ul className="session-preload-list">
+              {userBorrowedDevices.map((device) => (
+                <li key={device.barcode} className={`session-preload-item ${barcodes.includes(device.barcode) ? 'session-preload-scanned' : ''}`}>
+                  <span>{device.barcode || device.device_number || '-'}</span>
+                  {barcodes.includes(device.barcode) && <span className="session-preload-check">{t.kiosk.returnMarkedLabel}</span>}
+                </li>
+              ))}
+              {!userBorrowedDevices.length ? <li className="session-preload-empty">{t.kiosk.noDevicesAvailableText}</li> : null}
+            </ul>
+          </section>
+
+          <section className="session-list-card">
+            <div className="session-list-head">
+              <h2>{t.kiosk.returnProgressTitle.replace('{done}', String(barcodes.length)).replace('{total}', String(userBorrowedDevices.length))}</h2>
+              <span>{barcodes.length}</span>
+            </div>
+            <ul className="session-list">
+              {barcodes.map((barcode, index) => (
+                <li key={barcode} className="session-list-item">
+                  <span>{index + 1}. {barcode}</span>
+                  <button type="button" className="chip-button" onClick={() => removeBarcode(barcode)}>
+                    {t.common.remove}
+                  </button>
+                </li>
+              ))}
+              {!barcodes.length ? <li className="session-list-empty">{t.kiosk.noDevicesScanned}</li> : null}
+            </ul>
+          </section>
+        </div>
+      ) : (
+        <section className="session-list-card">
+          <div className="session-list-head">
+            <h2>{countLabel}</h2>
+            <span>{barcodes.length}</span>
           </div>
-          <ul className="session-preload-list">
-            {userBorrowedDevices.map((device) => (
-              <li key={device.barcode} className={`session-preload-item ${barcodes.includes(device.barcode) ? 'session-preload-scanned' : ''}`}>
-                <span>{device.barcode || device.device_number || '-'}</span>
-                {barcodes.includes(device.barcode) && <span className="session-preload-check">✓</span>}
+          <ul className="session-list">
+            {barcodes.map((barcode, index) => (
+              <li key={barcode} className="session-list-item">
+                <span>{index + 1}. {barcode}</span>
+                <button type="button" className="chip-button" onClick={() => removeBarcode(barcode)}>
+                  {t.common.remove}
+                </button>
               </li>
             ))}
+            {!barcodes.length ? <li className="session-list-empty">{t.kiosk.noDevicesScanned}</li> : null}
           </ul>
         </section>
       )}
-
-      <section className="session-list-card">
-        <div className="session-list-head">
-          <h2>{countLabel}</h2>
-          <span>{barcodes.length}</span>
-        </div>
-        <ul className="session-list">
-          {barcodes.map((barcode, index) => (
-            <li key={barcode} className="session-list-item">
-              <span>{index + 1}. {barcode}</span>
-              <button type="button" className="chip-button" onClick={() => removeBarcode(barcode)}>
-                {t.common.remove}
-              </button>
-            </li>
-          ))}
-          {!barcodes.length ? <li className="session-list-empty">{t.kiosk.noDevicesScanned}</li> : null}
-        </ul>
-      </section>
 
       <div className="session-actions">
         <button type="button" className="ghost-button" onClick={onCancel}>{t.common.cancel}</button>
