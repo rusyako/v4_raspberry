@@ -248,8 +248,8 @@
   margin: 22px 0 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   flex: 1;
   align-content: start;
@@ -259,15 +259,14 @@
   padding-right: 6px;
 }
 
-.home-borrowed-list-three-cols {
-  /* inherited from .home-borrowed-list */
-}
-
 .home-borrowed-item {
+  width: 320px;
+  max-width: 100%;
   padding: 14px 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(152, 201, 231, 0.1);
+  flex-shrink: 0;
 }
 
 .home-borrowed-person {
@@ -831,18 +830,14 @@
   .home-borrowed-list {
     margin-top: 10px;
     gap: 8px;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     max-height: none;
     padding-right: 2px;
   }
 
   .home-borrowed-item {
+    width: 240px;
     padding: 10px;
     border-radius: 14px;
-  }
-
-  .home-borrowed-list-three-cols {
-    /* inherited */
   }
 
   .home-borrowed-person {
@@ -1128,7 +1123,11 @@
   }
 
   .home-borrowed-list-three-cols {
-    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .home-borrowed-item {
+    width: 100%;
   }
 
   .home-count-card {
