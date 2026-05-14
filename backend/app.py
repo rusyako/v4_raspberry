@@ -1190,11 +1190,30 @@ def check_laptop():
     connection = get_db_connection()
     try:
         cursor = connection.cursor()
-        cursor.execute('SELECT 1 FROM laptops WHERE barcode = ? LIMIT 1;', (barcode,))
-        result = cursor.fetchone()
-        if result:
-            return success_response('Устройство найдено. / Device found.')
-        return error_response('Это устройство не найдено. / This device was not found.')
+        cursor.execute('SELECT name, barcode, device_number, status FROM laptops WHERE barcode = ? LIMIT 1;', (barcode,))
+        laptop = cursor.fetchone()
+        if not laptop:
+            return error_response('Это устройство не найдено. / This device was not found.')
+
+        laptop = dict(laptop)
+        current_borrower = None
+        if laptop['status'] == 'unavailable':
+            cursor.execute(
+                '''SELECT employee_name, employee_uid
+                   FROM borrow_records
+                   WHERE barcode = ? AND status = 'active'
+                   ORDER BY taken_at DESC LIMIT 1;''',
+                (barcode,)
+            )
+            row = cursor.fetchone()
+            if row:
+                current_borrower = {'name': row['employee_name'], 'uid': row['employee_uid']}
+
+        return success_response(
+            'Устройство найдено. / Device found.',
+            device=laptop,
+            current_borrower=current_borrower
+        )
     except Exception as error:
         logging.error(f'Check laptop error: {error}')
         return error_response(

@@ -199,7 +199,10 @@ export function KioskSessionView({
   }
 
   async function checkLaptop(barcode) {
-    await postJson('/check_laptop', { barcode });
+    const data = await postJson('/check_laptop', { barcode });
+    if (data.current_borrower) {
+      showToast('info', t.kiosk.deviceBorrowedTitle, t.kiosk.deviceBorrowedText.replace('{name}', data.current_borrower.name));
+    }
   }
 
   async function handleKeyDown(event) {

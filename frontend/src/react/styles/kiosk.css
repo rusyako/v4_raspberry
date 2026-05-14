@@ -645,6 +645,7 @@
   padding: 14px 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
+  max-width: 440px;
 }
 
 .session-list-empty {
@@ -1007,6 +1008,7 @@
     border-radius: 12px;
     font-size: 16px;
     line-height: 1.2;
+    max-width: 360px;
   }
 
   .session-actions {
