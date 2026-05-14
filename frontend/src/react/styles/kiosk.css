@@ -248,8 +248,9 @@
   margin: 22px 0 0;
   padding: 0;
   list-style: none;
-  columns: 3;
-  column-gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
   flex: 1;
   align-content: start;
   min-height: 0;
@@ -259,7 +260,7 @@
 }
 
 .home-borrowed-list-three-cols {
-  /* kept for compatibility, columns already set to 3 above */
+  /* inherited from .home-borrowed-list */
 }
 
 .home-borrowed-item {
@@ -267,8 +268,6 @@
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(152, 201, 231, 0.1);
-  break-inside: avoid;
-  margin-bottom: 10px;
 }
 
 .home-borrowed-person {
@@ -831,19 +830,19 @@
 
   .home-borrowed-list {
     margin-top: 10px;
-    column-gap: 8px;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     max-height: none;
     padding-right: 2px;
   }
 
   .home-borrowed-item {
-    margin-bottom: 8px;
     padding: 10px;
     border-radius: 14px;
   }
 
   .home-borrowed-list-three-cols {
-    columns: 3;
+    /* inherited */
   }
 
   .home-borrowed-person {
@@ -1129,7 +1128,7 @@
   }
 
   .home-borrowed-list-three-cols {
-    columns: 1;
+    grid-template-columns: 1fr;
   }
 
   .home-count-card {
