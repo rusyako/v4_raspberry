@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { postJson } from '../../shared/api';
 import { LanguageSwitcher } from '../../shared/language-switcher';
 import { writeStoredArray } from '../../shared/storage';
@@ -57,6 +57,14 @@ export function KioskHomeView({
   t
 }) {
   const groupedBorrowedRecords = groupBorrowedRecordsByEmployee(activeBorrowedRecords);
+  const [expandedEmployees, setExpandedEmployees] = useState({});
+
+  function toggleEmployeeDevices(employeeUid) {
+    setExpandedEmployees((current) => ({
+      ...current,
+      [employeeUid]: !current[employeeUid]
+    }));
+  }
 
   return (
     <>
@@ -92,13 +100,24 @@ export function KioskHomeView({
                       <span className="home-borrowed-count">{group.devices.length}</span>
                     </div>
                     <ul className="home-borrowed-device-list">
-                      {group.devices.map((device) => (
+                      {(expandedEmployees[group.employeeUid] ? group.devices : group.devices.slice(0, 1)).map((device) => (
                         <li key={device.id} className="home-borrowed-device-item">
                           <p className="home-borrowed-device-name">{device.barcode || '-'}</p>
                           <p className="home-borrowed-device-time">{formatDateTimeGmtPlus5(device.taken_at, { language, compact: true })}</p>
                         </li>
                       ))}
                     </ul>
+                    {group.devices.length > 2 ? (
+                      <button
+                        type="button"
+                        className="home-borrowed-more-button"
+                        onClick={() => toggleEmployeeDevices(group.employeeUid)}
+                      >
+                        {expandedEmployees[group.employeeUid]
+                          ? t.kiosk.hideMoreDevices
+                          : t.kiosk.showMoreDevices.replace('{count}', String(group.devices.length - 1))}
+                      </button>
+                    ) : null}
                   </li>
                 ))}
               </ul>
