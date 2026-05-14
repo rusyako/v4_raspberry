@@ -137,9 +137,12 @@ export function KioskHomeView({
   );
 }
 
-export function KioskActionsView({ onTake, onReturn, onAdmin, isAdminUser, language, setLanguage, t }) {
+export function KioskActionsView({ onTake, onReturn, onAdmin, isAdminUser, language, setLanguage, t, onBackToHome }) {
   return (
     <section className="actions-shell">
+      <button type="button" className="actions-close-btn" onClick={onBackToHome} aria-label={t.common.backHome}>
+        ×
+      </button>
       <header className="actions-header">
         <p className="actions-kicker">{t.kiosk.sessionConfirmed}</p>
         <h1>{t.kiosk.stationTitle}</h1>
@@ -289,13 +292,16 @@ export function KioskSessionView({
   );
 }
 
-export function UnknownUserView({ language, setLanguage, t }) {
+export function UnknownUserView({ language, setLanguage, t, onBackToHome }) {
   const hasSupportLink = Boolean(IT_SUPPORT_REQUEST_URL);
   const hasSupportEmail = Boolean(IT_SUPPORT_EMAIL);
   const hasSupportPhone = Boolean(IT_SUPPORT_PHONE);
 
   return (
     <section className="unknown-shell">
+      <button type="button" className="actions-close-btn" onClick={onBackToHome} aria-label={t.common.backHome}>
+        ×
+      </button>
       <div className="unknown-card">
         <h1>{t.kiosk.unknownUserTitle}</h1>
         <p>{t.kiosk.unknownUserText}</p>

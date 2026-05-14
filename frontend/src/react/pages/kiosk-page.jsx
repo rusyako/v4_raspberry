@@ -71,9 +71,9 @@ export function KioskPage() {
         />
       ) : null}
 
-      {view === 'unknown' ? <UnknownUserView language={language} setLanguage={setLanguage} t={t} /> : null}
+      {view === 'unknown' ? <UnknownUserView language={language} setLanguage={setLanguage} t={t} onBackToHome={clearSessionAndGoHome} /> : null}
 
-      {view === 'actions' ? <KioskActionsView onTake={goToCheckout} onReturn={goToReturn} onAdmin={goToAdmin} isAdminUser={isAdminUser} language={language} setLanguage={setLanguage} t={t} /> : null}
+      {view === 'actions' ? <KioskActionsView onTake={goToCheckout} onReturn={goToReturn} onAdmin={goToAdmin} isAdminUser={isAdminUser} onBackToHome={clearSessionAndGoHome} language={language} setLanguage={setLanguage} t={t} /> : null}
 
       {view === 'checkout' ? (
         <KioskSessionView
