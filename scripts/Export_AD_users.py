@@ -193,6 +193,12 @@ def upsert_user(connection, user_record):
         next_uid_hex = prefer_incoming_or_existing(user_record['uid_hex'], existing_user['uid_hex'])
         next_uid_dec = prefer_incoming_or_existing(user_record['uid_dec'], existing_user['uid_dec'])
 
+        # For existing users: IT Department -> upgrade to admin, otherwise don't downgrade
+        cursor.execute('SELECT is_admin FROM users WHERE guid = ? LIMIT 1;', (user_record['guid'],))
+        existing_is_admin_row = cursor.fetchone()
+        existing_is_admin = int(existing_is_admin_row['is_admin'] or 0) if existing_is_admin_row else 0
+        next_is_admin = max(existing_is_admin, user_record.get('is_admin', 0))
+
         cursor.execute(
             '''
             UPDATE users
@@ -209,7 +215,7 @@ def upsert_user(connection, user_record):
                 user_record['email'],
                 user_record['description'],
                 user_record['category'],
-                user_record.get('is_admin', 0),
+                next_is_admin,
                 user_record['guid'],
             )
         )
