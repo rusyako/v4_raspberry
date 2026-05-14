@@ -1885,6 +1885,18 @@ def admin_delete_laptop(name):
 def log_admin_action(admin_uid, action, details=''):
     try:
         connection = get_db_connection()
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS admin_actions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                admin_uid TEXT NOT NULL,
+                admin_name TEXT NOT NULL,
+                action TEXT NOT NULL,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            '''
+        )
         admin_name = admin_uid
         user = get_user_by_uid(admin_uid)
         if user:
@@ -1967,7 +1979,7 @@ def admin_assign_laptop_to_admin(name):
         log_admin_action(
             admin_user['uid'],
             'transfer_device',
-            f'Device "{laptop.get("device_number", name)}" transferred from {previous_uid} to {admin_user["uid"]}: {reason}'
+            f'Device "{laptop["device_number"] or name}" transferred from {previous_uid} to {admin_user["uid"]}: {reason}'
         )
         return success_response('Устройство перенесено на администратора. / Device transferred to administrator.')
     except Exception as error:
