@@ -16,7 +16,7 @@ function parseIsoAsUtc(isoString) {
   return new Date(timestamp + GMT_PLUS_5_OFFSET_MS);
 }
 
-export function formatDateTimeGmtPlus5(isoString, { language = 'ru', compact = false } = {}) {
+export function formatDateTimeGmtPlus5(isoString, { language = 'ru', compact = false, showZone = false } = {}) {
   const date = parseIsoAsUtc(isoString);
   if (!date) {
     return '--';
@@ -39,5 +39,5 @@ export function formatDateTimeGmtPlus5(isoString, { language = 'ru', compact = f
     return `${day} ${monthName} • ${hours}:${minutes}`;
   }
 
-  return `${day} ${monthName} ${year}, ${hours}:${minutes} (GMT+5)`;
+  return `${day} ${monthName} ${year}, ${hours}:${minutes}${showZone ? ' (GMT+5)' : ''}`;
 }

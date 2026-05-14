@@ -400,7 +400,9 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
   );
 });
 
-export const LaptopsTable = memo(function LaptopsTable({ laptops, t, onRemove }) {
+export const LaptopsTable = memo(function LaptopsTable({ laptops, t, onRemove, onAction, onSort, sortKey, sortDir }) {
+  const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+
   return (
     <section className="admin-panel users-table-panel">
       <div className="admin-panel-head">
@@ -410,26 +412,28 @@ export const LaptopsTable = memo(function LaptopsTable({ laptops, t, onRemove })
         <table className="admin-table users-table">
           <thead>
             <tr>
-              <th>{t.admin.deviceNameLabel}</th>
-              <th>{t.admin.barcodeLabel}</th>
-              <th>{t.admin.deviceNumberLabel}</th>
-              <th>{t.admin.columns.status}</th>
-              <th></th>
+              <th onClick={() => onSort && onSort('device_number')} style={{ cursor: 'pointer' }}>{t.admin.columns.id}{sortArrow('device_number')}</th>
+              <th onClick={() => onSort && onSort('barcode')} style={{ cursor: 'pointer' }}>{t.admin.barcodeLabel}{sortArrow('barcode')}</th>
+              <th onClick={() => onSort && onSort('bookingStatus')} style={{ cursor: 'pointer' }}>{t.admin.columns.status}{sortArrow('bookingStatus')}</th>
+              <th onClick={() => onSort && onSort('borrowerName')} style={{ cursor: 'pointer' }}>{t.admin.columns.name}{sortArrow('borrowerName')}</th>
+              <th>{t.admin.actionLabel}</th>
             </tr>
           </thead>
           <tbody>
             {laptops.length ? laptops.map((laptop) => (
               <tr key={`${laptop.name}:${laptop.barcode}`}>
-                <td><strong>{laptop.name || '-'}</strong></td>
+                <td><strong>{laptop.device_number || laptop.name || '-'}</strong></td>
                 <td><code>{laptop.barcode || '-'}</code></td>
-                <td><code>{laptop.device_number || '-'}</code></td>
                 <td>
-                  <span className={`status-badge ${laptop.status === 'available' ? 'status-available' : 'status-unavailable'}`}>
-                    {laptop.status === 'available' ? t.admin.statusAvailable : t.admin.statusUnavailable}
+                  <span className={`status-badge ${laptop.canAssign ? 'status-active' : 'status-available'}`}>
+                    {laptop.bookingStatus}
                   </span>
                 </td>
+                <td>{laptop.borrowerName || '-'}</td>
                 <td>
-                  <button type="button" className="danger-button small" onClick={() => onRemove(laptop.name)}>{t.common.remove}</button>
+                  <button type="button" className={`ghost-button small ${!laptop.canAssign ? 'button-disabled' : ''}`} onClick={() => onAction(laptop)} disabled={!laptop.canAssign}>
+                    {laptop.canAssign ? t.admin.actionLabel : t.admin.noBookingActionLabel}
+                  </button>
                 </td>
               </tr>
             )) : (

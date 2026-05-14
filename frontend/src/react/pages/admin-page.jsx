@@ -25,6 +25,13 @@ export function AdminPage() {
   const [adSyncLogLines, setAdSyncLogLines] = useState([]);
   const [showAdManageModal, setShowAdManageModal] = useState(false);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [showAssignAdminModal, setShowAssignAdminModal] = useState(false);
+  const [assignTargetLaptop, setAssignTargetLaptop] = useState(null);
+  const [assignAdminGuid, setAssignAdminGuid] = useState('');
+  const [assignReason, setAssignReason] = useState('');
+  const [deviceSortKey, setDeviceSortKey] = useState('device_number');
+  const [deviceSortDir, setDeviceSortDir] = useState('asc');
+  const [adminSearchText, setAdminSearchText] = useState('');
   const [borrowStatusFilter, setBorrowStatusFilter] = useState('all');
   const [borrowSearchText, setBorrowSearchText] = useState('');
   const emptyUserForm = { guid: '', uid: '', first_name: '', last_name: '', name: '', email: '', description: '', category: '', is_admin: false };
@@ -36,9 +43,11 @@ export function AdminPage() {
   const filteredBorrowRecords = useMemo(() => {
     let filtered = borrowRecords;
     if (borrowStatusFilter === 'active') {
-      filtered = filtered.filter(r => r.status === 'active');
+      filtered = filtered.filter(r => r.status === 'active' && !r.comment);
     } else if (borrowStatusFilter === 'returned') {
       filtered = filtered.filter(r => r.status === 'returned');
+    } else if (borrowStatusFilter === 'transferred') {
+      filtered = filtered.filter(r => Boolean(r.comment));
     }
     if (borrowSearchText.trim()) {
       const query = borrowSearchText.trim().toLowerCase();
@@ -53,8 +62,47 @@ export function AdminPage() {
     return filtered;
   }, [borrowRecords, borrowStatusFilter, borrowSearchText]);
 
-  const activeCount = borrowRecords.filter(r => r.status === 'active').length;
+  const activeCount = borrowRecords.filter(r => r.status === 'active' && !r.comment).length;
   const returnedCount = borrowRecords.filter(r => r.status === 'returned').length;
+  const transferredCount = borrowRecords.filter(r => Boolean(r.comment)).length;
+  const adminUsers = useMemo(() => users.filter((user) => user.is_admin), [users]);
+  const filteredAdminUsers = useMemo(() => {
+    if (!adminSearchText.trim()) return adminUsers;
+    const q = adminSearchText.trim().toLowerCase();
+    return adminUsers.filter(u =>
+      String(u.name || '').toLowerCase().includes(q) ||
+      String(u.uid || '').toLowerCase().includes(q)
+    );
+  }, [adminUsers, adminSearchText]);
+
+  const handleDeviceSort = (key) => {
+    if (deviceSortKey === key) {
+      setDeviceSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setDeviceSortKey(key);
+      setDeviceSortDir('asc');
+    }
+  };
+
+  const sortedLaptopRows = useMemo(() => {
+    const sorted = [...laptopRows];
+    sorted.sort((a, b) => {
+      const va = String(a[deviceSortKey] || '');
+      const vb = String(b[deviceSortKey] || '');
+      return deviceSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    return sorted;
+  }, [laptopRows, deviceSortKey, deviceSortDir]);
+  const laptopRows = useMemo(() => laptops.map((laptop) => {
+    const activeRecord = borrowRecords.find((record) => record.status === 'active' && (record.device_number === laptop.device_number || record.barcode === laptop.barcode));
+    return {
+      ...laptop,
+      bookingStatus: activeRecord ? t.admin.statusActive : t.admin.statusAvailable,
+      borrowerName: activeRecord?.employee_name || '-',
+      borrowerUid: activeRecord?.employee_uid || '',
+      canAssign: Boolean(activeRecord)
+    };
+  }), [laptops, borrowRecords, t]);
 
   function authHeaders() {
     return adminToken ? { 'X-Admin-Token': adminToken } : {};
@@ -207,6 +255,48 @@ export function AdminPage() {
     setShowDevicesListModal(true);
   }
 
+  function openAssignAdminModal(laptop) {
+    setAssignTargetLaptop(laptop);
+    setAssignAdminGuid('');
+    setAssignReason('');
+    setShowAssignAdminModal(true);
+  }
+
+  async function handleAssignLaptopToAdmin(event) {
+    event.preventDefault();
+    if (!assignTargetLaptop) return;
+    const admin = adminUsers.find(u => u.guid === assignAdminGuid);
+    if (!admin) return;
+    if (!window.confirm(`${t.admin.confirmTransfer}: "${admin.name || admin.uid}"?\n${t.admin.transferReasonLabel}: ${assignReason}`)) return;
+    try {
+      const data = await postJson(`/admin/laptops/${encodeURIComponent(assignTargetLaptop.name)}/assign-admin`, {
+        guid: assignAdminGuid,
+        reason: assignReason
+      }, authHeaders());
+      setShowAssignAdminModal(false);
+      setAssignTargetLaptop(null);
+      await loadAdminData();
+      showToast('success', t.admin.toasts.deviceTransferredTitle, data.message);
+    } catch (error) {
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
+    }
+  }
+
+  function handleExportBorrowRecords() {
+    const csvRows = [['ID','Сотрудник','Email','Штрихкод','№ уст-ва','Устройство','Выдано','Возвращено','Статус','Комментарий']];
+    borrowRecords.forEach(r => {
+      csvRows.push([r.id, r.employee_name, r.employee_email, r.barcode, r.device_number, r.device_name, r.taken_at, r.returned_at, r.comment ? 'Перенесено' : r.status, r.comment || '']);
+    });
+    const csvContent = '\uFEFF' + csvRows.map(row => row.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `borrow_records_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function openAdSyncLog() {
     try {
       const data = await requestJson('/admin/ad-sync-log', authHeaders());
@@ -273,8 +363,16 @@ export function AdminPage() {
               <span className="admin-stat-label">{t.admin.stats.totalDevices}</span>
             </div>
             <div className="admin-stat-card">
-              <span className="admin-stat-value">{borrowRecords.length}</span>
-              <span className="admin-stat-label">{t.admin.borrowRecordsTitle}</span>
+              <span className="admin-stat-value">{activeCount}</span>
+              <span className="admin-stat-label">{t.admin.stats.activeLoans}</span>
+            </div>
+            <div className="admin-stat-card">
+              <span className="admin-stat-value">{laptops.filter(l => l.status === 'available').length}</span>
+              <span className="admin-stat-label">{t.admin.statusAvailable}</span>
+            </div>
+            <div className="admin-stat-card">
+              <span className="admin-stat-value">{adminUsers.length}</span>
+              <span className="admin-stat-label">{t.admin.adminBadge}</span>
             </div>
           </div>
 
@@ -292,6 +390,7 @@ export function AdminPage() {
           <section className="admin-panel admin-wide-panel">
             <div className="admin-panel-head admin-panel-head-with-filters">
               <h2>{t.admin.borrowRecordsTitle}</h2>
+              <button type="button" className="ghost-button small" onClick={handleExportBorrowRecords} style={{ marginLeft: 'auto' }}>{t.admin.exportLabel}</button>
               <div className="admin-filter-row">
                 <input
                   type="text"
@@ -322,6 +421,13 @@ export function AdminPage() {
                   >
                     {t.admin.filterReturned} ({returnedCount})
                   </button>
+                  <button
+                    type="button"
+                    className={`admin-filter-tab ${borrowStatusFilter === 'transferred' ? 'admin-filter-tab-active' : ''}`}
+                    onClick={() => setBorrowStatusFilter('transferred')}
+                  >
+                    {t.admin.filterTransferred} ({transferredCount})
+                  </button>
                 </div>
               </div>
             </div>
@@ -332,7 +438,6 @@ export function AdminPage() {
                     <th>{t.admin.columns.id}</th>
                     <th>{t.admin.columns.name}</th>
                     <th>{t.admin.columns.barcode}</th>
-                    <th>{t.admin.columns.device}</th>
                     <th>{t.admin.columns.taken}</th>
                     <th>{t.admin.columns.returned}</th>
                     <th>{t.admin.columns.status}</th>
@@ -341,25 +446,25 @@ export function AdminPage() {
                 <tbody>
                   {filteredBorrowRecords.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="admin-table-empty">
+                      <td colSpan="6" className="admin-table-empty">
                         {t.admin.noBorrowRecords}
                       </td>
                     </tr>
                   ) : (
                     filteredBorrowRecords.map((record) => (
-                      <tr key={record.id}>
+                      <tr key={record.id} className={record.comment ? 'admin-row-transferred' : ''}>
                         <td className="admin-cell-id">{record.id}</td>
                         <td>
                           <span className="admin-cell-name">{record.employee_name || '-'}</span>
                           <span className="admin-cell-sub">{record.employee_email || record.employee_uid || '-'}</span>
+                          {record.comment ? <span className="admin-cell-note">{t.admin.transferReasonPrefix}: {record.comment.replace(/^transferred:/, '')}</span> : null}
                         </td>
                         <td><code>{record.barcode || '-'}</code></td>
-                        <td>{record.device_name || record.device_number || '-'}</td>
                         <td>{formatDateTimeGmtPlus5(record.taken_at, { language: 'ru' })}</td>
                         <td>{formatDateTimeGmtPlus5(record.returned_at, { language: 'ru' })}</td>
                         <td>
-                          <span className={`status-badge ${record.status === 'active' ? 'status-active' : 'status-returned'}`}>
-                            {record.status === 'active' ? t.admin.statusActive : t.admin.statusReturned}
+                          <span className={`status-badge ${record.comment ? 'status-admin' : record.status === 'active' ? 'status-active' : 'status-returned'}`}>
+                            {record.comment ? t.admin.statusTransferred : record.status === 'active' ? t.admin.statusActive : t.admin.statusReturned}
                           </span>
                         </td>
                       </tr>
@@ -416,12 +521,58 @@ export function AdminPage() {
                   <button type="button" className="primary-button" onClick={() => { setShowDevicesListModal(false); setShowDeviceModal(true); }}>{t.admin.addDevice}</button>
                 </div>
                 <LaptopsTable
-                  laptops={laptops}
+                  laptops={sortedLaptopRows}
                   t={t}
                   onRemove={removeLaptop}
+                  onAction={openAssignAdminModal}
+                  onSort={handleDeviceSort}
+                  sortKey={deviceSortKey}
+                  sortDir={deviceSortDir}
                 />
               </div>
             </Suspense>
+          </Modal>
+
+          <Modal isOpen={showAssignAdminModal} onClose={() => setShowAssignAdminModal(false)} title={t.admin.assignAdminTitle}>
+            <form className="admin-form" onSubmit={handleAssignLaptopToAdmin}>
+              <label className="admin-field">
+                <span>{t.admin.deviceLabel}</span>
+                <input value={assignTargetLaptop ? (assignTargetLaptop.device_number || assignTargetLaptop.barcode || assignTargetLaptop.name) : ''} type="text" readOnly />
+              </label>
+              <label className="admin-field">
+                <span>{t.admin.assignAdminUserLabel}</span>
+                <input
+                  type="text"
+                  className="admin-filter-input"
+                  placeholder={t.admin.searchAdminPlaceholder}
+                  value={adminSearchText}
+                  onChange={(e) => setAdminSearchText(e.target.value)}
+                  style={{ width: '100%', marginBottom: '8px' }}
+                />
+                <div style={{ maxHeight: '200px', overflow: 'auto', border: '1px solid rgba(200,221,233,0.18)', borderRadius: '10px', background: '#102734' }}>
+                  {filteredAdminUsers.map((user) => (
+                    <label
+                      key={user.guid}
+                      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.06)', color: assignAdminGuid === user.guid ? '#eaf2f8' : '#aac7d8', background: assignAdminGuid === user.guid ? 'rgba(49,165,255,0.12)' : 'transparent' }}
+                      onClick={() => setAssignAdminGuid(user.guid)}
+                    >
+                      <input type="radio" name="adminSelect" checked={assignAdminGuid === user.guid} onChange={() => setAssignAdminGuid(user.guid)} />
+                      <span>{user.name || user.uid}</span>
+                      {user.email && <small style={{ color: '#6a8a9e' }}>{user.email}</small>}
+                    </label>
+                  ))}
+                  {!filteredAdminUsers.length && <div style={{ padding: '12px', color: '#6a8a9e' }}>{t.admin.noAdminUsers}</div>}
+                </div>
+              </label>
+              <label className="admin-field">
+                <span>{t.admin.transferReasonLabel}</span>
+                <input value={assignReason} onChange={(event) => setAssignReason(event.target.value)} type="text" placeholder={t.admin.transferReasonPlaceholder} required />
+              </label>
+              <div className="admin-actions">
+                <button type="button" className="ghost-button" onClick={() => setShowAssignAdminModal(false)}>{t.common.cancel}</button>
+                <button type="submit" className="primary-button">{t.admin.transferAction}</button>
+              </div>
+            </form>
           </Modal>
 
           <Modal isOpen={showAdManageModal} onClose={() => setShowAdManageModal(false)} title={t.admin.adManage}>

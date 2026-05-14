@@ -691,6 +691,7 @@ def fetch_admin_dashboard_data():
                 barcode,
                 taken_at,
                 returned_at,
+                comment,
                 status
             FROM borrow_records
             ORDER BY id DESC
@@ -967,10 +968,15 @@ def init_db():
                 barcode TEXT,
                 taken_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 returned_at TIMESTAMP,
+                comment TEXT,
                 status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'returned'))
             );
             '''
         )
+        try:
+            cursor.execute('ALTER TABLE borrow_records ADD COLUMN comment TEXT;')
+        except sqlite3.OperationalError:
+            pass
         cursor.execute(
             'CREATE INDEX IF NOT EXISTS idx_borrow_records_uid_status ON borrow_records (employee_uid, status);'
         )
@@ -979,6 +985,18 @@ def init_db():
         )
         cursor.execute(
             'CREATE INDEX IF NOT EXISTS idx_borrow_records_taken_at ON borrow_records (taken_at);'
+        )
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS admin_actions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                admin_uid TEXT NOT NULL,
+                admin_name TEXT NOT NULL,
+                action TEXT NOT NULL,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            '''
         )
 
         cursor.execute('SELECT guid, uid, uid_hex, uid_dec, name, first_name, last_name FROM users;')
@@ -1860,6 +1878,102 @@ def admin_delete_laptop(name):
         connection.commit()
         recompute_laptop_status(connection)
         return success_response('Устройство удалено. / Device deleted.')
+    finally:
+        connection.close()
+
+
+def log_admin_action(admin_uid, action, details=''):
+    try:
+        connection = get_db_connection()
+        admin_name = admin_uid
+        user = get_user_by_uid(admin_uid)
+        if user:
+            admin_name = user.get('name') or admin_uid
+        connection.execute(
+            'INSERT INTO admin_actions (admin_uid, admin_name, action, details) VALUES (?, ?, ?, ?);',
+            (admin_uid, admin_name, action, details)
+        )
+        connection.commit()
+        connection.close()
+    except Exception as error:
+        logging.warning(f'Failed to log admin action: {error}')
+
+
+@app.route('/admin/laptops/<name>/assign-admin', methods=['POST'])
+def admin_assign_laptop_to_admin(name):
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
+    data = request.get_json(silent=True) or {}
+    target_guid = str(data.get('guid') or '').strip()
+    reason = str(data.get('reason') or '').strip()
+
+    if not target_guid:
+        return error_response('Выберите администратора. / Select an administrator.')
+    if not reason:
+        return error_response('Укажите причину переноса. / Enter transfer reason.')
+
+    connection = get_db_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            'SELECT guid, uid, name, email, is_admin FROM users WHERE guid = ? LIMIT 1;',
+            (target_guid,)
+        )
+        admin_user = cursor.fetchone()
+        if not admin_user:
+            return error_response('Администратор не найден. / Administrator not found.', 404)
+        if not int(admin_user['is_admin'] or 0):
+            return error_response('Можно выбрать только администратора. / Only an administrator can be selected.')
+        if not admin_user['uid']:
+            return error_response('У администратора нет UID карты. / Administrator has no UID card.')
+
+        cursor.execute('SELECT name, device_number, barcode FROM laptops WHERE name = ? LIMIT 1;', (name,))
+        laptop = cursor.fetchone()
+        if not laptop:
+            return error_response('Устройство не найдено. / Device not found.', 404)
+
+        cursor.execute('SELECT uid FROM laptop_bookings WHERE laptop_name = ? LIMIT 1;', (name,))
+        booking = cursor.fetchone()
+        if not booking:
+            return error_response('На устройство нет активной брони. / Device has no active booking.')
+
+        previous_uid = booking['uid']
+        cursor.execute('UPDATE laptop_bookings SET uid = ? WHERE laptop_name = ?;', (admin_user['uid'], name))
+        cursor.execute(
+            '''
+            UPDATE borrow_records
+            SET employee_uid = ?,
+                employee_name = ?,
+                employee_email = ?,
+                comment = ?
+            WHERE device_number = ?
+              AND status = 'active';
+            ''',
+            (
+                admin_user['uid'],
+                admin_user['name'] or admin_user['uid'],
+                admin_user['email'],
+                f'transferred:{reason}',
+                laptop['device_number']
+            )
+        )
+        cursor.execute(
+            'INSERT INTO laptop_history (uid, laptop_name, action) VALUES (?, ?, ?);',
+            (admin_user['uid'], name, f'transferred_from:{previous_uid}:{reason}')
+        )
+        connection.commit()
+        log_admin_action(
+            admin_user['uid'],
+            'transfer_device',
+            f'Device "{laptop.get("device_number", name)}" transferred from {previous_uid} to {admin_user["uid"]}: {reason}'
+        )
+        return success_response('Устройство перенесено на администратора. / Device transferred to administrator.')
+    except Exception as error:
+        connection.rollback()
+        logging.error(f'Assign admin laptop error: {error}')
+        return error_response('Не удалось перенести устройство. / Failed to transfer device.', 500)
     finally:
         connection.close()
 
