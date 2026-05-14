@@ -1873,10 +1873,23 @@ def check_user_laptops():
     connection = get_db_connection()
     try:
         cursor = connection.cursor()
-        cursor.execute('SELECT COUNT(*) FROM laptop_bookings WHERE uid = ?;', (current_user_uid,))
-        result = cursor.fetchone()[0]
-        if result > 0:
-            return success_response('Найдены выданные устройства. / Borrowed devices found.')
+        cursor.execute(
+            '''
+            SELECT l.barcode, l.device_number, l.name, lb.created_at
+            FROM laptop_bookings lb
+            JOIN laptops l ON l.name = lb.laptop_name
+            WHERE lb.uid = ?
+            ORDER BY lb.created_at DESC;
+            ''',
+            (current_user_uid,)
+        )
+        devices = [dict(row) for row in cursor.fetchall()]
+        if devices:
+            return success_response(
+                'Найдены выданные устройства. / Borrowed devices found.',
+                devices=devices,
+                count=len(devices)
+            )
         return error_response(
             'Для этой карты нет выданных устройств. / No borrowed devices were found for this card.'
         )

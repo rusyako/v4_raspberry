@@ -183,7 +183,9 @@ export function KioskSessionView({
   showToast,
   language,
   setLanguage,
-  t
+  t,
+  mode = 'take',
+  userBorrowedDevices = []
 }) {
   const inputRef = useRef(null);
 
@@ -200,9 +202,8 @@ export function KioskSessionView({
 
   async function checkLaptop(barcode) {
     const data = await postJson('/check_laptop', { barcode });
-    if (data.current_borrower) {
+    if (data.current_borrower && mode === 'take') {
       showToast('info', t.kiosk.deviceBorrowedTitle, t.kiosk.deviceBorrowedText.replace('{name}', data.current_borrower.name));
-      throw new Error(t.kiosk.deviceBorrowedTitle);
     }
   }
 
@@ -269,6 +270,23 @@ export function KioskSessionView({
           {t.common.scan}
         </button>
       </div>
+
+      {mode === 'return' && userBorrowedDevices.length > 0 && (
+        <section className="session-preload-card">
+          <div className="session-preload-head">
+            <h2>{t.kiosk.yourDevices}</h2>
+            <span>{userBorrowedDevices.length}</span>
+          </div>
+          <ul className="session-preload-list">
+            {userBorrowedDevices.map((device) => (
+              <li key={device.barcode} className={`session-preload-item ${barcodes.includes(device.barcode) ? 'session-preload-scanned' : ''}`}>
+                <span>{device.barcode || device.device_number || '-'}</span>
+                {barcodes.includes(device.barcode) && <span className="session-preload-check">✓</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="session-list-card">
         <div className="session-list-head">

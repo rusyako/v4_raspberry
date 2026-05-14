@@ -23,6 +23,7 @@ export function useKioskController(showToast) {
   const [view, setView] = useState('home');
   const [takeBarcodes, setTakeBarcodes] = useState(() => readStoredArray(TAKE_BARCODES_STORAGE_KEY));
   const [returnBarcodes, setReturnBarcodes] = useState(() => readStoredArray(RETURN_BARCODES_STORAGE_KEY));
+  const [userBorrowedDevices, setUserBorrowedDevices] = useState([]);
   const [stationCellsStatus, setStationCellsStatus] = useState('0/0');
   const [temperature1, setTemperature1] = useState('--.-°C');
   const [temperature2, setTemperature2] = useState('--.-°C');
@@ -327,7 +328,8 @@ export function useKioskController(showToast) {
 
   async function goToReturn() {
     try {
-      await postJson('/check_user_laptops', {});
+      const data = await postJson('/check_user_laptops', {});
+      setUserBorrowedDevices(data.devices || []);
       fetch('/send_arduino_signal', { method: 'POST' });
       setReturnBarcodes(readStoredArray(RETURN_BARCODES_STORAGE_KEY));
       setView('return');
@@ -398,6 +400,7 @@ export function useKioskController(showToast) {
     setTakeBarcodes,
     returnBarcodes,
     setReturnBarcodes,
+    userBorrowedDevices,
     screenClassName,
     clearSessionAndGoHome,
     goToCheckout,

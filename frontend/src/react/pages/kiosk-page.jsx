@@ -40,6 +40,7 @@ export function KioskPage() {
     setTakeBarcodes,
     returnBarcodes,
     setReturnBarcodes,
+    userBorrowedDevices,
     screenClassName,
     clearSessionAndGoHome,
     goToCheckout,
@@ -77,6 +78,7 @@ export function KioskPage() {
 
       {view === 'checkout' ? (
         <KioskSessionView
+          mode="take"
           title={t.kiosk.checkoutTitle}
           description={t.kiosk.checkoutDescription}
           placeholder={t.kiosk.checkoutPlaceholder}
@@ -96,6 +98,8 @@ export function KioskPage() {
 
       {view === 'return' ? (
         <KioskSessionView
+          mode="return"
+          userBorrowedDevices={userBorrowedDevices}
           title={t.kiosk.returnTitle}
           description={t.kiosk.returnDescription}
           placeholder={t.kiosk.returnPlaceholder}
