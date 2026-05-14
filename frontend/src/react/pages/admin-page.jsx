@@ -372,6 +372,7 @@ export function AdminPage() {
                 onSubmit={handleAddUser}
                 onRemove={() => {}}
                 onImport={handleImportUsers}
+                onBackToHome={() => { window.location.href = '/'; }}
               />
             </Suspense>
           </Modal>
@@ -385,6 +386,7 @@ export function AdminPage() {
                 t={t}
                 onSubmit={handleAddLaptop}
                 onRemove={() => {}}
+                onBackToHome={() => { window.location.href = '/'; }}
               />
             </Suspense>
           </Modal>

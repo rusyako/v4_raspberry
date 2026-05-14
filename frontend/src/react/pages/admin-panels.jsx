@@ -59,7 +59,8 @@ export const UsersPanel = memo(function UsersPanel({
   t,
   onSubmit,
   onRemove,
-  onImport
+  onImport,
+  onBackToHome
 }) {
   const uidPreview = buildUidPreview(userForm.uid);
 
@@ -67,15 +68,18 @@ export const UsersPanel = memo(function UsersPanel({
     <section className="admin-panel">
       <div className="admin-panel-head">
         <h2>{t.admin.usersTitle}</h2>
-        <label className="primary-button" style={{ cursor: 'pointer' }}>
-          {t.admin.importUsers}
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={onImport}
-            style={{ display: 'none' }}
-          />
-        </label>
+        <div className="admin-panel-head-actions">
+          <label className="primary-button" style={{ cursor: 'pointer' }}>
+            {t.admin.importUsers}
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={onImport}
+              style={{ display: 'none' }}
+            />
+          </label>
+          {onBackToHome && <button type="button" className="ghost-button" onClick={onBackToHome}>{t.common.backHome}</button>}
+        </div>
       </div>
       <form className="admin-form" onSubmit={onSubmit}>
         <label className="admin-field">
@@ -301,12 +305,14 @@ export const LaptopsPanel = memo(function LaptopsPanel({
   laptops,
   t,
   onSubmit,
-  onRemove
+  onRemove,
+  onBackToHome
 }) {
   return (
     <section className="admin-panel">
       <div className="admin-panel-head">
         <h2>{t.admin.laptopsTitle}</h2>
+        {onBackToHome && <button type="button" className="ghost-button" onClick={onBackToHome}>{t.common.backHome}</button>}
       </div>
       <form className="admin-form" onSubmit={onSubmit}>
         <label className="admin-field">
