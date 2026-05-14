@@ -1003,10 +1003,10 @@
 
   .session-list-item,
   .session-list-empty {
-    padding: 14px 16px;
-    border-radius: 14px;
-    font-size: 21px;
-    line-height: 1.3;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+    line-height: 1.2;
   }
 
   .session-actions {
@@ -1020,8 +1020,8 @@
   }
 
   .chip-button {
-    font-size: 16px;
-    padding: 8px 14px;
+    font-size: 21px;
+    padding: 14px 24px;
   }
 
   .unknown-card {
