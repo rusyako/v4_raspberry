@@ -59,6 +59,21 @@ export function KioskHomeView({
   const groupedBorrowedRecords = groupBorrowedRecordsByEmployee(activeBorrowedRecords);
   const [expandedEmployees, setExpandedEmployees] = useState({});
 
+  // --- DEBUG: тестовая карточка с 10 устройствами (убрать перед продом) ---
+  const debugRecords = [...groupedBorrowedRecords];
+  if (typeof window !== 'undefined' && window.location.search.includes('debug_devices')) {
+    debugRecords.unshift({
+      employeeUid: 'TEST-10',
+      employeeName: 'Тестов Тест',
+      devices: Array.from({ length: 10 }, (_, i) => ({
+        id: 9000 + i,
+        barcode: `200000004724${i}`,
+        taken_at: new Date(Date.now() - (i + 1) * 86400000).toISOString()
+      }))
+    });
+  }
+  // --- END DEBUG ---
+
   function toggleEmployeeDevices(employeeUid) {
     setExpandedEmployees((current) => ({
       ...current,
@@ -87,9 +102,9 @@ export function KioskHomeView({
 
             {isActiveBorrowedLoading ? (
               <p className="home-borrowed-empty">...</p>
-            ) : groupedBorrowedRecords.length ? (
+            ) : debugRecords.length ? (
               <ul className="home-borrowed-list home-borrowed-list-three-cols">
-                {groupedBorrowedRecords.map((group) => (
+                {debugRecords.map((group) => (
                   <li key={group.employeeUid} className="home-borrowed-item">
                     <div className="home-borrowed-person">
                       <div className="home-borrowed-person-name">

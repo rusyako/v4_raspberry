@@ -1049,6 +1049,7 @@
   }
 
   .home-borrowed-more-button {
+    margin-left: auto;
     font-size: 11px;
     padding: 4px 8px;
   }
