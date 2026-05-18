@@ -135,6 +135,7 @@ export function KioskHomeView({
 
             <section className="home-card home-card-title">
               <div className="home-title-visual">
+                <h2 className="home-borrowed-section-title">{t.kiosk.accessMessage}</h2>
                 {KIOSK_IMAGES.comingSoonGif ? (
                   <img src={KIOSK_IMAGES.comingSoonGif} alt="Coming soon" className="home-coming-soon-image" />
                 ) : (

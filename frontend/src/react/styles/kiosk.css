@@ -406,6 +406,14 @@
   text-align: center;
 }
 
+.home-borrowed-section-title {
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #eef8ff;
+  text-align: center;
+}
+
 .screen-home .language-switcher {
   position: fixed;
   top: var(--home-overlay-offset);
