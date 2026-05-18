@@ -1052,6 +1052,9 @@
     margin-left: auto;
     font-size: 11px;
     padding: 4px 8px;
+    width: 130px;
+    height: 40px;
+    justify-content: center;
   }
 
   .home-borrowed-device-item {

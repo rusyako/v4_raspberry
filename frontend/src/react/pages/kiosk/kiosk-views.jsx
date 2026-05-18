@@ -115,13 +115,13 @@ export function KioskHomeView({
                       <span className="home-borrowed-count">{group.devices.length}</span>
                     </div>
                     <ul className="home-borrowed-device-list">
-                      {(expandedEmployees[group.employeeUid] ? group.devices : group.devices.slice(0, 1)).map((device) => (
+                      {(expandedEmployees[group.employeeUid] || group.devices.length <= 2 ? group.devices : group.devices.slice(0, 1)).map((device) => (
                         <li key={device.id} className="home-borrowed-device-item">
                           <p className="home-borrowed-device-name">{device.barcode || '-'}</p>
                           <p className="home-borrowed-device-time">{formatDateTimeGmtPlus5(device.taken_at, { language, compact: true })}</p>
                         </li>
                       ))}
-                      {group.devices.length > 1 ? (
+                      {group.devices.length > 2 ? (
                         <button
                           type="button"
                           className="home-borrowed-more-button"
