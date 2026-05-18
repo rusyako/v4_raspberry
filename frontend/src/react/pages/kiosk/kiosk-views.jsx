@@ -107,7 +107,7 @@ export function KioskHomeView({
                         </li>
                       ))}
                     </ul>
-                    {group.devices.length > 2 ? (
+                    {group.devices.length > 1 ? (
                       <button
                         type="button"
                         className="home-borrowed-more-button"
