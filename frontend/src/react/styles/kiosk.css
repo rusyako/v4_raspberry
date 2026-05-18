@@ -261,7 +261,7 @@
 
 .home-borrowed-item {
   position: relative;
-  padding: 14px 16px 60px;
+  padding: 14px 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(152, 201, 231, 0.1);
@@ -344,42 +344,18 @@
 }
 
 .home-borrowed-device-list {
+  position: relative;
   margin: 12px 0 0;
-  padding: 0;
+  padding: 0 0 36px;
   list-style: none;
   display: grid;
   gap: 10px;
 }
 
-.home-borrowed-device-item {
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.home-borrowed-device-name,
-.home-borrowed-device-time {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.home-borrowed-device-name span {
-  color: rgba(236, 244, 248, 0.72);
-}
-
-.home-borrowed-device-time {
-  color: rgba(236, 244, 248, 0.72);
-}
-
-.home-borrowed-device-item p + p {
-  margin-top: 4px;
-}
-
 .home-borrowed-more-button {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
+  bottom: 0;
+  right: 0;
   padding: 6px 12px;
   border: 1px solid rgba(152, 201, 231, 0.18);
   border-radius: 10px;
@@ -1083,7 +1059,15 @@
     padding: 6px 10px;
   }
 
-  .home-borrowed-empty-state {
+.home-borrowed-device-name span {
+  color: rgba(236, 244, 248, 0.72);
+}
+
+.home-borrowed-device-item p + p {
+  margin-top: 4px;
+}
+
+.home-borrowed-empty-state {
     padding: 12px;
   }
 
