@@ -387,7 +387,7 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
                 { name: t.admin.statusAvailable, value: stats.availableDevices },
                 { name: t.admin.statusUnavailable, value: stats.unavailableDevices }
               ]} cx="50%" cy="50%" outerRadius={70} innerRadius={40} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                {[0, 1].map((i) => <Cell key={i} fill={COLORS[0]} />)}
+                {[0, 1].map((i) => <Cell key={i} fill={COLORS[i]} />)}
               </Pie>
               <Tooltip contentStyle={{ background: '#0d2f40', border: '1px solid rgba(152,201,231,0.3)', borderRadius: 8, color: '#eef8ff' }} />
             </PieChart>
