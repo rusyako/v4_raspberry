@@ -101,6 +101,13 @@ def run_daily_reminder():
                 'SmartBox — напоминание о возврате устройств',
                 body
             )
+            device_ids = ', '.join(
+                d['barcode'] or d['device_number'] or d['device_name']
+                for d in info['devices']
+            )
+            logger.info(
+                f'→ {info["name"]} ({info["email"]}) — {len(info["devices"])} устройств: {device_ids}'
+            )
 
         # Send summary to watchers
         cursor.execute(
@@ -137,6 +144,9 @@ def run_daily_reminder():
                 'SmartBox — пользователи с невозвращёнными устройствами',
                 summary_body
             )
+            for line in summary_lines:
+                logger.info(f'  {line}')
+            logger.info(f'→ Сводка отправлена ({len(watcher_emails)} получателей): {", ".join(watcher_emails)}')
     finally:
         connection.close()
 

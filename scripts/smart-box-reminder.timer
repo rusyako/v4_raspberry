@@ -1,8 +1,8 @@
 [Unit]
-Description=Daily Smart Box Return Reminder at 18:00
+Description=Daily Smart Box Return Reminder at 16:30
 
 [Timer]
-OnCalendar=*-*-* 18:00:00
+OnCalendar=*-*-* 16:30:00
 Persistent=true
 Unit=smart-box-reminder.service
 
