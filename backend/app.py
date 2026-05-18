@@ -719,6 +719,21 @@ def run_ad_sync_script(arguments):
     command = [sys.executable, script_path, *arguments]
     completed = subprocess.run(command, capture_output=True, text=True)
     output = '\n'.join(part for part in [completed.stdout.strip(), completed.stderr.strip()] if part).strip()
+
+    try:
+        log_path = os.path.join(LOG_DIR, 'ad-sync.log')
+        os.makedirs(LOG_DIR, exist_ok=True)
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        action_label = 'prune' if '--prune-only' in arguments else 'AD import'
+        log_entry = f'[{timestamp}] {action_label} (via admin panel)'
+        log_entry += ' — OK' if completed.returncode == 0 else f' — FAILED: {output[:200]}'
+        if output:
+            log_entry += '\n' + output
+        with open(log_path, 'a', encoding='utf-8') as log_file:
+            log_file.write(log_entry + '\n')
+    except Exception:
+        pass
+
     return completed.returncode, output
 
 
@@ -1462,7 +1477,10 @@ def admin_ad_sync_log():
         return auth_error
 
     log_path = os.path.join(LOG_DIR, 'ad-sync.log')
-    return success_response(lines=read_text_file_tail(log_path))
+    last_modified = None
+    if os.path.exists(log_path):
+        last_modified = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(log_path)))
+    return success_response(lines=read_text_file_tail(log_path), last_modified=last_modified)
 
 
 @app.route('/admin/ad-sync/prune', methods=['POST'])
@@ -1909,6 +1927,18 @@ def log_admin_action(admin_uid, action, details=''):
         connection.close()
     except Exception as error:
         logging.warning(f'Failed to log admin action: {error}')
+
+    try:
+        log_path = os.path.join(LOG_DIR, 'ad-sync.log')
+        os.makedirs(LOG_DIR, exist_ok=True)
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        log_entry = f'[{timestamp}] Admin action: {action} by {admin_uid}'
+        if details:
+            log_entry += f' — {details}'
+        with open(log_path, 'a', encoding='utf-8') as log_file:
+            log_file.write(log_entry + '\n')
+    except Exception:
+        pass
 
 
 @app.route('/admin/laptops/<name>/assign-admin', methods=['POST'])

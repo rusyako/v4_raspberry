@@ -23,6 +23,7 @@ export function AdminPage() {
   const [showDevicesListModal, setShowDevicesListModal] = useState(false);
   const [showAdSyncLogModal, setShowAdSyncLogModal] = useState(false);
   const [adSyncLogLines, setAdSyncLogLines] = useState([]);
+  const [adSyncLogLastModified, setAdSyncLogLastModified] = useState(null);
   const [showAdManageModal, setShowAdManageModal] = useState(false);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [showAssignAdminModal, setShowAssignAdminModal] = useState(false);
@@ -32,8 +33,11 @@ export function AdminPage() {
   const [deviceSortKey, setDeviceSortKey] = useState('device_number');
   const [deviceSortDir, setDeviceSortDir] = useState('asc');
   const [adminSearchText, setAdminSearchText] = useState('');
+  const [borrowPage, setBorrowPage] = useState(0);
+  const PAGE_SIZE = 50;
   const [borrowStatusFilter, setBorrowStatusFilter] = useState('all');
   const [borrowSearchText, setBorrowSearchText] = useState('');
+  const [borrowDateFilter, setBorrowDateFilter] = useState('all');
   const emptyUserForm = { guid: '', uid: '', first_name: '', last_name: '', name: '', email: '', description: '', category: '', is_admin: false };
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
@@ -59,12 +63,30 @@ export function AdminPage() {
         String(r.device_name || '').toLowerCase().includes(query)
       );
     }
+    if (borrowDateFilter !== 'all') {
+      const now = new Date();
+      let since;
+      if (borrowDateFilter === 'today') {
+        since = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (borrowDateFilter === 'week') {
+        since = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      } else if (borrowDateFilter === 'month') {
+        since = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      }
+      if (since) {
+        const sinceStr = since.toISOString().slice(0, 10);
+        filtered = filtered.filter(r => r.taken_at && String(r.taken_at) >= sinceStr);
+      }
+    }
     return filtered;
-  }, [borrowRecords, borrowStatusFilter, borrowSearchText]);
+  }, [borrowRecords, borrowStatusFilter, borrowSearchText, borrowDateFilter]);
 
   const activeCount = borrowRecords.filter(r => r.status === 'active' && !r.comment).length;
   const returnedCount = borrowRecords.filter(r => r.status === 'returned').length;
   const transferredCount = borrowRecords.filter(r => Boolean(r.comment)).length;
+  const totalPages = Math.max(1, Math.ceil(filteredBorrowRecords.length / PAGE_SIZE));
+  const safePage = Math.min(borrowPage, totalPages - 1);
+  const paginatedRecords = filteredBorrowRecords.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
   const adminUsers = useMemo(() => users.filter((user) => user.is_admin), [users]);
   const filteredAdminUsers = useMemo(() => {
     if (!adminSearchText.trim()) return adminUsers;
@@ -302,6 +324,7 @@ export function AdminPage() {
     try {
       const data = await requestJson('/admin/ad-sync-log', authHeaders());
       setAdSyncLogLines(data.lines || []);
+      setAdSyncLogLastModified(data.last_modified || null);
       setShowAdSyncLogModal(true);
     } catch (error) {
       showToast('error', t.admin.toasts.adminErrorTitle, error.message);
@@ -309,6 +332,7 @@ export function AdminPage() {
   }
 
   async function handlePruneUsers() {
+    if (!window.confirm(t.admin.confirmPruneUsers)) return;
     try {
       const data = await postJson('/admin/ad-sync/prune', {}, authHeaders());
       await loadAdminData();
@@ -319,6 +343,7 @@ export function AdminPage() {
   }
 
   async function handleRunAdSync() {
+    if (!window.confirm(t.admin.confirmRunAdSync)) return;
     try {
       const data = await postJson('/admin/ad-sync/run', {}, authHeaders());
       await loadAdminData();
@@ -401,34 +426,18 @@ export function AdminPage() {
                   onChange={(e) => setBorrowSearchText(e.target.value)}
                 />
                 <div className="admin-filter-tabs">
-                  <button
-                    type="button"
-                    className={`admin-filter-tab ${borrowStatusFilter === 'all' ? 'admin-filter-tab-active' : ''}`}
-                    onClick={() => setBorrowStatusFilter('all')}
-                  >
-                    {t.admin.filterAll} ({borrowRecords.length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-filter-tab ${borrowStatusFilter === 'active' ? 'admin-filter-tab-active' : ''}`}
-                    onClick={() => setBorrowStatusFilter('active')}
-                  >
-                    {t.admin.filterActive} ({activeCount})
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-filter-tab ${borrowStatusFilter === 'returned' ? 'admin-filter-tab-active' : ''}`}
-                    onClick={() => setBorrowStatusFilter('returned')}
-                  >
-                    {t.admin.filterReturned} ({returnedCount})
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-filter-tab ${borrowStatusFilter === 'transferred' ? 'admin-filter-tab-active' : ''}`}
-                    onClick={() => setBorrowStatusFilter('transferred')}
-                  >
-                    {t.admin.filterTransferred} ({transferredCount})
-                  </button>
+                  <button type="button" className={`admin-filter-tab ${borrowDateFilter === 'all' ? 'admin-filter-tab-active' : ''}`} onClick={() => setBorrowDateFilter('all')}>{t.admin.filterAllDate}</button>
+                  <button type="button" className={`admin-filter-tab ${borrowDateFilter === 'today' ? 'admin-filter-tab-active' : ''}`} onClick={() => setBorrowDateFilter('today')}>{t.admin.filterToday}</button>
+                  <button type="button" className={`admin-filter-tab ${borrowDateFilter === 'week' ? 'admin-filter-tab-active' : ''}`} onClick={() => setBorrowDateFilter('week')}>{t.admin.filterWeek}</button>
+                  <button type="button" className={`admin-filter-tab ${borrowDateFilter === 'month' ? 'admin-filter-tab-active' : ''}`} onClick={() => setBorrowDateFilter('month')}>{t.admin.filterMonth}</button>
+                </div>
+              </div>
+              <div className="admin-filter-row">
+                <div className="admin-filter-tabs">
+                  <button type="button" className={`admin-filter-tab ${borrowStatusFilter === 'all' ? 'admin-filter-tab-active' : ''}`} onClick={() => setBorrowStatusFilter('all')}>{t.admin.filterAll} ({borrowRecords.length})</button>
+                  <button type="button" className={`admin-filter-tab ${borrowStatusFilter === 'active' ? 'admin-filter-tab-active' : ''}`} onClick={() => setBorrowStatusFilter('active')}>{t.admin.filterActive} ({activeCount})</button>
+                  <button type="button" className={`admin-filter-tab ${borrowStatusFilter === 'returned' ? 'admin-filter-tab-active' : ''}`} onClick={() => setBorrowStatusFilter('returned')}>{t.admin.filterReturned} ({returnedCount})</button>
+                  <button type="button" className={`admin-filter-tab ${borrowStatusFilter === 'transferred' ? 'admin-filter-tab-active' : ''}`} onClick={() => setBorrowStatusFilter('transferred')}>{t.admin.filterTransferred} ({transferredCount})</button>
                 </div>
               </div>
             </div>
@@ -452,7 +461,7 @@ export function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredBorrowRecords.map((record) => (
+                    paginatedRecords.map((record) => (
                       <tr key={record.id} className={record.comment ? 'admin-row-transferred' : ''}>
                         <td className="admin-cell-id">{record.id}</td>
                         <td>
@@ -473,6 +482,11 @@ export function AdminPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="admin-pagination">
+              <button type="button" className="ghost-button small" disabled={safePage === 0} onClick={() => setBorrowPage(safePage - 1)}>←</button>
+              <span className="admin-pagination-info">{t.admin.pageLabel}: {safePage + 1} / {totalPages} — {filteredBorrowRecords.length} {t.admin.records}</span>
+              <button type="button" className="ghost-button small" disabled={safePage >= totalPages - 1} onClick={() => setBorrowPage(safePage + 1)}>→</button>
             </div>
           </section>
 

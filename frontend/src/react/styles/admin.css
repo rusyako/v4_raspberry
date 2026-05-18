@@ -264,6 +264,10 @@
   gap: 12px;
 }
 
+.admin-filter-row + .admin-filter-row {
+  margin-top: 8px;
+}
+
 .admin-filter-input {
   width: 240px;
   border: 1px solid rgba(200, 221, 233, 0.18);

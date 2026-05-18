@@ -334,17 +334,17 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
     const todayReturns = borrowRecords.filter(r => r.returned_at && String(r.returned_at).startsWith(todayStr)).length;
     const activeUsers = new Set(active.map(r => r.employee_uid)).size;
     const returnRate = total > 0 ? Math.round((returned / total) * 100) : 0;
-    const avgBorrowDays = (() => {
+    const avgBorrowMinutes = (() => {
       const withReturn = borrowRecords.filter(r => r.status === 'returned' && r.taken_at && r.returned_at);
       if (!withReturn.length) return 0;
-      const totalDays = withReturn.reduce((sum, r) => {
-        const d = (new Date(r.returned_at) - new Date(r.taken_at)) / 86400000;
+      const totalMin = withReturn.reduce((sum, r) => {
+        const d = (new Date(r.returned_at) - new Date(r.taken_at)) / 60000;
         return sum + Math.max(0, d);
       }, 0);
-      return Math.round(totalDays / withReturn.length);
+      return Math.round(totalMin / withReturn.length);
     })();
 
-    return { total, activeNow: active.length, returned, availableDevices, unavailableDevices, topBorrowers, topDevices, daily, activeUsers, returnRate, avgBorrowDays, laptopsCount: laptops.length, usersCount: users.length, todayBorrows, todayReturns, transferCount, recent, transferred };
+    return { total, activeNow: active.length, returned, availableDevices, unavailableDevices, topBorrowers, topDevices, daily, activeUsers, returnRate, avgBorrowMinutes, laptopsCount: laptops.length, usersCount: users.length, todayBorrows, todayReturns, transferCount, recent, transferred };
   }, [users, laptops, borrowRecords]);
 
   if (!stats.daily.length && !stats.total) {
@@ -361,7 +361,7 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
         <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.todayBorrows}</span><span className="analysis-stat-label">{t.admin.operBorrows}</span></div>
         <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.todayReturns}</span><span className="analysis-stat-label">{t.admin.operReturns}</span></div>
         <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.transferCount}</span><span className="analysis-stat-label">{t.admin.filterTransferred}</span></div>
-        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.avgBorrowDays}d</span><span className="analysis-stat-label">{t.admin.avgBorrowDays}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.avgBorrowMinutes}м</span><span className="analysis-stat-label">{t.admin.avgBorrowMinutes}</span></div>
       </div>
 
       <div className="analysis-chart-row">
@@ -512,11 +512,12 @@ export const LaptopsTable = memo(function LaptopsTable({ laptops, t, onRemove, o
   );
 });
 
-export const AdSyncLogPanel = memo(function AdSyncLogPanel({ lines, t }) {
+export const AdSyncLogPanel = memo(function AdSyncLogPanel({ lines, lastModified, t }) {
   return (
     <section className="admin-panel users-table-panel">
       <div className="admin-panel-head">
         <h2>{t.admin.adSyncLogTitle}</h2>
+        {lastModified && <small style={{ color: '#aac7d8', fontSize: '12px' }}>{t.admin.lastSyncLabel}: {lastModified}</small>}
       </div>
       <div className="admin-log-viewer">
         {lines.length ? lines.map((line, index) => (
