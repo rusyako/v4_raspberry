@@ -261,7 +261,7 @@
 
 .home-borrowed-item {
   position: relative;
-  padding: 14px 16px;
+  padding: 10px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(152, 201, 231, 0.1);
@@ -357,18 +357,19 @@
 .home-borrowed-more-button {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
-  border: 1px solid rgba(152, 201, 231, 0.18);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #cfe3ef;
-  font-size: 13px;
+  padding: 4px 8px;
+  border: 1px solid rgba(152, 201, 231, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(240, 248, 255, 0.6);
+  font-size: 11px;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .home-borrowed-more-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef8ff;
 }
 
 .home-borrowed-empty-state {
@@ -1040,6 +1041,16 @@
     gap: 6px;
     display: flex;
     flex-wrap: wrap;
+  }
+
+  .home-borrowed-item {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .home-borrowed-more-button {
+    font-size: 11px;
+    padding: 4px 8px;
   }
 
   .home-borrowed-device-item {
