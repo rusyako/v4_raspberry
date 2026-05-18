@@ -1,4 +1,5 @@
 import React, { memo, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 function reverseUidHexBytes(hexUid) {
   const pairs = [];
@@ -241,40 +242,97 @@ export const UsersTable = memo(function UsersTable({ users, t, onRemove }) {
 });
 
 export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borrowRecords, t }) {
+  const COLORS = ['#3cb371', '#d9534f', '#ffd24d', '#1c98ff', '#8e44ad'];
+  const monthNames = { ru: ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'] };
+  const dayNames = { ru: ['вс','пн','вт','ср','чт','пт','сб'] };
+
   const stats = useMemo(() => {
     const total = borrowRecords.length;
-    const active = borrowRecords.filter(r => r.status === 'active').length;
-    const returned = total - active;
+    const active = borrowRecords.filter(r => r.status === 'active');
+    const returned = total - active.length;
+    const today = new Date();
+
+    // Device status
     const availableDevices = laptops.filter(l => l.status === 'available').length;
     const unavailableDevices = laptops.length - availableDevices;
 
-    const userBorrowCounts = {};
-    borrowRecords.forEach(r => {
-      const key = r.employee_name || r.employee_uid;
-      userBorrowCounts[key] = (userBorrowCounts[key] || 0) + 1;
-    });
-    const topBorrowers = Object.entries(userBorrowCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    const deviceBorrowCounts = {};
-    borrowRecords.forEach(r => {
-      const key = r.device_name || r.barcode || r.device_number;
-      deviceBorrowCounts[key] = (deviceBorrowCounts[key] || 0) + 1;
-    });
-    const topDevices = Object.entries(deviceBorrowCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    const monthlyCounts = {};
+    // Daily activity (last 14 days)
+    const dailyMap = {};
+    const dailyReturnMap = {};
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      dailyMap[key] = 0;
+      dailyReturnMap[key] = 0;
+    }
     borrowRecords.forEach(r => {
       if (!r.taken_at) return;
-      const key = String(r.taken_at).slice(0, 7);
-      monthlyCounts[key] = (monthlyCounts[key] || 0) + 1;
+      const key = String(r.taken_at).slice(0, 10);
+      if (dailyMap[key] !== undefined) dailyMap[key]++;
     });
-    const monthly = Object.entries(monthlyCounts).sort((a, b) => a[0].localeCompare(b[0])).slice(-6);
+    borrowRecords.forEach(r => {
+      if (!r.returned_at) return;
+      const key = String(r.returned_at).slice(0, 10);
+      if (dailyReturnMap[key] !== undefined) dailyReturnMap[key]++;
+    });
+    const daily = Object.keys(dailyMap).sort().map(key => {
+      const d = new Date(key + 'T00:00:00');
+      const dow = d.getDay();
+      return {
+        name: `${d.getDate()} ${monthNames.ru[d.getMonth()]}`,
+        day: dayNames.ru[dow],
+        full: key,
+        Выдачи: dailyMap[key],
+        Возврат: dailyReturnMap[key]
+      };
+    });
 
-    const activeUsers = new Set(borrowRecords.filter(r => r.status === 'active').map(r => r.employee_uid)).size;
+    // User stats
+    const userStats = {};
+    borrowRecords.forEach(r => {
+      const key = r.employee_uid || 'unknown';
+      if (!userStats[key]) {
+        userStats[key] = { name: r.employee_name || key, uid: key, total: 0, activeNow: 0, lastDate: null };
+      }
+      userStats[key].total++;
+      if (r.status === 'active') userStats[key].activeNow++;
+      if (r.taken_at && (!userStats[key].lastDate || r.taken_at > userStats[key].lastDate)) {
+        userStats[key].lastDate = r.taken_at;
+      }
+    });
+    const topBorrowers = Object.values(userStats).sort((a, b) => b.total - a.total).slice(0, 5);
+
+    // Device stats
+    const devStats = {};
+    borrowRecords.forEach(r => {
+      const key = r.barcode || r.device_number || r.device_name || 'unknown';
+      if (!devStats[key]) {
+        devStats[key] = { name: key, total: 0, lastDate: null, deviceNum: r.device_number || '' };
+      }
+      devStats[key].total++;
+      if (r.taken_at && (!devStats[key].lastDate || r.taken_at > devStats[key].lastDate)) {
+        devStats[key].lastDate = r.taken_at;
+      }
+    });
+    const topDevices = Object.values(devStats).sort((a, b) => b.total - a.total).slice(0, 5);
+
+    // Transfer stats
+    const transferred = borrowRecords.filter(r => Boolean(r.comment));
+    const transferCount = transferred.length;
+
+    // Recent events
+    const recent = [...borrowRecords].sort((a, b) => {
+      const da = a.taken_at || '';
+      const db = b.taken_at || '';
+      return da < db ? 1 : -1;
+    }).slice(0, 8);
+
+    // KPI
+    const todayStr = today.toISOString().slice(0, 10);
+    const todayBorrows = borrowRecords.filter(r => String(r.taken_at).startsWith(todayStr)).length;
+    const todayReturns = borrowRecords.filter(r => r.returned_at && String(r.returned_at).startsWith(todayStr)).length;
+    const activeUsers = new Set(active.map(r => r.employee_uid)).size;
     const returnRate = total > 0 ? Math.round((returned / total) * 100) : 0;
     const avgBorrowDays = (() => {
       const withReturn = borrowRecords.filter(r => r.status === 'returned' && r.taken_at && r.returned_at);
@@ -286,115 +344,121 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
       return Math.round(totalDays / withReturn.length);
     })();
 
-    return { total, active, returned, availableDevices, unavailableDevices, topBorrowers, topDevices, monthly, activeUsers, returnRate, avgBorrowDays, laptopsCount: laptops.length, usersCount: users.length };
+    return { total, activeNow: active.length, returned, availableDevices, unavailableDevices, topBorrowers, topDevices, daily, activeUsers, returnRate, avgBorrowDays, laptopsCount: laptops.length, usersCount: users.length, todayBorrows, todayReturns, transferCount, recent, transferred };
   }, [users, laptops, borrowRecords]);
 
-  const maxBorrow = stats.topBorrowers.length ? stats.topBorrowers[0][1] : 1;
-  const maxDevice = stats.topDevices.length ? stats.topDevices[0][1] : 1;
-  const maxMonthly = stats.monthly.length ? Math.max(...stats.monthly.map(m => m[1])) : 1;
-
-  const monthNames = { ru: ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'] };
+  if (!stats.daily.length && !stats.total) {
+    return <div style={{ minHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bdd5e5' }}>{t.admin.noBorrowRecords}</div>;
+  }
 
   return (
     <div className="analysis-panel">
-      <div className="analysis-stats-grid">
-        <div className="analysis-stat-card">
-          <span className="analysis-stat-value">{stats.usersCount}</span>
-          <span className="analysis-stat-label">{t.admin.stats.totalUsers}</span>
-        </div>
-        <div className="analysis-stat-card">
-          <span className="analysis-stat-value">{stats.laptopsCount}</span>
-          <span className="analysis-stat-label">{t.admin.stats.totalDevices}</span>
-        </div>
-        <div className="analysis-stat-card">
-          <span className="analysis-stat-value">{stats.active}</span>
-          <span className="analysis-stat-label">{t.admin.stats.activeLoans}</span>
-        </div>
-        <div className="analysis-stat-card">
-          <span className="analysis-stat-value">{stats.returnRate}%</span>
-          <span className="analysis-stat-label">{t.admin.returnRate}</span>
-        </div>
+      <div className="analysis-stats-grid analysis-stats-2row">
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.usersCount}</span><span className="analysis-stat-label">{t.admin.stats.totalUsers}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.laptopsCount}</span><span className="analysis-stat-label">{t.admin.stats.totalDevices}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.activeNow}</span><span className="analysis-stat-label">{t.admin.stats.activeLoans}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.returnRate}%</span><span className="analysis-stat-label">{t.admin.returnRate}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.todayBorrows}</span><span className="analysis-stat-label">{t.admin.operBorrows}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.todayReturns}</span><span className="analysis-stat-label">{t.admin.operReturns}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.transferCount}</span><span className="analysis-stat-label">{t.admin.filterTransferred}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.avgBorrowDays}d</span><span className="analysis-stat-label">{t.admin.avgBorrowDays}</span></div>
       </div>
 
-      <div className="analysis-grid">
-        <section className="admin-panel">
-          <h3>{t.admin.deviceStatusChart}</h3>
-          <div className="analysis-bar-wrap">
-            <div className="analysis-bar-row">
-              <span>{t.admin.statusAvailable}</span>
-              <div className="analysis-bar-track">
-                <div className="analysis-bar-fill analysis-bar-green" style={{ width: `${stats.laptopsCount ? (stats.availableDevices / stats.laptopsCount) * 100 : 0}%` }} />
-              </div>
-              <strong>{stats.availableDevices}</strong>
-            </div>
-            <div className="analysis-bar-row">
-              <span>{t.admin.statusUnavailable}</span>
-              <div className="analysis-bar-track">
-                <div className="analysis-bar-fill analysis-bar-red" style={{ width: `${stats.laptopsCount ? (stats.unavailableDevices / stats.laptopsCount) * 100 : 0}%` }} />
-              </div>
-              <strong>{stats.unavailableDevices}</strong>
-            </div>
-          </div>
+      <div className="analysis-chart-row">
+        <section className="admin-panel analysis-chart-card">
+          <h3>{t.admin.dailyActivity}</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={stats.daily} margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="name" tick={{ fill: '#aac7d8', fontSize: 10 }} tickLine={false} />
+              <YAxis tick={{ fill: '#aac7d8', fontSize: 10 }} tickLine={false} />
+              <Tooltip contentStyle={{ background: '#0d2f40', border: '1px solid rgba(152,201,231,0.3)', borderRadius: 8, color: '#eef8ff' }} />
+              <Bar dataKey="Выдачи" fill="#1c98ff" radius={[3, 3, 0, 0]} maxBarSize={18} />
+              <Bar dataKey="Возврат" fill="#3cb371" radius={[3, 3, 0, 0]} maxBarSize={18} />
+            </BarChart>
+          </ResponsiveContainer>
         </section>
 
+        <section className="admin-panel analysis-chart-card">
+          <h3>{t.admin.deviceStatusChart}</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={[
+                { name: t.admin.statusAvailable, value: stats.availableDevices },
+                { name: t.admin.statusUnavailable, value: stats.unavailableDevices }
+              ]} cx="50%" cy="50%" outerRadius={70} innerRadius={40} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                {[0, 1].map((i) => <Cell key={i} fill={COLORS[0]} />)}
+              </Pie>
+              <Tooltip contentStyle={{ background: '#0d2f40', border: '1px solid rgba(152,201,231,0.3)', borderRadius: 8, color: '#eef8ff' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </section>
+      </div>
+
+      <div className="analysis-3col-grid">
         <section className="admin-panel">
           <h3>{t.admin.topBorrowers}</h3>
-          {stats.topBorrowers.map(([name, count], i) => (
-            <div key={name} className="analysis-bar-row">
+          {stats.topBorrowers.map((u, i) => (
+            <div key={u.uid} className="analysis-user-row">
               <span className="analysis-rank">{i + 1}.</span>
-              <span className="analysis-name">{name}</span>
-              <div className="analysis-bar-track">
-                <div className="analysis-bar-fill analysis-bar-blue" style={{ width: `${(count / maxBorrow) * 100}%` }} />
+              <div className="analysis-user-info">
+                <strong>{u.name}</strong>
+                <small>{t.admin.totalLabel}: {u.total}, {t.admin.stats.activeLoans}: {u.activeNow}</small>
               </div>
-              <strong>{count}</strong>
+              <span className="analysis-user-count">{u.total}</span>
             </div>
           ))}
           {!stats.topBorrowers.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
         </section>
 
         <section className="admin-panel">
-          <h3>{t.admin.monthlyActivity}</h3>
-          <div className="analysis-chart-bars">
-            {stats.monthly.map(([month, count]) => {
-              const [y, m] = month.split('-');
-              const label = `${parseInt(m)}${monthNames.ru[parseInt(m) - 1] ? ' ' + monthNames.ru[parseInt(m) - 1] : ''}`;
-              return (
-                <div key={month} className="analysis-chart-item">
-                  <span className="analysis-chart-value">{count}</span>
-                  <div className="analysis-chart-bar" style={{ height: `${(count / maxMonthly) * 100}%` }} />
-                  <span className="analysis-chart-label">{label}</span>
+          <h3>{t.admin.topDevices}</h3>
+          {stats.topDevices.map((d, i) => {
+            const laptop = laptops.find(l => l.barcode === d.name || l.device_number === d.name);
+            const isAvailable = laptop?.status === 'available';
+            return (
+              <div key={d.name} className="analysis-user-row">
+                <span className="analysis-rank">{i + 1}.</span>
+                <div className="analysis-user-info">
+                  <strong>{d.name}</strong>
+                  <small>
+                    {t.admin.totalLabel}: {d.total}
+                    {d.lastDate ? ` · ${t.admin.lastEvent}: ${String(d.lastDate).slice(0, 10)}` : ''}
+                  </small>
                 </div>
-              );
-            })}
-            {!stats.monthly.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
-          </div>
+                <span className={`analysis-status-pill ${isAvailable ? 'pill-green' : 'pill-red'}`}>
+                  {isAvailable ? t.admin.statusAvailable : t.admin.statusUnavailable}
+                </span>
+              </div>
+            );
+          })}
+          {!stats.topDevices.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
         </section>
 
         <section className="admin-panel">
-          <h3>{t.admin.topDevices}</h3>
-          {stats.topDevices.map(([name, count], i) => (
-            <div key={name} className="analysis-bar-row">
-              <span className="analysis-rank">{i + 1}.</span>
-              <span className="analysis-name">{name}</span>
-              <div className="analysis-bar-track">
-                <div className="analysis-bar-fill analysis-bar-purple" style={{ width: `${(count / maxDevice) * 100}%` }} />
+          <h3>{t.admin.recentEvents}</h3>
+          {stats.recent.map(r => {
+            const action = r.returned_at ? t.admin.statusReturned : r.comment ? t.admin.filterTransferred : t.admin.statusActive;
+            const label = r.device_name || r.barcode || r.device_number || '-';
+            const person = r.employee_name || r.employee_uid || '-';
+            return (
+              <div key={r.id} className="analysis-event-row">
+                <span className="analysis-event-time">
+                  {r.taken_at ? String(r.taken_at).slice(11, 16) : ''}
+                  <small>{String(r.taken_at).slice(0, 10)}</small>
+                </span>
+                <span className="analysis-event-info">
+                  <strong>{label}</strong>
+                  <small>{person}</small>
+                </span>
+                <span className={`analysis-status-pill ${action === t.admin.statusReturned ? 'pill-green' : action === t.admin.filterTransferred ? 'pill-yellow' : 'pill-blue'}`}>
+                  {action}
+                </span>
               </div>
-              <strong>{count}</strong>
-            </div>
-          ))}
-          {!stats.topDevices.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
+            );
+          })}
+          {!stats.recent.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
         </section>
-      </div>
-
-      <div className="analysis-insights">
-        <div className="analysis-insight-card">
-          <span>{stats.activeUsers}</span>
-          <small>{t.admin.activeUsers}</small>
-        </div>
-        <div className="analysis-insight-card">
-          <span>{stats.avgBorrowDays} дн</span>
-          <small>{t.admin.avgBorrowDays}</small>
-        </div>
       </div>
     </div>
   );
