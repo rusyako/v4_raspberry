@@ -2,10 +2,12 @@ import logging
 import os
 import smtplib
 import sqlite3
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 DB_PATH = os.getenv('SQLITE_PATH', os.path.join(os.path.dirname(__file__), '..', 'data', 'smart-box.db'))
+LOG_DIR = os.getenv('LOG_DIR', os.path.join(os.path.dirname(__file__), '..', 'logs'))
 SMTP_HOST = os.getenv('SMTP_HOST', '').strip()
 SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
 SMTP_USER = os.getenv('SMTP_USER', '').strip()
@@ -140,11 +142,19 @@ def run_daily_reminder():
 
 
 def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(levelname).1s reminder: %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    log_file = os.path.join(LOG_DIR, 'reminder.log')
+    os.makedirs(LOG_DIR, exist_ok=True)
+
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname).1s reminder: %(message)s', '%Y-%m-%d %H:%M:%S'))
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname).1s reminder: %(message)s', '%Y-%m-%d %H:%M:%S'))
+
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    logger.setLevel(logging.INFO)
+
     run_daily_reminder()
 
 

@@ -208,6 +208,7 @@ export const UsersTable = memo(function UsersTable({ users, t, onRemove, onToggl
               <th>RFID DEC</th>
               <th>{t.admin.categoryLabel}</th>
               <th>{t.admin.emailLabel}</th>
+              <th></th>
               <th>{t.admin.notifyLabel}</th>
               <th></th>
             </tr>
@@ -224,6 +225,9 @@ export const UsersTable = memo(function UsersTable({ users, t, onRemove, onToggl
                 <td><code>{user.uid_dec || '-'}</code></td>
                 <td>{user.description || user.category || '-'}</td>
                 <td>{user.email || '-'}</td>
+                <td>
+                  {user.is_admin ? <span className="status-badge status-admin">{t.admin.adminBadge}</span> : <span style={{ color: '#6a8a9e', fontSize: '12px' }}>{t.admin.userBadge}</span>}
+                </td>
                 <td>
                   {user.email ? (
                     <input
