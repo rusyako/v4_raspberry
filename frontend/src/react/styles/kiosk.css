@@ -346,16 +346,17 @@
 .home-borrowed-device-list {
   position: relative;
   margin: 12px 0 0;
-  padding: 0 0 36px;
+  padding: 0;
   list-style: none;
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 0;
 }
 
 .home-borrowed-more-button {
-  position: absolute;
-  bottom: 0;
-  right: 0;
+  display: inline-flex;
+  align-items: center;
   padding: 6px 12px;
   border: 1px solid rgba(152, 201, 231, 0.18);
   border-radius: 10px;
@@ -363,6 +364,7 @@
   color: #cfe3ef;
   font-size: 13px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .home-borrowed-more-button:hover {
@@ -1036,6 +1038,8 @@
   .home-borrowed-device-list {
     margin-top: 8px;
     gap: 6px;
+    display: flex;
+    flex-wrap: wrap;
   }
 
   .home-borrowed-device-item {

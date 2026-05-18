@@ -106,18 +106,18 @@ export function KioskHomeView({
                           <p className="home-borrowed-device-time">{formatDateTimeGmtPlus5(device.taken_at, { language, compact: true })}</p>
                         </li>
                       ))}
+                      {group.devices.length > 1 ? (
+                        <button
+                          type="button"
+                          className="home-borrowed-more-button"
+                          onClick={() => toggleEmployeeDevices(group.employeeUid)}
+                        >
+                          {expandedEmployees[group.employeeUid]
+                            ? t.kiosk.hideMoreDevices
+                            : t.kiosk.showMoreDevices.replace('{count}', String(group.devices.length - 1))}
+                        </button>
+                      ) : null}
                     </ul>
-                    {group.devices.length > 1 ? (
-                      <button
-                        type="button"
-                        className="home-borrowed-more-button"
-                        onClick={() => toggleEmployeeDevices(group.employeeUid)}
-                      >
-                        {expandedEmployees[group.employeeUid]
-                          ? t.kiosk.hideMoreDevices
-                          : t.kiosk.showMoreDevices.replace('{count}', String(group.devices.length - 1))}
-                      </button>
-                    ) : null}
                   </li>
                 ))}
               </ul>
