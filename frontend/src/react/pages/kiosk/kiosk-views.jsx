@@ -166,25 +166,40 @@ export function KioskActionsView({ onTake, onReturn, onAdmin, isAdminUser, langu
       <header className="actions-header">
         <p className="actions-kicker">{t.kiosk.sessionConfirmed}</p>
         <h1>{t.kiosk.stationTitle}</h1>
-        <p>{t.kiosk.chooseNextAction}</p>
       </header>
 
-      <div className="actions-grid">
-        <button type="button" className="actions-card primary" onClick={onTake}>
-          <span>{t.kiosk.checkOut}</span>
-          <small>{t.kiosk.checkOutHint}</small>
-        </button>
-        <button type="button" className="actions-card danger" onClick={onReturn}>
-          <span>{t.kiosk.return}</span>
-          <small>{t.kiosk.returnHint}</small>
-        </button>
-        {isAdminUser && (
-          <button type="button" className="actions-card admin-action" onClick={onAdmin}>
-            <span>{t.kiosk.adminPanel}</span>
-            <small>{t.kiosk.adminPanelHint}</small>
-          </button>
-        )}
+      <div className="actions-grid-2col">
+        <div className="actions-card-horiz" onClick={onTake}>
+          <div className="actions-card-horiz-image">
+            {KIOSK_IMAGES.comingSoonGif ? (
+              <img src={KIOSK_IMAGES.comingSoonGif} alt="" className="actions-card-gif" />
+            ) : null}
+          </div>
+          <div className="actions-card-horiz-body">
+            <span className="actions-card-horiz-title">{t.kiosk.checkOut}</span>
+            <small className="actions-card-horiz-hint">{t.kiosk.checkOutHint}</small>
+          </div>
+        </div>
+
+        <div className="actions-card-horiz" onClick={onReturn}>
+          <div className="actions-card-horiz-image">
+            {KIOSK_IMAGES.comingSoonGif ? (
+              <img src={KIOSK_IMAGES.comingSoonGif} alt="" className="actions-card-gif" />
+            ) : null}
+          </div>
+          <div className="actions-card-horiz-body">
+            <span className="actions-card-horiz-title">{t.kiosk.return}</span>
+            <small className="actions-card-horiz-hint">{t.kiosk.returnHint}</small>
+          </div>
+        </div>
       </div>
+
+      {isAdminUser && (
+        <button type="button" className="actions-card-admin-full" onClick={onAdmin}>
+          <span>{t.kiosk.adminPanel}</span>
+          <small>{t.kiosk.adminPanelHint}</small>
+        </button>
+      )}
     </section>
   );
 }

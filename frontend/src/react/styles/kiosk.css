@@ -260,7 +260,8 @@
 }
 
 .home-borrowed-item {
-  padding: 14px 16px;
+  position: relative;
+  padding: 14px 16px 60px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(152, 201, 231, 0.1);
@@ -376,13 +377,16 @@
 }
 
 .home-borrowed-more-button {
-  margin-top: 10px;
-  padding: 8px 12px;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  padding: 6px 12px;
   border: 1px solid rgba(152, 201, 231, 0.18);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.06);
   color: #cfe3ef;
   font-size: 13px;
+  cursor: pointer;
 }
 
 .home-borrowed-more-button:hover {
@@ -523,11 +527,99 @@
   color: rgba(236, 244, 248, 0.82);
 }
 
-.actions-grid {
+.actions-grid-2col {
   display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 360px));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
+  width: 100%;
+  max-width: 860px;
+}
+
+.actions-card-horiz {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border-radius: 24px;
+  background: rgba(5, 16, 23, 0.8);
+  border: 1px solid rgba(152, 201, 231, 0.18);
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.actions-card-horiz:hover {
+  transform: translateY(-2px);
+  border-color: rgba(152, 201, 231, 0.4);
+}
+
+.actions-card-horiz-image {
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
   justify-content: center;
+}
+
+.actions-card-gif {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.actions-card-horiz-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.actions-card-horiz-title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.actions-card-horiz-hint {
+  font-size: 15px;
+  line-height: 1.4;
+  color: rgba(236, 244, 248, 0.78);
+}
+
+.actions-card-admin-full {
+  display: grid;
+  gap: 6px;
+  padding: 18px 28px;
+  width: 100%;
+  max-width: 860px;
+  border: 0;
+  border-radius: 24px;
+  color: white;
+  text-align: center;
+  background: linear-gradient(135deg, #6b3fa0, #9b59b6);
+  cursor: pointer;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+  transition: transform 0.15s;
+}
+
+.actions-card-admin-full:hover {
+  transform: translateY(-2px);
+}
+
+.actions-card-admin-full span {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.actions-card-admin-full small {
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.screen-session {
+  color: white;
+  background: linear-gradient(120deg, #081922, #113848);
 }
 
 .actions-card.admin-action {
@@ -938,8 +1030,15 @@
   }
 
   .home-borrowed-item {
-    padding: 10px;
+    padding: 10px 10px 50px;
     border-radius: 14px;
+  }
+
+  .home-borrowed-more-button {
+    bottom: 10px;
+    right: 10px;
+    font-size: 12px;
+    padding: 5px 10px;
   }
 
   .home-borrowed-person {
@@ -1017,30 +1116,48 @@
     margin-top: 8px;
   }
 
-  .actions-grid {
-    grid-template-columns: repeat(2, minmax(220px, 1fr));
-    width: min(100%, 760px);
-    gap: 12px;
+  .actions-grid-2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(100%, 700px);
+    gap: 16px;
   }
 
-  .actions-card.admin-action {
-    width: min(320px, 100%);
+  .actions-card-horiz {
+    gap: 14px;
+    padding: 14px;
+    border-radius: 18px;
   }
 
-  .actions-card {
-    gap: 6px;
-    padding: 12px;
-    border-radius: 16px;
+  .actions-card-horiz-image {
+    width: 72px;
+    height: 72px;
   }
 
-  .actions-card span {
-    font-size: 24px;
-    line-height: 1.2;
+  .actions-card-gif {
+    width: 60px;
+    height: 60px;
   }
 
-  .actions-card small {
-    font-size: 20px;
-    line-height: 1.2;
+  .actions-card-horiz-title {
+    font-size: 22px;
+  }
+
+  .actions-card-horiz-hint {
+    font-size: 14px;
+  }
+
+  .actions-card-admin-full {
+    padding: 14px 20px;
+    max-width: 700px;
+    border-radius: 18px;
+  }
+
+  .actions-card-admin-full span {
+    font-size: 22px;
+  }
+
+  .actions-card-admin-full small {
+    font-size: 14px;
   }
 
   .session-shell {
@@ -1287,9 +1404,9 @@
 }
 
 @media (max-width: 860px) {
-  .actions-grid {
+  .actions-grid-2col {
     grid-template-columns: 1fr;
-    width: min(100%, 420px);
+    width: min(100%, 480px);
   }
 }
 
