@@ -64,6 +64,11 @@ ENABLE_WEBVIEW = os.getenv('ENABLE_WEBVIEW', 'false').lower() == 'true'
 ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv('ADMIN_SESSION_TIMEOUT_SECONDS', '1800'))
 ENABLE_LOCAL_DEBUG_SDK = os.getenv('ENABLE_LOCAL_DEBUG_SDK', 'true').lower() == 'true'
 APP_TIMEZONE_LABEL = os.getenv('APP_TIMEZONE_LABEL', 'GMT+5').strip()
+SMTP_HOST = os.getenv('SMTP_HOST', '').strip()
+SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+SMTP_USER = os.getenv('SMTP_USER', '').strip()
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '').strip()
+SMTP_FROM = os.getenv('SMTP_FROM', 'noreply@smart-box.local').strip()
 
 stop_event = threading.Event()
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -674,7 +679,7 @@ def fetch_admin_dashboard_data():
     try:
         cursor = connection.cursor()
         cursor.execute(
-            'SELECT guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, description, category, role, is_admin FROM users ORDER BY name, uid;'
+            'SELECT guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, description, category, role, is_admin, notify_reminder FROM users ORDER BY name, uid;'
         )
         users = [dict(row) for row in cursor.fetchall()]
         cursor.execute('SELECT name, barcode, device_number, status FROM laptops ORDER BY name;')
@@ -895,6 +900,10 @@ def init_db():
         pass
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN notify_reminder INTEGER NOT NULL DEFAULT 0;")
     except sqlite3.OperationalError:
         pass
     try:
@@ -1682,6 +1691,28 @@ def admin_delete_user_by_guid(guid):
         recompute_laptop_status(connection)
         connection.commit()
         return success_response('Пользователь удалён. / User deleted.')
+    finally:
+        connection.close()
+
+
+@app.route('/admin/users/<user_guid>/toggle-notify', methods=['POST'])
+def admin_toggle_user_notify_reminder(user_guid):
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
+    connection = get_db_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute('SELECT notify_reminder FROM users WHERE guid = ? LIMIT 1;', (user_guid,))
+        row = cursor.fetchone()
+        if not row:
+            return error_response('Пользователь не найден. / User not found.', 404)
+
+        new_value = 0 if int(row['notify_reminder'] or 0) else 1
+        cursor.execute('UPDATE users SET notify_reminder = ? WHERE guid = ?;', (new_value, user_guid))
+        connection.commit()
+        return success_response('Галочка изменена. / Notification toggled.', notify_reminder=new_value)
     finally:
         connection.close()
 

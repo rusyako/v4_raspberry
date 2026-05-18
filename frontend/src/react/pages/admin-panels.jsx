@@ -192,7 +192,7 @@ export const UsersPanel = memo(function UsersPanel({
   );
 });
 
-export const UsersTable = memo(function UsersTable({ users, t, onRemove }) {
+export const UsersTable = memo(function UsersTable({ users, t, onRemove, onToggleNotify }) {
   return (
     <section className="admin-panel users-table-panel">
       <div className="admin-panel-head">
@@ -208,7 +208,7 @@ export const UsersTable = memo(function UsersTable({ users, t, onRemove }) {
               <th>RFID DEC</th>
               <th>{t.admin.categoryLabel}</th>
               <th>{t.admin.emailLabel}</th>
-              <th>{t.admin.columns.status}</th>
+              <th>{t.admin.notifyLabel}</th>
               <th></th>
             </tr>
           </thead>
@@ -224,7 +224,16 @@ export const UsersTable = memo(function UsersTable({ users, t, onRemove }) {
                 <td><code>{user.uid_dec || '-'}</code></td>
                 <td>{user.description || user.category || '-'}</td>
                 <td>{user.email || '-'}</td>
-                <td>{user.is_admin ? <span className="status-badge status-admin">{t.admin.adminBadge}</span> : '-'}</td>
+                <td>
+                  {user.email ? (
+                    <input
+                      type="checkbox"
+                      checked={Boolean(user.notify_reminder)}
+                      onChange={() => onToggleNotify && onToggleNotify(user)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                  ) : <span style={{ color: '#6a8a9e', fontSize: '12px' }}>—</span>}
+                </td>
                 <td>
                   <button type="button" className="danger-button small" onClick={() => onRemove(user)}>{t.common.remove}</button>
                 </td>

@@ -243,6 +243,18 @@ export function AdminPage() {
     }
   }
 
+  async function handleToggleUserNotify(user) {
+    try {
+      const guid = user.guid;
+      if (!guid) return;
+      const data = await postJson(`/admin/users/${encodeURIComponent(guid)}/toggle-notify`, {}, authHeaders());
+      await loadAdminData();
+      showToast('success', t.admin.toasts.notifyToggledTitle, data.message);
+    } catch (error) {
+      showToast('error', t.admin.toasts.adminErrorTitle, error.message);
+    }
+  }
+
   async function removeUser(user) {
     try {
       const uid = typeof user === 'string' ? user : user?.uid;
@@ -525,6 +537,7 @@ export function AdminPage() {
                 users={users}
                 t={t}
                 onRemove={removeUser}
+                onToggleNotify={handleToggleUserNotify}
               />
             </Suspense>
           </Modal>
