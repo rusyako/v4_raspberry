@@ -84,16 +84,25 @@ def run_daily_reminder():
                 logger.info(f'Skipping {uid} ({info["name"]}) — no email')
                 continue
 
-            device_list = '\n'.join(
-                f'- {d["barcode"] or d["device_number"] or d["device_name"]}'
-                for d in info['devices']
+            device_items = '\n'.join(
+                f'{i+1}) MacBook * {d["barcode"] or d["device_number"] or d["device_name"]}'
+                for i, d in enumerate(info['devices'])
             )
             body = (
+                f'Сәлеметсіз бе, {info["name"]}.\n\n'
+                f'Сізге тіркелген құрылғыларды бүгін сағат 17:00-ге дейін SmartBox жүйесіне қайтару қажет екенін еске саламыз:\n\n'
+                f'{device_items}\n\n'
+                f'Құрылғыларды уақытында қайтаруыңызды сұраймыз.\n'
+                f'SmartBox\n\n\n'
                 f'Здравствуйте, {info["name"]}.\n\n'
-                f'По нашим данным, следующие устройства до сих пор числятся за Вами:\n'
-                f'{device_list}\n\n'
-                f'Пожалуйста, верните их при первой возможности.\n'
-                f'Если Вы уже вернули устройства — проигнорируйте это сообщение.\n\n'
+                f'Напоминаем, что за Вами числятся устройства, которые необходимо вернуть сегодня до 17:00:\n\n'
+                f'{device_items}\n\n'
+                f'Просим Вас вернуть устройства в указанный срок.\n'
+                f'SmartBox\n\n\n'
+                f'Hello, {info["name"]}.\n\n'
+                f'This is a reminder that the devices registered to you must be returned today by 5:00 PM:\n\n'
+                f'{device_items}\n\n'
+                f'Please return the devices within the specified time.\n'
                 f'SmartBox'
             )
             send_email(
@@ -102,7 +111,7 @@ def run_daily_reminder():
                 body
             )
             device_ids = ', '.join(
-                d['barcode'] or d['device_number'] or d['device_name']
+                f'MacBook * {d["barcode"] or d["device_number"] or d["device_name"]}'
                 for d in info['devices']
             )
             logger.info(
@@ -124,20 +133,27 @@ def run_daily_reminder():
             if not info['email']:
                 continue
             device_list = ', '.join(
-                d['barcode'] or d['device_number'] or d['device_name']
+                f'MacBook * {d["barcode"] or d["device_number"] or d["device_name"]}'
                 for d in info['devices']
             )
             summary_lines.append(
-                f'{idx}. {info["name"]} — {len(info["devices"])} устройств({info["email"]}): {device_list}'
+                f'{idx}) {info["name"]} — {len(info["devices"])} құрылғы / {len(info["devices"])} устройств / {len(info["devices"])} devices: {device_list}'
             )
 
         if summary_lines:
             watcher_emails = [w['email'] for w in watchers]
+            summary_items = '\n'.join(summary_lines)
             summary_body = (
-                'Здравствуйте.\n\n'
-                'Следующие пользователи не вернули устройства:\n\n'
-                + '\n'.join(summary_lines) +
-                '\n\nSmartBox'
+                f'Сәлеметсіз бе.\n\n'
+                f'16:30 бойынша келесі пайдаланушылар құрылғыларды қайтармады:\n\n'
+                f'{summary_items}\n\n\n'
+                f'Здравствуйте.\n\n'
+                f'По состоянию на 16:30 следующие пользователи не вернули устройства:\n\n'
+                f'{summary_items}\n\n\n'
+                f'Hello.\n\n'
+                f'As of 4:30 PM, the following users have not returned devices:\n\n'
+                f'{summary_items}\n\n'
+                f'SmartBox'
             )
             send_email(
                 watcher_emails,
