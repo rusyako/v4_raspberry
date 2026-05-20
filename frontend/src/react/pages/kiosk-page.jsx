@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { requestJson } from '../shared/api';
 import { AnimatedBackground } from '../shared/background';
 import { preloadImages } from '../shared/network';
 import { Toast, useToast } from '../shared/toast';
@@ -23,6 +24,14 @@ export function KioskPage() {
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const panel = params.get('panel');
+    if (panel && ['actions', 'checkout', 'return', 'unknown', 'home'].includes(panel)) {
+      requestJson(`/debug/panel?name=${encodeURIComponent(panel)}`).catch(() => {});
+    }
   }, []);
 
   const {

@@ -426,6 +426,8 @@ def build_home_state(client_session_id, user_actions_redirect=False, user_action
         'is_admin_user': bool(session.get('admin_uid_bypass')),
         'redirect': bool(user_actions_redirect),
         'user_actions_redirect': bool(user_actions_redirect),
+        'redirect_to_checkout': bool(session.pop('redirect_to_checkout', False)),
+        'redirect_to_return': bool(session.pop('redirect_to_return', False)),
         'user_actions_event_id': int(user_actions_event_id or 0),
         'user_actions_event_ack': int(user_actions_event_ack or 0),
         'user_session_active': bool(session.get('current_user_uid')),
@@ -1362,6 +1364,46 @@ def debug_scan_uid():
         user_actions_event_id=int(get_user_actions_event_state()[1]),
         last_detected_uid=get_last_detected_uid_for_session(get_client_session_id())
     )
+
+
+@app.route('/debug/panel')
+def debug_panel():
+    if not ENABLE_LOCAL_DEBUG_SDK:
+        return error_response('Локальная отладка отключена. / Local debug mode is disabled.', 403)
+
+    if not is_local_request():
+        return error_response('Разрешено только локально. / Allowed only from localhost.', 403)
+
+    panel = request.args.get('name', '').strip().lower()
+    mark_client_active()
+
+    if panel == 'actions':
+        session['current_user_uid'] = 'DEBUG-UID'
+        create_user_actions_event()
+        return success_response('Панель действий открыта. / Actions panel opened.')
+
+    if panel == 'checkout':
+        session['current_user_uid'] = 'DEBUG-UID'
+        create_user_actions_event()
+        session['redirect_to_checkout'] = True
+        return success_response('Панель выдачи открыта. / Checkout panel opened.')
+
+    if panel == 'return':
+        session['current_user_uid'] = 'DEBUG-UID'
+        create_user_actions_event()
+        session['redirect_to_return'] = True
+        return success_response('Панель возврата открыта. / Return panel opened.')
+
+    if panel == 'unknown':
+        session['current_user_uid'] = '__UNKNOWN__'
+        register_unknown_user_scan('DEBUG-UNKNOWN-UID')
+        return success_response('Неизвестный пользователь. / Unknown user view opened.')
+
+    if panel == 'home':
+        clear_user_session()
+        return success_response('Возврат на главную. / Home.')
+
+    return error_response(f'Неизвестная панель: {panel}. / Unknown panel: {panel}.', 400)
 
 
 @app.route('/hardware/rfid-scan', methods=['POST'])

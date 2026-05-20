@@ -121,6 +121,22 @@ export function useKioskController(showToast) {
           if (shouldOpenActions && eventId > lastAckedUserActionsEventIdRef.current) {
             setView('actions');
 
+            if (data.redirect_to_checkout) {
+              setReturnBarcodes([]);
+              setTakeBarcodes(readStoredArray(TAKE_BARCODES_STORAGE_KEY));
+              setView('checkout');
+              lastAckedUserActionsEventIdRef.current = eventId;
+              return;
+            }
+
+            if (data.redirect_to_return) {
+              setTakeBarcodes([]);
+              setReturnBarcodes(readStoredArray(RETURN_BARCODES_STORAGE_KEY));
+              setView('return');
+              lastAckedUserActionsEventIdRef.current = eventId;
+              return;
+            }
+
             try {
               await postJson('/user_actions_event/ack', { event_id: eventId });
               lastAckedUserActionsEventIdRef.current = eventId;
