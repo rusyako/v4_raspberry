@@ -1371,7 +1371,7 @@ def debug_panel():
     if not ENABLE_LOCAL_DEBUG_SDK:
         return error_response('Локальная отладка отключена. / Local debug mode is disabled.', 403)
 
-    if not is_local_request():
+    if not is_local_network_request():
         return error_response('Разрешено только локально. / Allowed only from localhost.', 403)
 
     panel = request.args.get('name', '').strip().lower()
