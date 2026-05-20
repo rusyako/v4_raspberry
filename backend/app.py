@@ -2100,6 +2100,22 @@ def check_user_laptops():
     if not current_user_uid:
         return error_response(SCAN_CARD_MESSAGE)
 
+    # Debug: mock 10 devices for return panel testing
+    if current_user_uid == 'DEBUG-UID':
+        mock_devices = []
+        for i in range(10):
+            mock_devices.append({
+                'barcode': f'20000000472{i:02d}',
+                'device_number': f'20000000472{i:02d}',
+                'name': f'MB-{i+1:03d}',
+                'created_at': '2026-05-18 12:00:00'
+            })
+        return success_response(
+            'Debug: mock devices found.',
+            devices=mock_devices,
+            count=len(mock_devices)
+        )
+
     connection = get_db_connection()
     try:
         cursor = connection.cursor()

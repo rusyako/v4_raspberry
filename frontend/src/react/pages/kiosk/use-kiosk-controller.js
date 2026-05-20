@@ -5,7 +5,8 @@ import {
   LANGUAGE_STORAGE_KEY,
   TAKE_BARCODES_STORAGE_KEY,
   RETURN_BARCODES_STORAGE_KEY,
-  readStoredArray
+  readStoredArray,
+  writeStoredArray
 } from '../../shared/storage';
 import { getTranslations, resolveLanguage } from '../../shared/translations';
 import {
@@ -347,7 +348,18 @@ export function useKioskController(showToast) {
       const data = await postJson('/check_user_laptops', {});
       setUserBorrowedDevices(data.devices || []);
       fetch('/send_arduino_signal', { method: 'POST' });
-      setReturnBarcodes(readStoredArray(RETURN_BARCODES_STORAGE_KEY));
+
+      // Debug: если возврат открыт через ?panel=return, предзаполняем 6 уже отсканированных
+      const isDebugReturn = typeof window !== 'undefined'
+        && new URLSearchParams(window.location.search).get('panel') === 'return';
+      if (isDebugReturn && data.devices && data.devices.length >= 6) {
+        const preScanned = data.devices.slice(0, 6).map(d => d.barcode);
+        setReturnBarcodes(preScanned);
+        writeStoredArray(RETURN_BARCODES_STORAGE_KEY, preScanned);
+      } else {
+        setReturnBarcodes(readStoredArray(RETURN_BARCODES_STORAGE_KEY));
+      }
+
       setView('return');
     } catch (error) {
       showToast('info', t.kiosk.returnCheckFailedTitle, error.message);
