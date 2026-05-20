@@ -516,14 +516,16 @@
 
 .actions-card-horiz {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 20px;
+  gap: 16px;
+  padding: 24px;
   border-radius: 24px;
   background: rgba(5, 16, 23, 0.8);
   border: 1px solid rgba(152, 201, 231, 0.18);
   cursor: pointer;
   transition: transform 0.15s, border-color 0.15s;
+  text-align: center;
 }
 
 .actions-card-horiz:hover {
@@ -532,24 +534,24 @@
 }
 
 .actions-card-horiz-image {
-  flex-shrink: 0;
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .actions-card-gif {
-  width: 80px;
-  height: 80px;
+  width: 110px;
+  height: 110px;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: 16px;
 }
 
 .actions-card-horiz-body {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
 }
 
@@ -1126,19 +1128,19 @@
   }
 
   .actions-card-horiz {
-    gap: 14px;
+    gap: 12px;
     padding: 14px;
     border-radius: 18px;
   }
 
   .actions-card-horiz-image {
-    width: 72px;
-    height: 72px;
+    width: 90px;
+    height: 90px;
   }
 
   .actions-card-gif {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
   }
 
   .actions-card-horiz-title {
