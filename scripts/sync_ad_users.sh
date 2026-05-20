@@ -30,6 +30,13 @@ run_export() {
 }
 
 {
-  run_export 'Start prune-only cleanup' --prune-only
   run_export 'Start AD import'
+  import_ok=$?
+
+  if [ "$import_ok" -eq 0 ]; then
+    run_export 'Start prune-after-import cleanup' --prune-only
+  else
+    printf '[%s] AD import failed — prune skipped to avoid data loss\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+    exit "$import_ok"
+  fi
 } >> "$LOG_DIR/ad-sync.log" 2>&1
