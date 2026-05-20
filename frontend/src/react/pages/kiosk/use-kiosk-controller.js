@@ -267,14 +267,12 @@ export function useKioskController(showToast) {
   }, [view, showToast, t, hasLoadedActiveBorrowedRecords]);
 
   useEffect(() => {
-    if (view === 'home') {
+    if (view === 'home' || view === 'checkout' || view === 'return' || view === 'unknown') {
       window.clearTimeout(inactivityTimerRef.current);
       return;
     }
 
-    const inactivityTimeoutMs = view === 'actions'
-      ? ACTIONS_INACTIVITY_TIMEOUT_MS
-      : SESSION_INACTIVITY_TIMEOUT_MS;
+    const inactivityTimeoutMs = ACTIONS_INACTIVITY_TIMEOUT_MS;
 
     function resetInactivityTimer() {
       window.clearTimeout(inactivityTimerRef.current);
