@@ -120,23 +120,20 @@ export function useKioskController(showToast) {
           const shouldOpenActions = Boolean(data.user_actions_redirect);
 
           if (shouldOpenActions && eventId > lastAckedUserActionsEventIdRef.current) {
-            setView('actions');
 
             if (data.redirect_to_checkout) {
-              setReturnBarcodes([]);
-              setTakeBarcodes(readStoredArray(TAKE_BARCODES_STORAGE_KEY));
-              setView('checkout');
+              await goToCheckout();
               lastAckedUserActionsEventIdRef.current = eventId;
               return;
             }
 
             if (data.redirect_to_return) {
-              setTakeBarcodes([]);
-              setReturnBarcodes(readStoredArray(RETURN_BARCODES_STORAGE_KEY));
-              setView('return');
+              await goToReturn();
               lastAckedUserActionsEventIdRef.current = eventId;
               return;
             }
+
+            setView('actions');
 
             try {
               await postJson('/user_actions_event/ack', { event_id: eventId });
