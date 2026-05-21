@@ -3,6 +3,7 @@ import { deleteJson, postJson, requestJson } from '../shared/api';
 import { Modal } from '../shared/modal';
 import { formatDateTimeGmtPlus5 } from '../shared/time';
 import { Toast, useToast } from '../shared/toast';
+import { useSound } from '../shared/use-sound';
 import { getTranslations } from '../shared/translations';
 
 const UsersPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.UsersPanel })));
@@ -42,7 +43,11 @@ export function AdminPage() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
   const { toast, showToast, clearToast } = useToast();
+  const { settings: soundSettings, updateSettings: updateSoundSettings } = useSound('ru');
   const t = useMemo(() => getTranslations('ru'), []);
+  const [showSoundModal, setShowSoundModal] = useState(false);
+  const [localSoundEnabled, setLocalSoundEnabled] = useState(soundSettings.enabled);
+  const [localSoundVolume, setLocalSoundVolume] = useState(Math.round(soundSettings.volume * 100));
 
   const filteredBorrowRecords = useMemo(() => {
     let filtered = borrowRecords;
@@ -423,6 +428,13 @@ export function AdminPage() {
               <button type="button" className="ghost-button" onClick={() => setShowAnalysisModal(true)}>{t.admin.analysis}</button>
               <button type="button" className="ghost-button" onClick={() => setShowAdManageModal(true)}>{t.admin.adManage}</button>
             </div>
+            <div className="admin-toolbar-group">
+              <button type="button" className="ghost-button" onClick={() => {
+                setLocalSoundEnabled(soundSettings.enabled);
+                setLocalSoundVolume(Math.round(soundSettings.volume * 100));
+                setShowSoundModal(true);
+              }}>{t.admin.soundSettings}</button>
+            </div>
           </div>
 
           <section className="admin-panel admin-wide-panel">
@@ -631,6 +643,39 @@ export function AdminPage() {
                 t={t}
               />
             </Suspense>
+          </Modal>
+
+          <Modal isOpen={showSoundModal} onClose={() => setShowSoundModal(false)} title={t.admin.soundSettings}>
+            <form className="admin-form" onSubmit={(e) => {
+              e.preventDefault();
+              updateSoundSettings({ enabled: localSoundEnabled, volume: localSoundVolume / 100 });
+              showToast('success', t.admin.soundSaved, '');
+              setShowSoundModal(false);
+            }}>
+              <label className="admin-checkbox" style={{ marginBottom: '16px' }}>
+                <input
+                  checked={localSoundEnabled}
+                  onChange={(e) => setLocalSoundEnabled(e.target.checked)}
+                  type="checkbox"
+                />
+                <span>{t.admin.soundEnabled}</span>
+              </label>
+              <label className="admin-field">
+                <span>{t.admin.soundVolume}: {localSoundVolume}%</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={localSoundVolume}
+                  onChange={(e) => setLocalSoundVolume(Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#1c98ff' }}
+                />
+              </label>
+              <div className="admin-actions" style={{ marginTop: '20px' }}>
+                <button type="button" className="ghost-button" onClick={() => setShowSoundModal(false)}>{t.common.cancel}</button>
+                <button type="submit" className="primary-button">{t.admin.soundSave}</button>
+              </div>
+            </form>
           </Modal>
         </div>
       )}

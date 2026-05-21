@@ -193,20 +193,25 @@ export const DICTIONARY = {
         returned: 'Returned',
         status: 'Status'
       },
+      soundSettings: 'Sound Settings',
+      soundEnabled: 'Enabled',
+      soundVolume: 'Volume',
+      soundSave: 'Save',
+      soundSaved: 'Settings saved',
       toasts: {
         adminDetectedTitle: 'Admin card detected',
         adminDetectedText: 'Admin card recognized. Opening panel...',
         adminRequiredTitle: 'Admin login required',
-        userAddedTitle: 'Қолданушы қосылды',
-        userRemovedTitle: 'Қолданушы жойылды',
-        deviceAddedTitle: 'Құрылғы қосылды',
-        deviceRemovedTitle: 'Құрылғы жойылды',
+        userAddedTitle: 'User added',
+        deviceAddedTitle: 'Device added',
+        userRemovedTitle: 'User removed',
+        deviceRemovedTitle: 'Device removed',
         deviceTransferredTitle: 'Device transferred',
         notifyToggledTitle: 'Notification updated',
-        pruneUsersTitle: 'Пайдаланушыларды тазалау',
-        adSyncRunTitle: 'AD синхрондау',
-        importSuccessTitle: 'Импорт аяқталды',
-        adminErrorTitle: 'Қате'
+        pruneUsersTitle: 'Prune users',
+        adSyncRunTitle: 'AD sync',
+        importSuccessTitle: 'Import succeeded',
+        adminErrorTitle: 'Admin error'
       }
     }
   },
@@ -404,6 +409,11 @@ export const DICTIONARY = {
         returned: 'Возвращено',
         status: 'Статус'
       },
+      soundSettings: 'Настройки звука',
+      soundEnabled: 'Включено',
+      soundVolume: 'Громкость',
+      soundSave: 'Сохранить',
+      soundSaved: 'Настройки сохранены',
       toasts: {
         adminDetectedTitle: 'Обнаружена админ-карта',
         adminDetectedText: 'Админ-карта распознана. Открываем панель...',
@@ -614,6 +624,11 @@ export const DICTIONARY = {
         returned: 'Қайтарылды',
         status: 'Күйі'
       },
+      soundSettings: 'Дыбыс параметрлері',
+      soundEnabled: 'Қосылған',
+      soundVolume: 'Дауыс деңгейі',
+      soundSave: 'Сақтау',
+      soundSaved: 'Параметрлер сақталды',
       toasts: {
         adminDetectedTitle: 'Әкімші картасы табылды',
         adminDetectedText: 'Әкімші картасы танылды. Панель ашылуда...',

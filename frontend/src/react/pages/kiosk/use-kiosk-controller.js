@@ -18,7 +18,7 @@ import {
   SESSION_INACTIVITY_TIMEOUT_MS
 } from './constants';
 
-export function useKioskController(showToast) {
+export function useKioskController(showToast, playSound) {
   const [language, setLanguage] = useState(resolveLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY) || 'en'));
   const [laptopCount, setLaptopCount] = useState('0/0');
   const [view, setView] = useState('home');
@@ -373,6 +373,10 @@ export function useKioskController(showToast) {
       setTakeBarcodes([]);
       localStorage.removeItem(TAKE_BARCODES_STORAGE_KEY);
       fetch('/send_arduino_signal_on', { method: 'POST' });
+      if (playSound) {
+        playSound('success-take');
+        window.setTimeout(() => playSound('close-door'), 2000);
+      }
       setView('home');
     } catch (error) {
       showToast('error', t.kiosk.checkoutFailTitle, error.message);
@@ -391,6 +395,10 @@ export function useKioskController(showToast) {
       setReturnBarcodes([]);
       localStorage.removeItem(RETURN_BARCODES_STORAGE_KEY);
       fetch('/send_arduino_signal_on', { method: 'POST' });
+      if (playSound) {
+        playSound('success-return');
+        window.setTimeout(() => playSound('close-door'), 2000);
+      }
       setView('home');
     } catch (error) {
       showToast('error', t.kiosk.returnFailTitle, error.message);
