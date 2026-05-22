@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useEffect, useMemo, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 function reverseUidHexBytes(hexUid) {
@@ -550,6 +550,25 @@ export const LaptopsPanel = memo(function LaptopsPanel({
   onRemove,
   onBackToHome
 }) {
+  const barcodeRef = useRef(null);
+
+  useEffect(() => {
+    barcodeRef.current?.focus();
+  }, []);
+
+  function handleBarcodeKeyDown(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const scanned = event.currentTarget.value.trim();
+      if (!scanned) return;
+      setLaptopForm((current) => ({ ...current, barcode: scanned }));
+      requestAnimationFrame(() => {
+        const form = event.currentTarget.closest('form');
+        if (form) form.requestSubmit();
+      });
+    }
+  }
+
   return (
     <section className="admin-panel">
       <div className="admin-panel-head">
@@ -569,8 +588,10 @@ export const LaptopsPanel = memo(function LaptopsPanel({
         <label className="admin-field">
           <span>{t.admin.barcodeLabel}</span>
           <input
+            ref={barcodeRef}
             value={laptopForm.barcode}
             onChange={(event) => setLaptopForm((current) => ({ ...current, barcode: event.target.value }))}
+            onKeyDown={handleBarcodeKeyDown}
             type="text"
             placeholder="BC-001"
           />
