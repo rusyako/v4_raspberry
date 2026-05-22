@@ -1127,6 +1127,12 @@ def frontend_assets(filename):
     return send_from_directory(assets_dir, filename)
 
 
+@app.route('/audio/<path:filename>')
+def frontend_audio(filename):
+    audio_dir = os.path.join(FRONTEND_DIST_DIR, 'audio')
+    return send_from_directory(audio_dir, filename)
+
+
 @app.route('/submit_scan', methods=['POST'])
 def submit_scan():
     current_user_uid = session.get('current_user_uid')
