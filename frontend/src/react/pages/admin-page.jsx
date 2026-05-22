@@ -43,11 +43,12 @@ export function AdminPage() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [laptopForm, setLaptopForm] = useState({ name: '', barcode: '', device_number: '', status: 'available' });
   const { toast, showToast, clearToast } = useToast();
-  const { settings: soundSettings, updateSettings: updateSoundSettings } = useSound('ru');
+  const { settings: soundSettings, updateSettings: updateSoundSettings, play } = useSound('ru');
   const t = useMemo(() => getTranslations('ru'), []);
   const [showSoundModal, setShowSoundModal] = useState(false);
   const [localSoundEnabled, setLocalSoundEnabled] = useState(soundSettings.enabled);
   const [localSoundVolume, setLocalSoundVolume] = useState(Math.round(soundSettings.volume * 100));
+  const [testSoundName, setTestSoundName] = useState('access-granted');
 
   const filteredBorrowRecords = useMemo(() => {
     let filtered = borrowRecords;
@@ -670,6 +671,29 @@ export function AdminPage() {
                   onChange={(e) => setLocalSoundVolume(Number(e.target.value))}
                   style={{ width: '100%', accentColor: '#1c98ff' }}
                 />
+              </label>
+              <label className="admin-field">
+                <span>{t.admin.soundTestLabel}</span>
+                <select
+                  value={testSoundName}
+                  onChange={(e) => setTestSoundName(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="access-granted">access-granted</option>
+                  <option value="access-denied">access-denied</option>
+                  <option value="select-action">select-action</option>
+                  <option value="take-scan">take-scan</option>
+                  <option value="return-scan">return-scan</option>
+                  <option value="success-take">success-take</option>
+                  <option value="success-return">success-return</option>
+                  <option value="close-door">close-door</option>
+                </select>
+                <button
+                  type="button"
+                  className="ghost-button small"
+                  style={{ marginTop: '8px', width: '100%' }}
+                  onClick={() => { updateSoundSettings({ enabled: localSoundEnabled, volume: localSoundVolume / 100 }); play(testSoundName); }}
+                >{t.admin.soundTestPlay}</button>
               </label>
               <div className="admin-actions" style={{ marginTop: '20px' }}>
                 <button type="button" className="ghost-button" onClick={() => setShowSoundModal(false)}>{t.common.cancel}</button>

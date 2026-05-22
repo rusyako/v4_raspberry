@@ -196,6 +196,8 @@ export const DICTIONARY = {
       soundSettings: 'Sound Settings',
       soundEnabled: 'Enabled',
       soundVolume: 'Volume',
+      soundTestLabel: 'Test sound',
+      soundTestPlay: 'Test',
       soundSave: 'Save',
       soundSaved: 'Settings saved',
       toasts: {
@@ -412,6 +414,8 @@ export const DICTIONARY = {
       soundSettings: 'Настройки звука',
       soundEnabled: 'Включено',
       soundVolume: 'Громкость',
+      soundTestLabel: 'Тестовый звук',
+      soundTestPlay: '▶ Тест',
       soundSave: 'Сохранить',
       soundSaved: 'Настройки сохранены',
       toasts: {
@@ -627,6 +631,8 @@ export const DICTIONARY = {
       soundSettings: 'Дыбыс параметрлері',
       soundEnabled: 'Қосылған',
       soundVolume: 'Дауыс деңгейі',
+      soundTestLabel: 'Сынақ дыбысы',
+      soundTestPlay: '▶ Сынақ',
       soundSave: 'Сақтау',
       soundSaved: 'Параметрлер сақталды',
       toasts: {
