@@ -105,7 +105,6 @@ def post_uid(uid):
         with request.urlopen(http_request, timeout=POST_TIMEOUT_SECONDS) as response:
             body = response.read().decode('utf-8', errors='replace')
             logging.info('UID %s accepted by backend: %s', uid, body)
-            unlock_door()
             return True
     except error.HTTPError as http_error:
         body = http_error.read().decode('utf-8', errors='replace')
