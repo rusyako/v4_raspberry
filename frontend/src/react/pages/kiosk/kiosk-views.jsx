@@ -319,9 +319,6 @@ export function KioskSessionView({
           onKeyDown={handleKeyDown}
           autoFocus
         />
-        <button type="button" className="session-input-action" onClick={() => inputRef.current?.focus()}>
-          {t.common.scan}
-        </button>
       </div>
 
       {mode === 'return' ? (
