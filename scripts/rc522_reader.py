@@ -128,8 +128,8 @@ def start_door_server():
         logging.info('Door HTTP server disabled (ENABLE_STATION_SIGNAL=false).')
         return
 
-    server = ReusableHTTPServer(('127.0.0.1', DOOR_HTTP_PORT), DoorHandler)
-    logging.info('Door HTTP server listening on 127.0.0.1:%d', DOOR_HTTP_PORT)
+    server = ReusableHTTPServer(('0.0.0.0', DOOR_HTTP_PORT), DoorHandler)
+    logging.info('Door HTTP server listening on 0.0.0.0:%d', DOOR_HTTP_PORT)
     server.serve_forever()
 
 
