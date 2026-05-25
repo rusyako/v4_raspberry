@@ -15,6 +15,7 @@ import sys
 import threading
 import time
 import uuid
+import urllib.request
 
 try:
     import serial
@@ -52,6 +53,7 @@ STATION_SIGNAL_MODE = os.getenv('STATION_SIGNAL_MODE', 'gpio').strip().lower()
 ENABLE_STATION_SIGNAL = os.getenv('ENABLE_STATION_SIGNAL', 'true').lower() == 'true'
 STATION_SIGNAL_GPIO = int(os.getenv('STATION_SIGNAL_GPIO', '24'))
 STATION_SIGNAL_ACTIVE_LEVEL = os.getenv('STATION_SIGNAL_ACTIVE_LEVEL', 'low').strip().lower()
+DOOR_HTTP_URL = os.getenv('DOOR_HTTP_URL', 'http://host.docker.internal:5100').strip()
 SERIAL_PORT = os.getenv('SERIAL_PORT', '/dev/ttyACM0')
 SERIAL_BAUDRATE = int(os.getenv('SERIAL_BAUDRATE', '9600'))
 SERIAL_TIMEOUT = float(os.getenv('SERIAL_TIMEOUT', '0.5'))
@@ -349,6 +351,18 @@ def set_station_signal(active):
 
     if STATION_SIGNAL_MODE != 'gpio':
         return False, 'Неподдерживаемый режим управления станцией. / Unsupported station control mode.'
+
+    endpoint = 'open' if active else 'close'
+    try:
+        req = urllib.request.Request(
+            f'{DOOR_HTTP_URL}/door/{endpoint}',
+            data=b'',
+            method='POST'
+        )
+        urllib.request.urlopen(req, timeout=3)
+        return True, 'Сигнал отправлен. / Signal sent.'
+    except Exception as http_error:
+        logging.warning('Door HTTP call failed (%s), falling back to direct GPIO: %s', endpoint, http_error)
 
     if not initialize_station_signal_gpio():
         return False, 'GPIO станции недоступен. / Station GPIO is unavailable.'

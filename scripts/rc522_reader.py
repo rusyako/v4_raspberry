@@ -4,6 +4,8 @@ import logging
 import os
 import sys
 import time
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib import error, request
 
 try:
@@ -28,6 +30,7 @@ STATION_SIGNAL_GPIO = int(os.getenv('STATION_SIGNAL_GPIO', '24'))
 STATION_SIGNAL_ACTIVE_LEVEL = os.getenv('STATION_SIGNAL_ACTIVE_LEVEL', 'low').strip().lower()
 ENABLE_DOOR_UNLOCK_ON_RFID = os.getenv('ENABLE_DOOR_UNLOCK_ON_RFID', 'true').lower() == 'true'
 DOOR_UNLOCK_DURATION_SECONDS = float(os.getenv('DOOR_UNLOCK_DURATION_SECONDS', '5'))
+DOOR_HTTP_PORT = int(os.getenv('SMART_BOX_DOOR_PORT', '5100'))
 
 
 def configure_logging():
@@ -39,9 +42,7 @@ def configure_logging():
 
 
 def get_gpio_mode():
-    if RC522_GPIO_MODE == 'BOARD':
-        return GPIO.BOARD
-    return GPIO.BCM
+    return GPIO.BCM if RC522_GPIO_MODE == 'BCM' else GPIO.BOARD
 
 
 def get_active_signal_level():
@@ -61,7 +62,27 @@ def initialize_station_signal():
     GPIO.setup(STATION_SIGNAL_GPIO, GPIO.OUT, initial=get_inactive_signal_level())
 
 
-def unlock_door():
+def open_door_now():
+    if not ENABLE_STATION_SIGNAL:
+        return
+    try:
+        GPIO.output(STATION_SIGNAL_GPIO, get_active_signal_level())
+        logging.info('Door relay OPENED.')
+    except Exception as exc:
+        logging.error('Failed to open door relay: %s', exc)
+
+
+def close_door_now():
+    if not ENABLE_STATION_SIGNAL:
+        return
+    try:
+        GPIO.output(STATION_SIGNAL_GPIO, get_inactive_signal_level())
+        logging.info('Door relay CLOSED.')
+    except Exception as exc:
+        logging.error('Failed to close door relay: %s', exc)
+
+
+def unlock_door_blocking():
     if not ENABLE_STATION_SIGNAL or not ENABLE_DOOR_UNLOCK_ON_RFID:
         return
 
@@ -72,6 +93,38 @@ def unlock_door():
     finally:
         GPIO.output(STATION_SIGNAL_GPIO, get_inactive_signal_level())
         logging.info('Door relay returned to locked state.')
+
+
+class DoorHandler(BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args):
+        logging.info('Door HTTP: %s', fmt % args)
+
+    def _send_ok(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'ok')
+
+    def do_POST(self):
+        if self.path == '/door/open':
+            open_door_now()
+            self._send_ok()
+        elif self.path == '/door/close':
+            close_door_now()
+            self._send_ok()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+def start_door_server():
+    if not ENABLE_STATION_SIGNAL:
+        logging.info('Door HTTP server disabled (ENABLE_STATION_SIGNAL=false).')
+        return
+
+    server = HTTPServer(('127.0.0.1', DOOR_HTTP_PORT), DoorHandler)
+    logging.info('Door HTTP server listening on 127.0.0.1:%d', DOOR_HTTP_PORT)
+    server.serve_forever()
 
 
 def normalize_uid(uid_bytes):
@@ -129,6 +182,10 @@ def main():
     logging.info('Starting RC522 reader for %s', API_URL)
 
     initialize_station_signal()
+
+    door_thread = threading.Thread(target=start_door_server, daemon=True)
+    door_thread.start()
+
     reader = build_reader()
     last_uid = ''
     last_seen_at = 0.0
@@ -154,7 +211,8 @@ def main():
         try:
             reader.Close_MFRC522()
         except Exception:
-            GPIO.cleanup()
+            pass
+        GPIO.cleanup()
 
 
 if __name__ == '__main__':
