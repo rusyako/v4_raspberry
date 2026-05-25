@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { requestJson } from '../shared/api';
 import { AnimatedBackground } from '../shared/background';
 import { preloadImages } from '../shared/network';
 import { Toast, useToast } from '../shared/toast';
+import { useSound } from '../shared/use-sound';
 import { RETURN_BARCODES_STORAGE_KEY, TAKE_BARCODES_STORAGE_KEY } from '../shared/storage';
 import { KioskActionsView, KioskHomeView, KioskSessionView, UnknownUserView } from './kiosk/kiosk-views';
 import { KIOSK_PRELOAD_IMAGES } from './kiosk/constants';
@@ -11,6 +12,7 @@ import { useKioskController } from './kiosk/use-kiosk-controller';
 export function KioskPage() {
   const { toast, showToast, clearToast } = useToast();
   const [assetsReady, setAssetsReady] = useState(false);
+  const playRef = useRef(() => {});
 
   useEffect(() => {
     let isMounted = true;
@@ -57,7 +59,24 @@ export function KioskPage() {
     goToAdmin,
     submitTake,
     submitReturn
-  } = useKioskController(showToast);
+  } = useKioskController(showToast, (name) => playRef.current(name));
+
+  const { play } = useSound(language);
+  const prevViewRef = useRef(view);
+
+  useEffect(() => {
+    playRef.current = play;
+  }, [play]);
+
+  useEffect(() => {
+    const prev = prevViewRef.current;
+    prevViewRef.current = view;
+    if (prev === view) return;
+    if (view === 'unknown') play('access-denied');
+    if (view === 'actions') play('access-granted');
+    if (view === 'checkout') play('take-scan');
+    if (view === 'return') play('return-scan');
+  }, [view, play]);
 
   if (!assetsReady) {
     return <div className="screen screen-home" />;

@@ -2,6 +2,7 @@ export const LANGUAGE_STORAGE_KEY = 'smartBoxLanguage';
 export const TAKE_BARCODES_STORAGE_KEY = 'takeScannedBarcodes';
 export const RETURN_BARCODES_STORAGE_KEY = 'returnScannedBarcodes';
 export const ADMIN_TOKEN_STORAGE_KEY = 'smartBoxAdminToken';
+export const AUDIO_SETTINGS_STORAGE_KEY = 'smartBoxAudioSettings';
 
 export function readStoredArray(storageKey) {
   try {

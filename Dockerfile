@@ -8,6 +8,7 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/index.html ./index.html
 COPY frontend/vite.config.js ./vite.config.js
 COPY frontend/src ./src
+COPY frontend/public ./public
 
 RUN npm run build
 
