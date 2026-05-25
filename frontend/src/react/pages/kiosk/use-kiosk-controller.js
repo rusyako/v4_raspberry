@@ -312,7 +312,6 @@ export function useKioskController(showToast, playSound) {
     setReturnBarcodes([]);
     localStorage.removeItem(TAKE_BARCODES_STORAGE_KEY);
     localStorage.removeItem(RETURN_BARCODES_STORAGE_KEY);
-    fetch('/send_arduino_signal_on', { method: 'POST' });
     setView('home');
   }
 
@@ -327,6 +326,9 @@ export function useKioskController(showToast, playSound) {
 
       if (availableLaptops > 0) {
         fetch('/send_arduino_signal', { method: 'POST' });
+        window.setTimeout(() => {
+          fetch('/send_arduino_signal_on', { method: 'POST' });
+        }, 2000);
         setTakeBarcodes(readStoredArray(TAKE_BARCODES_STORAGE_KEY));
         setView('checkout');
         return;
@@ -343,6 +345,9 @@ export function useKioskController(showToast, playSound) {
       const data = await postJson('/check_user_laptops', {});
       setUserBorrowedDevices(data.devices || []);
       fetch('/send_arduino_signal', { method: 'POST' });
+      window.setTimeout(() => {
+        fetch('/send_arduino_signal_on', { method: 'POST' });
+      }, 2000);
 
       // Debug: если возврат открыт через ?panel=return, предзаполняем 6 уже отсканированных
       const isDebugReturn = typeof window !== 'undefined'
@@ -372,7 +377,6 @@ export function useKioskController(showToast, playSound) {
       showToast('success', t.kiosk.checkoutSuccessTitle, data.message || t.kiosk.checkoutSuccessFallback);
       setTakeBarcodes([]);
       localStorage.removeItem(TAKE_BARCODES_STORAGE_KEY);
-      fetch('/send_arduino_signal_on', { method: 'POST' });
       if (playSound) {
         playSound('success-take');
         window.setTimeout(() => playSound('close-door'), 2000);
@@ -394,7 +398,6 @@ export function useKioskController(showToast, playSound) {
       showToast('success', t.kiosk.returnSuccessTitle, data.message || t.kiosk.returnSuccessFallback);
       setReturnBarcodes([]);
       localStorage.removeItem(RETURN_BARCODES_STORAGE_KEY);
-      fetch('/send_arduino_signal_on', { method: 'POST' });
       if (playSound) {
         playSound('success-return');
         window.setTimeout(() => playSound('close-door'), 2000);
