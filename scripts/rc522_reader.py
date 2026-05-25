@@ -15,6 +15,8 @@ except Exception as import_error:
     print(f'Failed to import RC522 dependencies: {import_error}', file=sys.stderr)
     sys.exit(1)
 
+GPIO.setwarnings(False)
+
 
 API_URL = os.getenv('SMART_BOX_RFID_API_URL', 'http://127.0.0.1:5000/hardware/rfid-scan').strip()
 RC522_SPI_BUS = int(os.getenv('RC522_SPI_BUS', '0'))
@@ -117,12 +119,16 @@ class DoorHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 
+class ReusableHTTPServer(HTTPServer):
+    allow_reuse_address = True
+
+
 def start_door_server():
     if not ENABLE_STATION_SIGNAL:
         logging.info('Door HTTP server disabled (ENABLE_STATION_SIGNAL=false).')
         return
 
-    server = HTTPServer(('127.0.0.1', DOOR_HTTP_PORT), DoorHandler)
+    server = ReusableHTTPServer(('127.0.0.1', DOOR_HTTP_PORT), DoorHandler)
     logging.info('Door HTTP server listening on 127.0.0.1:%d', DOOR_HTTP_PORT)
     server.serve_forever()
 
