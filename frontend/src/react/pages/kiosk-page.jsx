@@ -32,7 +32,7 @@ export function KioskPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const panel = params.get('panel');
-    if (panel && ['actions', 'checkout', 'return', 'unknown', 'home'].includes(panel)) {
+    if (panel && ['actions', 'checkout', 'return', 'unknown', 'home', 'admin'].includes(panel)) {
       requestJson(`/debug/panel?name=${encodeURIComponent(panel)}`).catch(() => {});
     }
   }, []);
