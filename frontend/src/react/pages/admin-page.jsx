@@ -13,7 +13,7 @@ const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ def
 const AdSyncLogPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AdSyncLogPanel })));
 const AnalysisPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AnalysisPanel })));
 
-export function AdminPage() {
+export function AdminPage({ onClose }) {
   const [adminToken, setAdminToken] = useState('');
   const [users, setUsers] = useState([]);
   const [laptops, setLaptops] = useState([]);
@@ -195,7 +195,11 @@ export function AdminPage() {
     setUsers([]);
     setLaptops([]);
     setBorrowRecords([]);
-    window.location.href = '/';
+    if (onClose) {
+      onClose();
+    } else {
+      window.location.href = '/';
+    }
   }
 
   async function handleAddUser(event) {
@@ -400,7 +404,7 @@ export function AdminPage() {
             <h1>{t.admin.accessTitle}</h1>
             <p>{t.admin.connectingText}</p>
             <div className="admin-actions">
-              <button type="button" className="ghost-button" onClick={() => { window.location.href = '/'; }}>{t.common.backHome}</button>
+              <button type="button" className="ghost-button" onClick={() => { if (onClose) onClose(); else window.location.href = '/'; }}>{t.common.backHome}</button>
             </div>
           </div>
         </div>
@@ -413,7 +417,11 @@ export function AdminPage() {
             </div>
             <div className="admin-hero-actions">
               <button type="button" className="ghost-button" onClick={() => loadAdminData()}>{t.common.refresh}</button>
-              <button type="button" className="danger-button" onClick={handleLogout}>{t.common.logout}</button>
+              {onClose ? (
+                <button type="button" className="actions-close-btn" onClick={onClose} aria-label={t.common.backHome} style={{ position: 'static', width: 40, height: 40, fontSize: 20, borderRadius: '50%' }}>×</button>
+              ) : (
+                <button type="button" className="danger-button" onClick={handleLogout}>{t.common.logout}</button>
+              )}
             </div>
           </header>
 

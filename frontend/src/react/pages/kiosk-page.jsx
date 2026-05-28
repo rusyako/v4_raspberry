@@ -6,6 +6,7 @@ import { Toast, useToast } from '../shared/toast';
 import { useSound } from '../shared/use-sound';
 import { RETURN_BARCODES_STORAGE_KEY, TAKE_BARCODES_STORAGE_KEY } from '../shared/storage';
 import { KioskActionsView, KioskHomeView, KioskSessionView, UnknownUserView } from './kiosk/kiosk-views';
+import { AdminPage } from './admin-page';
 import { KIOSK_PRELOAD_IMAGES } from './kiosk/constants';
 import { useKioskController } from './kiosk/use-kiosk-controller';
 
@@ -57,6 +58,7 @@ export function KioskPage() {
     goToCheckout,
     goToReturn,
     goToAdmin,
+    closeAdmin,
     submitTake,
     submitReturn
   } = useKioskController(showToast, (name) => playRef.current(name));
@@ -143,6 +145,10 @@ export function KioskPage() {
           setLanguage={setLanguage}
           t={t}
         />
+      ) : null}
+
+      {view === 'admin' ? (
+        <AdminPage onClose={closeAdmin} />
       ) : null}
     </div>
   );

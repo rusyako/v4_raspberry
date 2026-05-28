@@ -92,7 +92,7 @@ export function useKioskController(showToast, playSound) {
         setIsAdminUser(Boolean(data.is_admin_user));
 
         if (data.admin_redirect) {
-          window.location.href = '/admin';
+          setView('admin');
           return;
         }
 
@@ -267,7 +267,7 @@ export function useKioskController(showToast, playSound) {
   }, [view, showToast, t, hasLoadedActiveBorrowedRecords]);
 
   useEffect(() => {
-    if (view === 'home' || view === 'checkout' || view === 'return' || view === 'unknown') {
+    if (view === 'home' || view === 'checkout' || view === 'return' || view === 'unknown' || view === 'admin') {
       window.clearTimeout(inactivityTimerRef.current);
       return;
     }
@@ -316,7 +316,11 @@ export function useKioskController(showToast, playSound) {
   }
 
   async function goToAdmin() {
-    window.location.href = '/admin';
+    setView('admin');
+  }
+
+  function closeAdmin() {
+    setView('actions');
   }
 
   async function goToCheckout() {
@@ -409,6 +413,9 @@ export function useKioskController(showToast, playSound) {
   }
 
   const screenClassName = useMemo(() => {
+    if (view === 'admin') {
+      return 'screen screen-actions';
+    }
     if (view === 'actions') {
       return 'screen screen-actions';
     }
@@ -440,6 +447,7 @@ export function useKioskController(showToast, playSound) {
     goToCheckout,
     goToReturn,
     goToAdmin,
+    closeAdmin,
     submitTake,
     submitReturn
   };

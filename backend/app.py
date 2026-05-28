@@ -1484,15 +1484,17 @@ def legacy_check_redirect_state():
     )
 
 
-@app.route('/admin')
-def admin_page():
-    mark_client_active()
-    if ENABLE_LOCAL_DEBUG_SDK and is_local_network_request():
-        session['admin_uid_bypass'] = True
-        session['redirect_to_admin_page'] = True
-    else:
-        session.pop('redirect_to_admin_page', None)
-    return serve_frontend_page('index.html')
+# Admin panel is now embedded inside KioskPage (overlay mode).
+# Standalone /admin route is disabled — uncomment below to restore.
+# @app.route('/admin')
+# def admin_page():
+#     mark_client_active()
+#     if ENABLE_LOCAL_DEBUG_SDK and is_local_network_request():
+#         session['admin_uid_bypass'] = True
+#         session['redirect_to_admin_page'] = True
+#     else:
+#         session.pop('redirect_to_admin_page', None)
+#     return serve_frontend_page('index.html')
 
 
 @app.route('/admin/login', methods=['POST'])
