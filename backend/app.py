@@ -1554,6 +1554,61 @@ def admin_ad_sync_log():
     return success_response(lines=read_text_file_tail(log_path), last_modified=last_modified)
 
 
+@app.route('/admin/rfid-logs', methods=['GET'])
+def admin_rfid_logs():
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
+    lines = 100
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['journalctl', '-u', 'smart-box-rc522-reader.service', '--no-pager', '-n', str(lines * 3)],
+            capture_output=True, text=True, timeout=5
+        )
+        raw = result.stdout or ''
+    except Exception:
+        raw = ''
+
+    uid_events = []
+    for line in raw.split('\n'):
+        needle = 'Card detected:'
+        idx = line.find(needle)
+        if idx == -1:
+            continue
+
+        time_part = line[:19].strip()
+        uid_hex = line[idx + len(needle):].strip()
+
+        is_accepted = 'accepted' in line[line.find(needle):]
+        is_admin = '\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440' in line
+
+        door_open_line = ''
+        for later in raw.split('\n')[raw.split('\n').index(line):]:
+            if 'Door relay OPENED' in later:
+                door_open_line = later[:19].strip()
+                break
+
+        user = get_user_by_uid(uid_hex)
+        name = ''
+        if user:
+            name = user.get('name', '') or ''
+            if is_admin and not user.get('is_admin'):
+                pass
+
+        uid_events.append({
+            'time': time_part,
+            'uid': uid_hex,
+            'name': name,
+            'status': 'accepted' if is_accepted else 'rejected',
+            'door': bool(door_open_line)
+        })
+
+    uid_events.sort(key=lambda e: e['time'], reverse=True)
+    return success_response(events=uid_events[:lines])
+
+
 @app.route('/admin/ad-sync/prune', methods=['POST'])
 def admin_ad_sync_prune():
     auth_error = require_admin()

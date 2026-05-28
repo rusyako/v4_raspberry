@@ -49,6 +49,9 @@ export function AdminPage() {
   const [localSoundEnabled, setLocalSoundEnabled] = useState(soundSettings.enabled);
   const [localSoundVolume, setLocalSoundVolume] = useState(Math.round(soundSettings.volume * 100));
   const [testSoundName, setTestSoundName] = useState('access-granted');
+  const [showRfidLogModal, setShowRfidLogModal] = useState(false);
+  const [rfidLogEvents, setRfidLogEvents] = useState([]);
+  const [rfidLogLoading, setRfidLogLoading] = useState(false);
 
   const filteredBorrowRecords = useMemo(() => {
     let filtered = borrowRecords;
@@ -371,6 +374,23 @@ export function AdminPage() {
     }
   }
 
+  async function loadRfidLogs() {
+    setRfidLogLoading(true);
+    try {
+      const data = await requestJson('/admin/rfid-logs', authHeaders());
+      setRfidLogEvents(data.events || []);
+    } catch (error) {
+      showToast('error', t.admin.rfidLogError, error.message);
+    } finally {
+      setRfidLogLoading(false);
+    }
+  }
+
+  function openRfidLogs() {
+    setShowRfidLogModal(true);
+    loadRfidLogs();
+  }
+
   return (
     <div className="admin-screen">
       <Toast toast={toast} onClose={clearToast} />
@@ -435,6 +455,7 @@ export function AdminPage() {
                 setLocalSoundVolume(Math.round(soundSettings.volume * 100));
                 setShowSoundModal(true);
               }}>{t.admin.soundSettings}</button>
+              <button type="button" className="ghost-button" onClick={openRfidLogs}>{t.admin.rfidLogs}</button>
             </div>
           </div>
 
@@ -700,6 +721,58 @@ export function AdminPage() {
                 <button type="submit" className="primary-button">{t.admin.soundSave}</button>
               </div>
             </form>
+          </Modal>
+
+          <Modal isOpen={showRfidLogModal} onClose={() => setShowRfidLogModal(false)} title={t.admin.rfidLogHeader} fullscreen>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#aac7d8', fontSize: '13px' }}>
+                  {rfidLogEvents.length} {t.admin.records.toLowerCase()}
+                  {rfidLogLoading ? ' ...' : ''}
+                </span>
+                <button type="button" className="ghost-button small" onClick={loadRfidLogs} disabled={rfidLogLoading}>
+                  {t.admin.rfidLogRefresh}
+                </button>
+              </div>
+              <div className="admin-table-wrap" style={{ flex: 1, minHeight: 0 }}>
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>{t.admin.rfidLogTime}</th>
+                      <th>{t.admin.rfidLogUid}</th>
+                      <th>{t.admin.rfidLogName}</th>
+                      <th>{t.admin.rfidLogStatus}</th>
+                      <th>{t.admin.rfidLogDoor}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rfidLogEvents.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="admin-table-empty">{rfidLogLoading ? '...' : t.admin.rfidLogEmpty}</td>
+                      </tr>
+                    ) : (
+                      rfidLogEvents.map((event, i) => (
+                        <tr key={`${event.time}-${event.uid}-${i}`}>
+                          <td>{event.time || '-'}</td>
+                          <td><code>{event.uid || '-'}</code></td>
+                          <td>{event.name || <span style={{ color: '#6a8a9e' }}>—</span>}</td>
+                          <td>
+                            <span className={`status-badge ${event.status === 'accepted' ? 'status-available' : 'status-unavailable'}`}>
+                              {event.status === 'accepted' ? t.admin.rfidLogAccepted : t.admin.rfidLogRejected}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`status-badge ${event.door ? 'status-active' : ''}`} style={event.door ? {} : { background: 'rgba(255,255,255,0.06)', color: '#6a8a9e' }}>
+                              {event.door ? t.admin.rfidLogDoorYes : t.admin.rfidLogDoorNo}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </Modal>
         </div>
       )}
