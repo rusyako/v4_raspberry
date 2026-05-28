@@ -1034,3 +1034,85 @@
     font-size: 28px;
   }
 }
+
+.kiosk-admin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, #041520, #0a1f2b);
+  overflow-y: auto;
+}
+
+.kiosk-admin-overlay .admin-screen {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.kiosk-admin-overlay .admin-page {
+  padding: 24px 16px 32px;
+  max-width: 1080px;
+}
+
+.kiosk-admin-overlay .admin-hero h1 {
+  font-size: 32px;
+}
+
+.kiosk-admin-overlay .admin-stat-card {
+  background: rgba(5, 16, 23, 0.9);
+  border: 1px solid rgba(152, 201, 231, 0.18);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
+}
+
+.kiosk-admin-overlay .admin-toolbar {
+  background: rgba(5, 16, 23, 0.86);
+  border: 1px solid rgba(152, 201, 231, 0.14);
+}
+
+.kiosk-admin-overlay .admin-panel {
+  background: rgba(5, 16, 23, 0.88);
+  border: 1px solid rgba(152, 201, 231, 0.18);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+
+.kiosk-admin-overlay .admin-list-item {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.kiosk-admin-overlay .admin-table-wrap {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 12px;
+}
+
+.kiosk-admin-overlay .admin-field input,
+.kiosk-admin-overlay .admin-field select {
+  background: #0a1822;
+  border-color: rgba(200, 221, 233, 0.22);
+}
+
+.kiosk-admin-overlay .admin-filter-input {
+  background: #0a1822;
+}
+
+.kiosk-admin-overlay .analysis-stat-card {
+  background: rgba(5, 16, 23, 0.9);
+  border: 1px solid rgba(152, 201, 231, 0.16);
+}
+
+.kiosk-admin-overlay .analysis-3col-grid .admin-panel {
+  background: rgba(5, 16, 23, 0.88);
+}
+
+@media (max-width: 1024px) and (max-height: 600px) {
+  .kiosk-admin-overlay .admin-page {
+    padding: 14px 10px 20px;
+  }
+
+  .kiosk-admin-overlay .admin-hero h1 {
+    font-size: 22px;
+  }
+
+  .kiosk-admin-overlay .admin-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
