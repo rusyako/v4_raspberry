@@ -260,16 +260,44 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
   const dayNames = { ru: ['вс','пн','вт','ср','чт','пт','сб'] };
 
   const stats = useMemo(() => {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().slice(0, 10);
+
     const total = borrowRecords.length;
     const active = borrowRecords.filter(r => r.status === 'active');
-    const returned = total - active.length;
-    const today = new Date();
-
-    // Device status
+    const returnedRecords = borrowRecords.filter(r => r.status === 'returned');
     const availableDevices = laptops.filter(l => l.status === 'available').length;
-    const unavailableDevices = laptops.length - availableDevices;
 
-    // Daily activity (last 14 days)
+    const todayBorrows = borrowRecords.filter(r => String(r.taken_at).startsWith(todayStr)).length;
+    const todayReturns = borrowRecords.filter(r => r.returned_at && String(r.returned_at).startsWith(todayStr)).length;
+
+    const weekBorrows = borrowRecords.filter(r => r.taken_at && String(r.taken_at) >= weekAgoStr).length;
+    const weekReturns = borrowRecords.filter(r => r.returned_at && String(r.returned_at) >= weekAgoStr).length;
+
+    const returnRate = total > 0 ? Math.round((returnedRecords.length / total) * 100) : 0;
+    const availablePct = laptops.length > 0 ? Math.round((availableDevices / laptops.length) * 100) : 0;
+
+    const nowMs = today.getTime();
+    const threeDaysAgo = nowMs - 3 * 86400000;
+    const overdueCount = active.filter(r => r.taken_at && new Date(r.taken_at).getTime() < threeDaysAgo).length;
+
+    const avgDays = (() => {
+      const withReturn = borrowRecords.filter(r => r.status === 'returned' && r.taken_at && r.returned_at);
+      if (!withReturn.length) return 0;
+      const totalDays = withReturn.reduce((sum, r) => {
+        const d = (new Date(r.returned_at) - new Date(r.taken_at)) / 86400000;
+        return sum + Math.max(0, d);
+      }, 0);
+      return Math.round((totalDays / withReturn.length) * 10) / 10;
+    })();
+
+    const allBorrowerUids = new Set(borrowRecords.filter(r => r.employee_uid).map(r => r.employee_uid));
+    const uniqueUsers = allBorrowerUids.size;
+
+    // Daily activity (14 days)
     const dailyMap = {};
     const dailyReturnMap = {};
     for (let i = 13; i >= 0; i--) {
@@ -291,10 +319,9 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
     });
     const daily = Object.keys(dailyMap).sort().map(key => {
       const d = new Date(key + 'T00:00:00');
-      const dow = d.getDay();
       return {
         name: `${d.getDate()} ${monthNames.ru[d.getMonth()]}`,
-        day: dayNames.ru[dow],
+        day: dayNames.ru[d.getDay()],
         full: key,
         Выдачи: dailyMap[key],
         Возврат: dailyReturnMap[key]
@@ -314,7 +341,7 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
         userStats[key].lastDate = r.taken_at;
       }
     });
-    const topBorrowers = Object.values(userStats).sort((a, b) => b.total - a.total).slice(0, 5);
+    const topBorrowers = Object.values(userStats).sort((a, b) => b.total - a.total).slice(0, 10);
 
     // Device stats
     const devStats = {};
@@ -328,11 +355,22 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
         devStats[key].lastDate = r.taken_at;
       }
     });
-    const topDevices = Object.values(devStats).sort((a, b) => b.total - a.total).slice(0, 5);
+    const topDevices = Object.values(devStats).sort((a, b) => b.total - a.total).slice(0, 10);
 
-    // Transfer stats
-    const transferred = borrowRecords.filter(r => Boolean(r.comment));
-    const transferCount = transferred.length;
+    // All devices with status + holder
+    const allDevices = laptops.map(laptop => {
+      const activeRecord = borrowRecords.find(r =>
+        r.status === 'active' && (r.device_number === laptop.device_number || r.barcode === laptop.barcode)
+      );
+      return {
+        ...laptop,
+        holderName: activeRecord ? (activeRecord.employee_name || activeRecord.employee_uid || '-') : '',
+        isAvailable: laptop.status === 'available'
+      };
+    });
+
+    // Overdue devices
+    const overdueDevices = active.filter(r => r.taken_at && new Date(r.taken_at).getTime() < threeDaysAgo);
 
     // Recent events
     const recent = [...borrowRecords].sort((a, b) => {
@@ -341,40 +379,43 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
       return da < db ? 1 : -1;
     }).slice(0, 8);
 
-    // KPI
-    const todayStr = today.toISOString().slice(0, 10);
-    const todayBorrows = borrowRecords.filter(r => String(r.taken_at).startsWith(todayStr)).length;
-    const todayReturns = borrowRecords.filter(r => r.returned_at && String(r.returned_at).startsWith(todayStr)).length;
-    const activeUsers = new Set(active.map(r => r.employee_uid)).size;
-    const returnRate = total > 0 ? Math.round((returned / total) * 100) : 0;
-    const avgBorrowMinutes = (() => {
-      const withReturn = borrowRecords.filter(r => r.status === 'returned' && r.taken_at && r.returned_at);
-      if (!withReturn.length) return 0;
-      const totalMin = withReturn.reduce((sum, r) => {
-        const d = (new Date(r.returned_at) - new Date(r.taken_at)) / 60000;
-        return sum + Math.max(0, d);
-      }, 0);
-      return Math.round(totalMin / withReturn.length);
-    })();
+    const transferred = borrowRecords.filter(r => Boolean(r.comment));
 
-    return { total, activeNow: active.length, returned, availableDevices, unavailableDevices, topBorrowers, topDevices, daily, activeUsers, returnRate, avgBorrowMinutes, laptopsCount: laptops.length, usersCount: users.length, todayBorrows, todayReturns, transferCount, recent, transferred };
+    return {
+      daily, topBorrowers, topDevices, allDevices, overdueDevices, recent, transferred,
+      activeCount: active.length, availableDevices, availablePct,
+      todayBorrows, todayReturns, weekBorrows, weekReturns,
+      returnRate, overdueCount, avgDays, uniqueUsers,
+      laptopsCount: laptops.length, usersCount: users.length
+    };
   }, [users, laptops, borrowRecords]);
 
-  if (!stats.daily.length && !stats.total) {
+  if (!stats.daily.length && !stats.activeCount && !borrowRecords.length) {
     return <div style={{ minHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bdd5e5' }}>{t.admin.noBorrowRecords}</div>;
   }
 
+  const kpiClass = (val, type) => {
+    if (type === 'available') return val > 50 ? '#70ea97' : val > 20 ? '#ffd24d' : '#ff8a86';
+    if (type === 'rate') return val > 80 ? '#70ea97' : val > 50 ? '#ffd24d' : '#ff8a86';
+    if (type === 'overdue') return val === 0 ? '#70ea97' : '#ff8a86';
+    return '#eaf2f8';
+  };
+
   return (
     <div className="analysis-panel">
-      <div className="analysis-stats-grid analysis-stats-2row">
-        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.usersCount}</span><span className="analysis-stat-label">{t.admin.stats.totalUsers}</span></div>
-        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.laptopsCount}</span><span className="analysis-stat-label">{t.admin.stats.totalDevices}</span></div>
-        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.activeNow}</span><span className="analysis-stat-label">{t.admin.stats.activeLoans}</span></div>
-        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.returnRate}%</span><span className="analysis-stat-label">{t.admin.returnRate}</span></div>
+      <div className="analysis-stats-grid analysis-stats-2row" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+        <div className="analysis-stat-card"><span className="analysis-stat-value" style={{ color: kpiClass(stats.availablePct, 'available') }}>{stats.laptopsCount}</span><span className="analysis-stat-label">{t.admin.stats.totalDevices}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value" style={{ color: '#70ea97' }}>{stats.availableDevices}</span><span className="analysis-stat-label">{t.admin.availableNow}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value" style={{ color: stats.activeCount > 0 ? '#ffd24d' : '#eaf2f8' }}>{stats.activeCount}</span><span className="analysis-stat-label">{t.admin.onHand}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value" style={{ color: kpiClass(stats.availablePct, 'available') }}>{stats.availablePct}%</span><span className="analysis-stat-label">{t.admin.availablePercent}</span></div>
         <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.todayBorrows}</span><span className="analysis-stat-label">{t.admin.operBorrows}</span></div>
         <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.todayReturns}</span><span className="analysis-stat-label">{t.admin.operReturns}</span></div>
-        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.transferCount}</span><span className="analysis-stat-label">{t.admin.filterTransferred}</span></div>
-        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.avgBorrowMinutes}м</span><span className="analysis-stat-label">{t.admin.avgBorrowMinutes}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.weekBorrows}</span><span className="analysis-stat-label">{t.admin.weekBorrows}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.weekReturns}</span><span className="analysis-stat-label">{t.admin.weekReturns}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value" style={{ color: kpiClass(stats.returnRate, 'rate') }}>{stats.returnRate}%</span><span className="analysis-stat-label">{t.admin.returnRate}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value" style={{ color: kpiClass(stats.overdueCount, 'overdue') }}>{stats.overdueCount}</span><span className="analysis-stat-label">{t.admin.overdueCount}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.avgDays}д</span><span className="analysis-stat-label">{t.admin.avgDays}</span></div>
+        <div className="analysis-stat-card"><span className="analysis-stat-value">{stats.uniqueUsers}</span><span className="analysis-stat-label">{t.admin.uniqueUsers}</span></div>
       </div>
 
       <div className="analysis-chart-row">
@@ -398,7 +439,7 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
             <PieChart>
               <Pie data={[
                 { name: t.admin.statusAvailable, value: stats.availableDevices },
-                { name: t.admin.statusUnavailable, value: stats.unavailableDevices }
+                { name: t.admin.statusUnavailable, value: stats.laptopsCount - stats.availableDevices }
               ]} cx="50%" cy="50%" outerRadius={70} innerRadius={40} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
                 {[0, 1].map((i) => <Cell key={i} fill={COLORS[i]} />)}
               </Pie>
@@ -473,6 +514,82 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
           {!stats.recent.length && <div className="admin-empty">{t.admin.noBorrowRecords}</div>}
         </section>
       </div>
+
+      <section className="admin-panel" style={{ marginTop: 16 }}>
+        <div className="admin-panel-head">
+          <h2>{t.admin.overdueTitle}</h2>
+          <span className={`status-badge ${stats.overdueCount > 0 ? 'status-unavailable' : 'status-available'}`}>{stats.overdueCount}</span>
+        </div>
+        {stats.overdueDevices.length === 0 ? (
+          <div className="admin-empty">{t.admin.noOverdue}</div>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>{t.admin.columns.barcode}</th>
+                  <th>{t.admin.columns.name}</th>
+                  <th>{t.admin.columns.taken}</th>
+                  <th>{t.admin.columns.status}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.overdueDevices.map(r => {
+                  const daysAgo = Math.floor((Date.now() - new Date(r.taken_at).getTime()) / 86400000);
+                  return (
+                    <tr key={r.id}>
+                      <td><code>{r.barcode || '-'}</code></td>
+                      <td>{r.employee_name || r.employee_uid || '-'}</td>
+                      <td>{String(r.taken_at).slice(0, 10)}</td>
+                      <td><span className="status-badge status-unavailable">{daysAgo} дн</span></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="admin-panel" style={{ marginTop: 16 }}>
+        <div className="admin-panel-head">
+          <h2>{t.admin.allDevices} ({stats.laptopsCount})</h2>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <span className="status-badge status-available">{stats.availableDevices} {t.admin.statusAvailable}</span>
+            <span className="status-badge status-unavailable">{stats.laptopsCount - stats.availableDevices} {t.admin.statusUnavailable}</span>
+          </div>
+        </div>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>{t.admin.columns.deviceNumber}</th>
+                <th>{t.admin.barcodeLabel}</th>
+                <th>{t.admin.columns.status}</th>
+                <th>{t.admin.currentHolder}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.allDevices.length === 0 ? (
+                <tr><td colSpan="4" className="admin-table-empty">{t.admin.noDevices}</td></tr>
+              ) : (
+                stats.allDevices.map(d => (
+                  <tr key={`${d.name}:${d.barcode}`}>
+                    <td><strong>{d.device_number || d.name || '-'}</strong></td>
+                    <td><code>{d.barcode || '-'}</code></td>
+                    <td>
+                      <span className={`status-badge ${d.isAvailable ? 'status-available' : 'status-unavailable'}`}>
+                        {d.isAvailable ? t.admin.statusAvailable : t.admin.statusUnavailable}
+                      </span>
+                    </td>
+                    <td>{d.holderName || <span style={{ color: '#6a8a9e' }}>—</span>}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 });
