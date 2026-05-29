@@ -13,8 +13,9 @@ const LaptopsPanel = lazy(() => import('./admin-panels').then((module) => ({ def
 const AdSyncLogPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AdSyncLogPanel })));
 const AnalysisPanel = lazy(() => import('./admin-panels').then((module) => ({ default: module.AnalysisPanel })));
 
-export function AdminPage({ onClose }) {
+export function AdminPage({ onClose, lite }) {
   const [adminToken, setAdminToken] = useState('');
+  const PAGE_SIZE = lite ? 24 : 50;
   const [users, setUsers] = useState([]);
   const [laptops, setLaptops] = useState([]);
   const [borrowRecords, setBorrowRecords] = useState([]);
@@ -35,7 +36,6 @@ export function AdminPage({ onClose }) {
   const [deviceSortDir, setDeviceSortDir] = useState('asc');
   const [adminSearchText, setAdminSearchText] = useState('');
   const [borrowPage, setBorrowPage] = useState(0);
-  const PAGE_SIZE = 50;
   const [borrowStatusFilter, setBorrowStatusFilter] = useState('all');
   const [borrowSearchText, setBorrowSearchText] = useState('');
   const [borrowDateFilter, setBorrowDateFilter] = useState('all');
@@ -449,13 +449,23 @@ export function AdminPage({ onClose }) {
           </div>
 
           <div className="admin-toolbar">
+            {!lite && (
+              <div className="admin-toolbar-group">
+                <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.viewUsers}</button>
+                <button type="button" className="ghost-button" onClick={handleOpenDevicesList}>{t.admin.viewDevices}</button>
+              </div>
+            )}
+            {!lite && (
+              <div className="admin-toolbar-group">
+                <button type="button" className="ghost-button" onClick={() => setShowAnalysisModal(true)}>{t.admin.analysis}</button>
+              </div>
+            )}
             <div className="admin-toolbar-group">
-              <button type="button" className="ghost-button" onClick={() => setShowUsersListModal(true)}>{t.admin.viewUsers}</button>
-              <button type="button" className="ghost-button" onClick={handleOpenDevicesList}>{t.admin.viewDevices}</button>
-            </div>
-            <div className="admin-toolbar-group">
-              <button type="button" className="ghost-button" onClick={() => setShowAnalysisModal(true)}>{t.admin.analysis}</button>
-              <button type="button" className="ghost-button" onClick={() => setShowAdManageModal(true)}>{t.admin.adManage}</button>
+              {lite ? (
+                <button type="button" className="ghost-button" onClick={() => { if (!window.confirm(t.admin.confirmRunAdSync)) return; handleRunAdSync(); }}>{t.admin.runAdSync}</button>
+              ) : (
+                <button type="button" className="ghost-button" onClick={() => setShowAdManageModal(true)}>{t.admin.adManage}</button>
+              )}
             </div>
             <div className="admin-toolbar-group">
               <button type="button" className="ghost-button" onClick={() => {
@@ -463,7 +473,9 @@ export function AdminPage({ onClose }) {
                 setLocalSoundVolume(Math.round(soundSettings.volume * 100));
                 setShowSoundModal(true);
               }}>{t.admin.soundSettings}</button>
-              <button type="button" className="ghost-button" onClick={openRfidLogs}>{t.admin.rfidLogs}</button>
+              {!lite && (
+                <button type="button" className="ghost-button" onClick={openRfidLogs}>{t.admin.rfidLogs}</button>
+              )}
             </div>
           </div>
 

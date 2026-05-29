@@ -149,7 +149,7 @@ export function KioskPage() {
 
       {view === 'admin' ? (
         <div className="kiosk-admin-overlay">
-          <AdminPage onClose={closeAdmin} />
+          <AdminPage onClose={closeAdmin} lite={true} />
         </div>
       ) : null}
     </div>
