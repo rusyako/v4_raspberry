@@ -21,22 +21,8 @@ for env_name in AD_SERVER AD_USER AD_PASSWORD AD_SEARCH_BASE AD_EXPORT_CSV_PATH 
   fi
 done
 
-run_export() {
-  local marker="$1"
-  shift
-
-  printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$marker"
-  docker compose exec -T "${docker_env_args[@]}" smart-box python /app/scripts/Export_AD_users.py "$@"
-}
-
 {
-  run_export 'Start AD import'
-  import_ok=$?
-
-  if [ "$import_ok" -eq 0 ]; then
-    run_export 'Start prune-after-import cleanup' --prune-only
-  else
-    printf '[%s] AD import failed — prune skipped to avoid data loss\n' "$(date '+%Y-%m-%d %H:%M:%S')"
-    exit "$import_ok"
-  fi
+  printf '[%s] Start AD sync\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+  docker compose exec -T "${docker_env_args[@]}" smart-box python /app/scripts/Export_AD_users.py
+  printf '[%s] AD sync finished\n' "$(date '+%Y-%m-%d %H:%M:%S')"
 } >> "$LOG_DIR/ad-sync.log" 2>&1

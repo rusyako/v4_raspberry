@@ -277,6 +277,20 @@ def prune_unassigned_users(connection):
     return cursor.rowcount
 
 
+def check_ad_connection():
+    print('[*] Проверка соединения с AD...')
+    try:
+        server = Server(AD_SERVER, get_info=ALL, connect_timeout=5)
+        conn = Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True, timeout=5)
+        conn.unbind()
+        print('[+] AD доступен.')
+        return True
+    except Exception as exc:
+        print(f'[-] AD недоступен: {exc}')
+        print('[!] Синхронизация пропущена — старые пользователи сохранены.')
+        return False
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description='Export Active Directory users into Smart Box database or CSV.')
     parser.add_argument('--csv', default='', help='Write normalized AD users to CSV instead of database.')
@@ -286,12 +300,6 @@ def build_parser():
         action='store_true',
         help='Only delete non-admin users without active booked equipment, without connecting to AD.'
     )
-    parser.add_argument(
-        '--prune-unassigned-users',
-        action='store_true',
-        help='Delete non-admin users who do not have active booked equipment.'
-    )
-    return parser
 
 
 def main():
@@ -319,9 +327,13 @@ def main():
             )
             return
 
-        server = Server(AD_SERVER, get_info=ALL)
+        if not check_ad_connection():
+            connection.rollback()
+            return
 
-        with Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True) as conn:
+        server = Server(AD_SERVER, get_info=ALL, connect_timeout=5)
+
+        with Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True, timeout=5) as conn:
             search_filter = '(&(objectClass=user)(objectCategory=person)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
             attrs = [
                 'givenName', 'sn', 'mail', 'description', 'homePhone', 'distinguishedName', 'objectGUID'
@@ -392,8 +404,7 @@ def main():
         if args.csv:
             write_csv(export_records, args.csv or EXPORT_CSV_PATH)
         else:
-            if args.prune_unassigned_users:
-                deleted_count = prune_unassigned_users(connection)
+            deleted_count = prune_unassigned_users(connection)
             connection.commit()
         print(
             f'[+] Импорт завершен. Добавлено: {inserted_count}, обновлено: {updated_count}, '
