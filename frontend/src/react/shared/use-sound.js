@@ -52,7 +52,7 @@ export function useSound(language) {
     if (poolsRef.current[lang]) return;
     const pool = {};
     SOUND_NAMES.forEach((name) => {
-      const audio = new Audio(`/audio/${lang}/${name}.wav`);
+      const audio = new Audio(`/audio/${lang}/${name}.mp4`);
       audio.preload = 'auto';
       audio.load();
       pool[name] = audio;
