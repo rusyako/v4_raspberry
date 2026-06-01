@@ -404,7 +404,10 @@ def main():
         if args.csv:
             write_csv(export_records, args.csv or EXPORT_CSV_PATH)
         else:
-            deleted_count = prune_unassigned_users(connection)
+            if (inserted_count + updated_count) > 0:
+                deleted_count = prune_unassigned_users(connection)
+            else:
+                print('[!] AD не вернул пользователей — prune пропущен для сохранения данных.')
             connection.commit()
         print(
             f'[+] Импорт завершен. Добавлено: {inserted_count}, обновлено: {updated_count}, '
