@@ -3,6 +3,7 @@ Description=Nightly Smart Box Active Directory Sync
 
 [Timer]
 OnCalendar=*-*-* 02:00:00
+OnCalendar=*-*-* 07:00:00
 Persistent=true
 Unit=smart-box-ad-sync.service
 
