@@ -39,13 +39,6 @@ function formatCompactTemperature(value) {
   return `${Number.parseFloat(match[0]).toFixed(1)}°`;
 }
 
-function splitEmployeeName(fullName) {
-  if (!fullName) return [];
-  
-  const parts = String(fullName).trim().split(/\s+/);
-  return parts.filter(Boolean);
-}
-
 export function KioskHomeView({
   language,
   setLanguage,
@@ -57,41 +50,91 @@ export function KioskHomeView({
   t
 }) {
   const groupedBorrowedRecords = groupBorrowedRecordsByEmployee(activeBorrowedRecords);
-  const [expandedEmployees, setExpandedEmployees] = useState({});
+  const [selectedBorrowedGroup, setSelectedBorrowedGroup] = useState(null);
+  const isDebugDevicesParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('debug_devices') : '';
+  const isDebugDevices = isDebugDevicesParam !== null;
+  const isDebugPreview = isDebugDevicesParam === 'preview';
+  const displayStationCellsStatus = isDebugDevices ? '10/10' : stationCellsStatus;
+  const displayTemperature1 = isDebugDevices ? '59°C' : temperature1;
+  const displayTemperature2 = isDebugDevices ? '40°C' : temperature2;
 
-  // --- DEBUG: тестовая карточка с 10 устройствами (убрать перед продом) ---
+  // --- DEBUG: тестовые карточки пользователей для проверки 1024x600 ---
   const debugRecords = [...groupedBorrowedRecords];
-  if (typeof window !== 'undefined' && window.location.search.includes('debug_devices')) {
-    debugRecords.unshift({
-      employeeUid: 'TEST-10',
-      employeeName: 'Тестов Тест',
-      devices: Array.from({ length: 10 }, (_, i) => ({
-        id: 9000 + i,
-        barcode: `200000004724${i}`,
-        taken_at: new Date(Date.now() - (i + 1) * 86400000).toISOString()
-      }))
-    });
+  if (isDebugDevices) {
+    const makeDevices = (employeeUid, count, offset = 0) => Array.from({ length: count }, (_, i) => ({
+      id: 9000 + offset + i,
+      barcode: `2000000047${String(offset + i).padStart(4, '0')}`,
+      employee_uid: employeeUid,
+      taken_at: new Date(Date.now() - (i + 1 + offset) * 3600000).toISOString()
+    }));
+
+    debugRecords.unshift(
+      {
+        employeeUid: 'TEST-10',
+        employeeName: 'Алиев Тимур',
+        devices: makeDevices('TEST-10', 10, 0)
+      },
+      {
+        employeeUid: 'TEST-1',
+        employeeName: 'Смирнова Анна',
+        devices: makeDevices('TEST-1', 1, 20)
+      },
+      {
+        employeeUid: 'TEST-3',
+        employeeName: 'Johnson Mark',
+        devices: makeDevices('TEST-3', 3, 30)
+      },
+      {
+        employeeUid: 'TEST-2',
+        employeeName: 'Касымбек Нуржан',
+        devices: makeDevices('TEST-2', 2, 40)
+      },
+      {
+        employeeUid: 'TEST-4',
+        employeeName: 'Петров Иван',
+        devices: makeDevices('TEST-4', 4, 50)
+      },
+      {
+        employeeUid: 'TEST-5',
+        employeeName: 'Chen Lisa',
+        devices: makeDevices('TEST-5', 5, 60)
+      },
+      {
+        employeeUid: 'TEST-6',
+        employeeName: 'Ибраев Данияр',
+        devices: makeDevices('TEST-6', 6, 70)
+      },
+      {
+        employeeUid: 'TEST-7',
+        employeeName: 'Kim Sara',
+        devices: makeDevices('TEST-7', 7, 80)
+      },
+      {
+        employeeUid: 'TEST-8',
+        employeeName: 'Омарова Алия',
+        devices: makeDevices('TEST-8', 8, 90)
+      },
+      {
+        employeeUid: 'TEST-9',
+        employeeName: 'Brown Alex',
+        devices: makeDevices('TEST-9', 9, 100)
+      }
+    );
   }
   // --- END DEBUG ---
 
-  function toggleEmployeeDevices(employeeUid) {
-    setExpandedEmployees((current) => ({
-      ...current,
-      [employeeUid]: !current[employeeUid]
-    }));
-  }
+  const sortedDebugRecords = [...debugRecords].sort((a, b) => b.devices.length - a.devices.length);
+
+  useEffect(() => {
+    if (isDebugPreview && sortedDebugRecords.length > 0) {
+      const previewGroup = sortedDebugRecords.find((g) => g.employeeUid === 'TEST-3') || sortedDebugRecords[0];
+      setSelectedBorrowedGroup(previewGroup);
+    }
+  }, [isDebugPreview, sortedDebugRecords]);
 
   return (
     <>
       <LanguageSwitcher language={language} setLanguage={setLanguage} />
-      <aside className="home-sensors-overlay" aria-label={t.kiosk.temperatureSensorsLabel}>
-        <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor1Label}: ${temperature1}`} title={`${t.kiosk.temperatureSensor1Label}: ${temperature1}`}>
-          <strong>{formatCompactTemperature(temperature1)}</strong>
-        </article>
-        <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor2Label}: ${temperature2}`} title={`${t.kiosk.temperatureSensor2Label}: ${temperature2}`}>
-          <strong>{formatCompactTemperature(temperature2)}</strong>
-        </article>
-      </aside>
 
       <main className="home-shell">
         <div className="home-content-grid">
@@ -102,39 +145,31 @@ export function KioskHomeView({
 
             {isActiveBorrowedLoading ? (
               <p className="home-borrowed-empty">...</p>
-            ) : debugRecords.length ? (
+            ) : sortedDebugRecords.length ? (
               <ul className="home-borrowed-list home-borrowed-list-three-cols">
-                {debugRecords.map((group) => (
-                  <li key={group.employeeUid} className="home-borrowed-item">
-                    <div className="home-borrowed-person">
+                {sortedDebugRecords.map((group) => (
+                    <li
+                      key={group.employeeUid}
+                      className="home-borrowed-item"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedBorrowedGroup(group)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedBorrowedGroup(group);
+                        }
+                      }}
+                    >
                       <div className="home-borrowed-person-name">
-                        {splitEmployeeName(group.employeeName).map((part, index) => (
-                          <div key={index}>{part}</div>
-                        ))}
+                        {group.employeeName}
+                        <span className="home-borrowed-count-inline">{group.devices.length}</span>
                       </div>
-                      <span className="home-borrowed-count">{group.devices.length}</span>
-                    </div>
-                    <ul className="home-borrowed-device-list">
-                      {(expandedEmployees[group.employeeUid] || group.devices.length <= 2 ? group.devices : group.devices.slice(0, 1)).map((device) => (
-                        <li key={device.id} className="home-borrowed-device-item">
-                          <p className="home-borrowed-device-name">{device.barcode || '-'}</p>
-                          <p className="home-borrowed-device-time">{formatDateTimeGmtPlus5(device.taken_at, { language, compact: true })}</p>
-                        </li>
-                      ))}
-                      {group.devices.length > 2 ? (
-                        <button
-                          type="button"
-                          className="home-borrowed-more-button"
-                          onClick={() => toggleEmployeeDevices(group.employeeUid)}
-                        >
-                          {expandedEmployees[group.employeeUid]
-                            ? t.kiosk.hideMoreDevices
-                            : t.kiosk.showMoreDevices.replace('{count}', String(group.devices.length - 1))}
-                        </button>
-                      ) : null}
-                    </ul>
-                  </li>
-                ))}
+                      <div className="home-borrowed-card-time">
+                        {formatDateTimeGmtPlus5(group.devices[0]?.taken_at, { language, compact: true })}
+                      </div>
+                    </li>
+                  ))}
               </ul>
             ) : (
               <div className="home-borrowed-empty-state">
@@ -146,6 +181,14 @@ export function KioskHomeView({
           <div className="home-sidebar">
             <section className="home-card home-card-flags">
               <LanguageSwitcher language={language} setLanguage={setLanguage} />
+              <aside className="home-sensors-overlay" aria-label={t.kiosk.temperatureSensorsLabel}>
+                <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor1Label}: ${displayTemperature1}`} title={`${t.kiosk.temperatureSensor1Label}: ${displayTemperature1}`}>
+                  <strong>{formatCompactTemperature(displayTemperature1)}</strong>
+                </article>
+                <article className="home-sensors-overlay-item" aria-label={`${t.kiosk.temperatureSensor2Label}: ${displayTemperature2}`} title={`${t.kiosk.temperatureSensor2Label}: ${displayTemperature2}`}>
+                  <strong>{formatCompactTemperature(displayTemperature2)}</strong>
+                </article>
+              </aside>
             </section>
 
             <section className="home-card home-card-title">
@@ -162,59 +205,107 @@ export function KioskHomeView({
             <section className="home-card home-card-info">
               <div className="home-card-info-content">
                 <span>{t.kiosk.stationCellsLabel}</span>
-                <strong>{stationCellsStatus}</strong>
+                <strong>{displayStationCellsStatus}</strong>
               </div>
             </section>
           </div>
         </div>
       </main>
+
+      {selectedBorrowedGroup ? (
+        <div className="borrowed-modal-backdrop" onClick={() => setSelectedBorrowedGroup(null)}>
+          <div className="borrowed-modal" onClick={(e) => e.stopPropagation()}>
+            <header className="borrowed-modal-header">
+              <div className="borrowed-modal-title" aria-label={selectedBorrowedGroup.employeeName}>{selectedBorrowedGroup.employeeName}</div>
+              <span className="borrowed-modal-count">{selectedBorrowedGroup.devices.length}</span>
+              <button
+                type="button"
+                className="borrowed-modal-close"
+                onClick={() => setSelectedBorrowedGroup(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </header>
+
+            <ul className="borrowed-modal-list">
+              {selectedBorrowedGroup.devices.map((device) => (
+                <li key={device.id} className="borrowed-modal-item">
+                  <span className="borrowed-modal-device-name">{device.barcode || '-'}</span>
+                  <span className="borrowed-modal-device-time">{formatDateTimeGmtPlus5(device.taken_at, { language, compact: true })}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
     </>
+  );
+}
+
+function ActionDeviceIcon({ type }) {
+  const isReturn = type === 'return';
+
+  return (
+    <svg className="actions-device-icon" viewBox="0 0 140 140" aria-hidden="true" focusable="false">
+      <rect className="actions-device-icon-box" x="34" y="50" width="72" height="58" rx="13" />
+      <path className="actions-device-icon-lid" d="M44 50h52l-8-18H52z" />
+      <path
+        className="actions-device-icon-arrow"
+        d={isReturn ? 'M98 42H69c-13 0-23 10-23 23v5' : 'M42 42h29c13 0 23 10 23 23v5'}
+      />
+      <path
+        className="actions-device-icon-arrow"
+        d={isReturn ? 'M55 59l-9 11-9-11' : 'M85 59l9 11 9-11'}
+      />
+      <circle className="actions-device-icon-dot" cx="70" cy="80" r="5" />
+    </svg>
   );
 }
 
 export function KioskActionsView({ onTake, onReturn, onAdmin, isAdminUser, language, setLanguage, t, onBackToHome }) {
   return (
     <section className="actions-shell">
-      <button type="button" className="actions-close-btn" onClick={onBackToHome} aria-label={t.common.backHome}>
-        ×
-      </button>
-      <header className="actions-header">
-        <p className="actions-kicker">{t.kiosk.sessionConfirmed}</p>
-        <h1>{t.kiosk.stationTitle}</h1>
-      </header>
-
-      <div className="actions-grid-2col">
-        <div className="actions-card-horiz" onClick={onTake}>
-          <div className="actions-card-horiz-image">
-            {KIOSK_IMAGES.comingSoonGif ? (
-              <img src={KIOSK_IMAGES.comingSoonGif} alt="" className="actions-card-gif" />
-            ) : null}
-          </div>
-          <div className="actions-card-horiz-body">
-            <span className="actions-card-horiz-title">{t.kiosk.checkOut}</span>
-            <small className="actions-card-horiz-hint">{t.kiosk.checkOutHint}</small>
-          </div>
-        </div>
-
-        <div className="actions-card-horiz" onClick={onReturn}>
-          <div className="actions-card-horiz-image">
-            {KIOSK_IMAGES.comingSoonGif ? (
-              <img src={KIOSK_IMAGES.comingSoonGif} alt="" className="actions-card-gif" />
-            ) : null}
-          </div>
-          <div className="actions-card-horiz-body">
-            <span className="actions-card-horiz-title">{t.kiosk.return}</span>
-            <small className="actions-card-horiz-hint">{t.kiosk.returnHint}</small>
-          </div>
-        </div>
-      </div>
-
-      {isAdminUser && (
-        <button type="button" className="actions-card-admin-full" onClick={onAdmin}>
-          <span>{t.kiosk.adminPanel}</span>
-          <small>{t.kiosk.adminPanelHint}</small>
+      <div className="actions-panel">
+        <button type="button" className="actions-close-btn" onClick={onBackToHome} aria-label={t.common.backHome}>
+          ×
         </button>
-      )}
+
+        <header className="actions-header">
+          <p className="actions-kicker">{t.kiosk.sessionConfirmed}</p>
+          <h1>{t.kiosk.stationTitle}</h1>
+          <p>{t.kiosk.chooseNextAction}</p>
+        </header>
+
+        <div className="actions-grid-2col">
+          <div className="actions-card-horiz actions-card-take" onClick={onTake}>
+            <div className="actions-card-horiz-image">
+              <ActionDeviceIcon type="take" />
+            </div>
+            <div className="actions-card-horiz-body">
+              <span className="actions-card-horiz-title">{t.kiosk.checkOut}</span>
+              <small className="actions-card-horiz-hint">{t.kiosk.checkOutHint}</small>
+            </div>
+          </div>
+
+          <div className="actions-card-horiz actions-card-return" onClick={onReturn}>
+            <div className="actions-card-horiz-image">
+              <ActionDeviceIcon type="return" />
+            </div>
+            <div className="actions-card-horiz-body">
+              <span className="actions-card-horiz-title">{t.kiosk.return}</span>
+              <small className="actions-card-horiz-hint">{t.kiosk.returnHint}</small>
+            </div>
+          </div>
+        </div>
+
+        {isAdminUser && (
+          <button type="button" className="actions-card-admin-full" onClick={onAdmin}>
+            <span>{t.kiosk.adminPanel}</span>
+            <small>{t.kiosk.adminPanelHint}</small>
+          </button>
+        )}
+      </div>
     </section>
   );
 }
@@ -329,12 +420,18 @@ export function KioskSessionView({
               <span>{userBorrowedDevices.length}</span>
             </div>
             <ul className="session-preload-list">
-              {userBorrowedDevices.map((device) => (
-                <li key={device.barcode} className={`session-preload-item ${barcodes.includes(device.barcode) ? 'session-preload-scanned' : ''}`}>
-                  <span>{device.barcode || device.device_number || '-'}</span>
-                  {barcodes.includes(device.barcode) && <span className="session-preload-check">{t.kiosk.returnMarkedLabel}</span>}
-                </li>
-              ))}
+              {userBorrowedDevices.map((device) => {
+                const isScanned = barcodes.includes(device.barcode);
+
+                return (
+                  <li key={device.barcode} className={`session-preload-item ${isScanned ? 'session-preload-scanned' : 'session-preload-unscanned'}`}>
+                    <span>{device.barcode || device.device_number || '-'}</span>
+                    <span className={`session-preload-check ${isScanned ? 'session-preload-check-scanned' : 'session-preload-check-unscanned'}`}>
+                      {isScanned ? t.kiosk.returnMarkedLabel : t.kiosk.returnNotMarkedLabel}
+                    </span>
+                  </li>
+                );
+              })}
               {!userBorrowedDevices.length ? <li className="session-preload-empty">{t.kiosk.noDevicesAvailableText}</li> : null}
             </ul>
           </section>

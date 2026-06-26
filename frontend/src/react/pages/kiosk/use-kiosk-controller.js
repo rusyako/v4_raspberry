@@ -347,17 +347,22 @@ export function useKioskController(showToast, playSound) {
   async function goToReturn() {
     try {
       const data = await postJson('/check_user_laptops', {});
-      setUserBorrowedDevices(data.devices || []);
+      const isDebugReturn = typeof window !== 'undefined'
+        && new URLSearchParams(window.location.search).get('panel') === 'return';
+      const debugReturnDevices = Array.from({ length: 5 }, (_, index) => ({
+        barcode: `2000000048${String(index + 1).padStart(4, '0')}`,
+        device_number: `MacBook ${index + 1}`
+      }));
+      const returnDevices = isDebugReturn ? debugReturnDevices : (data.devices || []);
+
+      setUserBorrowedDevices(returnDevices);
       fetch('/send_arduino_signal', { method: 'POST' });
       window.setTimeout(() => {
         fetch('/send_arduino_signal_on', { method: 'POST' });
       }, 2000);
 
-      // Debug: если возврат открыт через ?panel=return, предзаполняем 6 уже отсканированных
-      const isDebugReturn = typeof window !== 'undefined'
-        && new URLSearchParams(window.location.search).get('panel') === 'return';
-      if (isDebugReturn && data.devices && data.devices.length >= 6) {
-        const preScanned = data.devices.slice(0, 6).map(d => d.barcode);
+      if (isDebugReturn) {
+        const preScanned = returnDevices.map((device) => device.barcode);
         setReturnBarcodes(preScanned);
         writeStoredArray(RETURN_BARCODES_STORAGE_KEY, preScanned);
       } else {
