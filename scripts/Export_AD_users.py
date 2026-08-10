@@ -282,7 +282,7 @@ def check_ad_connection():
     print('[*] Проверка соединения с AD...')
     try:
         server = Server(AD_SERVER, get_info=ALL, connect_timeout=5)
-        conn = Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True, timeout=5)
+        conn = Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True)
         conn.unbind()
         print('[+] AD доступен.')
         return True
@@ -335,7 +335,7 @@ def main():
 
         server = Server(AD_SERVER, get_info=ALL, connect_timeout=5)
 
-        with Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True, timeout=5) as conn:
+        with Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True) as conn:
             search_filter = '(&(objectClass=user)(objectCategory=person)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
             attrs = [
                 'givenName', 'sn', 'mail', 'description', 'homePhone', 'distinguishedName', 'objectGUID'
