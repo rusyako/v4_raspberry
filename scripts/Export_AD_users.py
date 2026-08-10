@@ -2,6 +2,7 @@ import argparse
 import csv
 import os
 import sqlite3
+import sys
 import uuid
 
 from ldap3 import ALL, SUBTREE, Connection, Server
@@ -300,6 +301,7 @@ def build_parser():
         action='store_true',
         help='Only delete non-admin users without active booked equipment, without connecting to AD.'
     )
+    return parser
 
 
 def main():
@@ -420,3 +422,4 @@ if __name__ == '__main__':
         main()
     except Exception as error:
         print(f'[!] Ошибка: {error}')
+        sys.exit(1)
