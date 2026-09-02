@@ -48,6 +48,7 @@ LOG_FILE = os.getenv('LOG_FILE', 'smart-box.log')
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
 LOG_BACKUP_DAYS = int(os.getenv('LOG_BACKUP_DAYS', '14'))
 RFID_DEBOUNCE_SECONDS = float(os.getenv('RFID_DEBOUNCE_SECONDS', '1.5'))
+STATION_CELL_CAPACITY = 15
 ENABLE_SERIAL_CONTROLLER = os.getenv('ENABLE_SERIAL_CONTROLLER', 'false').lower() == 'true'
 STATION_SIGNAL_MODE = os.getenv('STATION_SIGNAL_MODE', 'gpio').strip().lower()
 ENABLE_STATION_SIGNAL = os.getenv('ENABLE_STATION_SIGNAL', 'true').lower() == 'true'
@@ -103,7 +104,7 @@ ser = None
 station_signal_initialized = False
 last_hardware_uid = {'uid': '', 'at': 0.0}
 
-station_cells_status = '0/0'
+station_cells_status = f'0/{STATION_CELL_CAPACITY}'
 temperature_sensor_1 = '--.-°C'
 temperature_sensor_2 = '--.-°C'
 laptop_status = '0/0'
@@ -1112,7 +1113,8 @@ def serial_controller_thread():
                         temperature_sensor_1 = temperatures['temperature_1']
                         temperature_sensor_2 = temperatures['temperature_2']
                     elif re.fullmatch(r'\d+/\d+', data):
-                        station_cells_status = data
+                        available_cells = data.split('/', 1)[0]
+                        station_cells_status = f'{available_cells}/{STATION_CELL_CAPACITY}'
             time.sleep(0.1)
         except Exception as error:
             if serial is not None and isinstance(error, serial.SerialException):
