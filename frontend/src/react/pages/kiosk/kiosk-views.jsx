@@ -5,6 +5,8 @@ import { writeStoredArray } from '../../shared/storage';
 import { formatDateTimeGmtPlus5 } from '../../shared/time';
 import { BARCODE_PATTERN, IT_SUPPORT_EMAIL, IT_SUPPORT_PHONE, IT_SUPPORT_REQUEST_URL, KIOSK_IMAGES } from './constants';
 
+const BORROWED_MODAL_CLOSE_MS = 180;
+
 function groupBorrowedRecordsByEmployee(records) {
   const groups = new Map();
 
@@ -51,6 +53,8 @@ export function KioskHomeView({
 }) {
   const groupedBorrowedRecords = groupBorrowedRecordsByEmployee(activeBorrowedRecords);
   const [selectedBorrowedGroup, setSelectedBorrowedGroup] = useState(null);
+  const [isBorrowedModalClosing, setIsBorrowedModalClosing] = useState(false);
+  const borrowedModalCloseTimerRef = useRef(null);
   const isDebugDevicesParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('debug_devices') : '';
   const isDebugDevices = isDebugDevicesParam !== null;
   const isDebugPreview = isDebugDevicesParam === 'preview';
@@ -86,7 +90,7 @@ export function KioskHomeView({
       },
       {
         employeeUid: 'TEST-2',
-        employeeName: 'Касымбек Нуржан',
+        employeeName: 'Касымбек Нуржан Абдурахманович',
         devices: makeDevices('TEST-2', 2, 40)
       },
       {
@@ -125,17 +129,51 @@ export function KioskHomeView({
 
   const sortedDebugRecords = [...debugRecords].sort((a, b) => b.devices.length - a.devices.length);
 
+  function openBorrowedModal(group) {
+    window.clearTimeout(borrowedModalCloseTimerRef.current);
+    setIsBorrowedModalClosing(false);
+    setSelectedBorrowedGroup(group);
+  }
+
+  function closeBorrowedModal() {
+    if (!selectedBorrowedGroup || isBorrowedModalClosing) {
+      return;
+    }
+
+    setIsBorrowedModalClosing(true);
+    window.clearTimeout(borrowedModalCloseTimerRef.current);
+    borrowedModalCloseTimerRef.current = window.setTimeout(() => {
+      setSelectedBorrowedGroup(null);
+      setIsBorrowedModalClosing(false);
+    }, BORROWED_MODAL_CLOSE_MS);
+  }
+
   useEffect(() => {
-    if (isDebugPreview && sortedDebugRecords.length > 0) {
-      const previewGroup = sortedDebugRecords.find((g) => g.employeeUid === 'TEST-3') || sortedDebugRecords[0];
+    if (isDebugPreview && !selectedBorrowedGroup && sortedDebugRecords.length > 0) {
+      const previewGroup = sortedDebugRecords.find((g) => g.employeeUid === 'TEST-10') || sortedDebugRecords[0];
       setSelectedBorrowedGroup(previewGroup);
     }
-  }, [isDebugPreview, sortedDebugRecords]);
+  }, [isDebugPreview]);
+
+  useEffect(() => {
+    if (!selectedBorrowedGroup) {
+      return undefined;
+    }
+
+    function handleEscape(event) {
+      if (event.key === 'Escape') {
+        closeBorrowedModal();
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [selectedBorrowedGroup, isBorrowedModalClosing]);
+
+  useEffect(() => () => window.clearTimeout(borrowedModalCloseTimerRef.current), []);
 
   return (
     <>
-      <LanguageSwitcher language={language} setLanguage={setLanguage} />
-
       <main className="home-shell">
         <div className="home-content-grid">
           <section className="home-card home-card-borrowed">
@@ -153,17 +191,20 @@ export function KioskHomeView({
                       className="home-borrowed-item"
                       role="button"
                       tabIndex={0}
-                      onClick={() => setSelectedBorrowedGroup(group)}
+                      onClick={() => openBorrowedModal(group)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          setSelectedBorrowedGroup(group);
+                          openBorrowedModal(group);
                         }
                       }}
                     >
                       <div className="home-borrowed-person-name">
-                        {group.employeeName}
-                        <span className="home-borrowed-count-inline">{group.devices.length}</span>
+                        <span className="home-borrowed-person-label">{group.employeeName}</span>
+                        <span className="home-borrowed-card-action" aria-hidden="true">
+                          <span className="home-borrowed-count-inline">{group.devices.length}</span>
+                          <span className="home-borrowed-open-icon">›</span>
+                        </span>
                       </div>
                       <div className="home-borrowed-card-time">
                         {formatDateTimeGmtPlus5(group.devices[0]?.taken_at, { language, compact: true })}
@@ -213,15 +254,15 @@ export function KioskHomeView({
       </main>
 
       {selectedBorrowedGroup ? (
-        <div className="borrowed-modal-backdrop" onClick={() => setSelectedBorrowedGroup(null)}>
-          <div className="borrowed-modal" onClick={(e) => e.stopPropagation()}>
+        <div className={`borrowed-modal-backdrop ${isBorrowedModalClosing ? 'is-closing' : ''}`} onClick={closeBorrowedModal}>
+          <div className="borrowed-modal" role="dialog" aria-modal="true" aria-labelledby="borrowed-modal-title" onClick={(e) => e.stopPropagation()}>
             <header className="borrowed-modal-header">
-              <div className="borrowed-modal-title" aria-label={selectedBorrowedGroup.employeeName}>{selectedBorrowedGroup.employeeName}</div>
+              <div id="borrowed-modal-title" className="borrowed-modal-title" aria-label={selectedBorrowedGroup.employeeName}>{selectedBorrowedGroup.employeeName}</div>
               <span className="borrowed-modal-count">{selectedBorrowedGroup.devices.length}</span>
               <button
                 type="button"
                 className="borrowed-modal-close"
-                onClick={() => setSelectedBorrowedGroup(null)}
+                onClick={closeBorrowedModal}
                 aria-label="Close"
               >
                 ×
@@ -263,13 +304,29 @@ function ActionDeviceIcon({ type }) {
   );
 }
 
-export function KioskActionsView({ onTake, onReturn, onAdmin, isAdminUser, language, setLanguage, t, onBackToHome }) {
+export function KioskActionsView({ onTake, onReturn, onAdmin, isAdminUser, temperature1, temperature2, language, setLanguage, t, onBackToHome }) {
+  const formattedTemperature1 = formatCompactTemperature(temperature1);
+  const formattedTemperature2 = formatCompactTemperature(temperature2);
+
   return (
     <section className="actions-shell">
       <div className="actions-panel">
         <button type="button" className="actions-close-btn" onClick={onBackToHome} aria-label={t.common.backHome}>
           ×
         </button>
+
+        {isAdminUser ? (
+          <aside className="actions-admin-sensors" aria-label={t.kiosk.temperatureSensorsLabel}>
+            <article className={`actions-admin-sensor ${formattedTemperature1 === '--' ? 'is-missing' : ''}`}>
+              <small>{t.kiosk.temperatureSensor1Label}</small>
+              <strong>{formattedTemperature1 === '--' ? t.kiosk.temperatureNoData : formattedTemperature1}</strong>
+            </article>
+            <article className={`actions-admin-sensor ${formattedTemperature2 === '--' ? 'is-missing' : ''}`}>
+              <small>{t.kiosk.temperatureSensor2Label}</small>
+              <strong>{formattedTemperature2 === '--' ? t.kiosk.temperatureNoData : formattedTemperature2}</strong>
+            </article>
+          </aside>
+        ) : null}
 
         <header className="actions-header">
           <p className="actions-kicker">{t.kiosk.sessionConfirmed}</p>

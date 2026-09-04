@@ -104,7 +104,7 @@ export function KioskPage() {
 
       {view === 'unknown' ? <UnknownUserView language={language} setLanguage={setLanguage} t={t} onBackToHome={clearSessionAndGoHome} /> : null}
 
-      {view === 'actions' ? <KioskActionsView onTake={goToCheckout} onReturn={goToReturn} onAdmin={goToAdmin} isAdminUser={isAdminUser} onBackToHome={clearSessionAndGoHome} language={language} setLanguage={setLanguage} t={t} /> : null}
+      {view === 'actions' ? <KioskActionsView onTake={goToCheckout} onReturn={goToReturn} onAdmin={goToAdmin} isAdminUser={isAdminUser} temperature1={temperature1} temperature2={temperature2} onBackToHome={clearSessionAndGoHome} language={language} setLanguage={setLanguage} t={t} /> : null}
 
       {view === 'checkout' ? (
         <KioskSessionView

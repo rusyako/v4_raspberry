@@ -34,32 +34,87 @@ button {
 }
 
 .bg-layer {
-  animation: slide 3s ease-in-out infinite alternate;
-  background-image: linear-gradient(-60deg, #6c3 50%, #09f 50%);
-  bottom: 0;
-  left: -50%;
-  opacity: 0.35;
   position: fixed;
-  right: -50%;
-  top: 0;
+  inset: 0;
   z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+  background: linear-gradient(120deg, rgba(0, 119, 204, 0.08), rgba(75, 165, 48, 0.05));
 }
 
-.bg-layer-2 {
-  animation-direction: alternate-reverse;
-  animation-duration: 4s;
+.bg-layer::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(0, 153, 255, 0.3), transparent 34%),
+    radial-gradient(circle at 88% 78%, rgba(102, 204, 51, 0.22), transparent 38%);
+  opacity: 0.72;
+  transform: translate3d(-1.5%, 0.5%, 0) scale(1.03);
+  transform-origin: center;
+  animation: background-drift 8s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
-.bg-layer-3 {
-  animation-duration: 5s;
+.bg-band {
+  --band-shift-x: 0vw;
+  --band-shift-y: 0%;
+  position: absolute;
+  top: -25%;
+  width: clamp(260px, 28vw, 520px);
+  height: 150%;
+  opacity: 0.34;
+  transform: translate3d(0, 0, 0) skewX(-25deg);
+  transform-origin: center;
+  animation: background-band-swap 8s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
-@keyframes slide {
-  from {
-    transform: translateX(-25%);
-  }
+.bg-band-blue {
+  left: -12vw;
+  --band-shift-x: 90vw;
+  --band-shift-y: 2%;
+  background: linear-gradient(180deg, rgba(0, 153, 255, 0.7), rgba(0, 100, 190, 0.42));
+}
+
+.bg-band-teal {
+  left: 36vw;
+  --band-shift-x: -48vw;
+  --band-shift-y: -2%;
+  background: linear-gradient(180deg, rgba(44, 190, 176, 0.58), rgba(21, 126, 136, 0.36));
+}
+
+.bg-band-green {
+  left: 78vw;
+  --band-shift-x: -42vw;
+  --band-shift-y: 1%;
+  background: linear-gradient(180deg, rgba(102, 204, 51, 0.64), rgba(53, 148, 43, 0.38));
+}
+
+@keyframes background-drift {
   to {
-    transform: translateX(25%);
+    transform: translate3d(2%, -1%, 0) scale(1.05);
+  }
+}
+
+@keyframes background-band-swap {
+  to {
+    transform: translate3d(var(--band-shift-x), var(--band-shift-y), 0) skewX(-25deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-layer::before {
+    animation: none;
+    transform: none;
+    will-change: auto;
+  }
+
+  .bg-band {
+    animation: none;
+    transform: skewX(-25deg);
+    will-change: auto;
   }
 }
 
