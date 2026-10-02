@@ -177,8 +177,12 @@ export function KioskHomeView({
       <main className="home-shell">
         <div className="home-content-grid">
           <section className="home-card home-card-borrowed">
-            <div className="home-card-header home-card-header-column">
+            <div className="home-card-header home-card-header-split">
               <h2>{t.kiosk.activeBorrowedTitle}</h2>
+              <div className="home-borrowed-availability">
+                <span>{t.kiosk.stationCellsLabel}</span>
+                <strong>{displayStationCellsStatus}</strong>
+              </div>
             </div>
 
             {isActiveBorrowedLoading ? (
@@ -234,19 +238,13 @@ export function KioskHomeView({
 
             <section className="home-card home-card-title">
               <div className="home-title-visual">
+                <img src={KIOSK_IMAGES.htaLogo} alt="High Tech Academy" className="home-hta-logo" />
                 <h2 className="home-borrowed-section-title">{t.kiosk.accessMessage}</h2>
                 {KIOSK_IMAGES.comingSoonGif ? (
                   <img src={KIOSK_IMAGES.comingSoonGif} alt="Coming soon" className="home-coming-soon-image" />
                 ) : (
                   <p className="home-title-soon">Скоро...</p>
                 )}
-              </div>
-            </section>
-
-            <section className="home-card home-card-info">
-              <div className="home-card-info-content">
-                <span>{t.kiosk.stationCellsLabel}</span>
-                <strong>{displayStationCellsStatus}</strong>
               </div>
             </section>
           </div>
@@ -424,6 +422,12 @@ export function KioskSessionView({
       return;
     }
 
+    if (mode === 'return' && !userBorrowedDevices.some((device) => device.barcode === barcode)) {
+      showToast('info', t.kiosk.returnNotAssignedTitle, t.kiosk.returnNotAssignedText);
+      focusAndClear();
+      return;
+    }
+
     if (barcodes.includes(barcode)) {
       showToast('info', t.kiosk.duplicateBarcodeTitle, t.kiosk.duplicateBarcodeText);
       focusAndClear();
@@ -449,7 +453,7 @@ export function KioskSessionView({
   }
 
   return (
-    <section className="session-shell">
+    <section className={`session-shell session-shell-${mode}`}>
       <button type="button" className="actions-close-btn" onClick={onCancel} aria-label={t.common.backHome}>
         ×
       </button>
@@ -470,35 +474,53 @@ export function KioskSessionView({
       </div>
 
       {mode === 'return' ? (
-        <div className="session-return-grid">
-          <section className="session-preload-card">
-            <div className="session-preload-head">
+        <div className="session-guide-grid">
+          <section className="session-list-card session-return-assigned-card">
+            <div className="session-list-head">
               <h2>{t.kiosk.returnAssignedTitle.replace('{count}', String(userBorrowedDevices.length))}</h2>
-              <span>{userBorrowedDevices.length}</span>
+              <span>{barcodes.length}/{userBorrowedDevices.length}</span>
             </div>
-            <ul className="session-preload-list">
-              {userBorrowedDevices.map((device) => {
+            <ul className={`session-list session-return-assigned-list ${userBorrowedDevices.length > 8 ? 'session-return-assigned-list-two-columns' : 'session-return-assigned-list-single-column'}`}>
+              {userBorrowedDevices.map((device, index) => {
                 const isScanned = barcodes.includes(device.barcode);
 
                 return (
-                  <li key={device.barcode} className={`session-preload-item ${isScanned ? 'session-preload-scanned' : 'session-preload-unscanned'}`}>
-                    <span>{device.barcode || device.device_number || '-'}</span>
-                    <span className={`session-preload-check ${isScanned ? 'session-preload-check-scanned' : 'session-preload-check-unscanned'}`}>
-                      {isScanned ? t.kiosk.returnMarkedLabel : t.kiosk.returnNotMarkedLabel}
-                    </span>
+                  <li
+                    key={device.barcode}
+                    className={`session-list-item session-return-device ${isScanned ? 'session-return-device-scanned' : 'session-return-device-pending'}`}
+                  >
+                    <span>{index + 1}. {device.barcode || device.device_number || '-'}</span>
+                    {isScanned ? (
+                      <button type="button" className="chip-button" onClick={() => removeBarcode(device.barcode)}>
+                        {t.common.remove}
+                      </button>
+                    ) : (
+                      <span className="session-return-pending-label">{t.kiosk.returnNotMarkedLabel}</span>
+                    )}
                   </li>
                 );
               })}
-              {!userBorrowedDevices.length ? <li className="session-preload-empty">{t.kiosk.noDevicesAvailableText}</li> : null}
+              {!userBorrowedDevices.length ? <li className="session-list-empty">{t.kiosk.noDevicesAvailableText}</li> : null}
             </ul>
           </section>
 
+          <aside className="session-guide-card session-guide-card-return">
+            <h2>{t.kiosk.returnGuideTitle}</h2>
+            <img
+              src={KIOSK_IMAGES.comingSoonGif}
+              alt={t.kiosk.returnGuideAlt}
+              className="session-guide-image"
+            />
+          </aside>
+        </div>
+      ) : (
+        <div className="session-guide-grid">
           <section className="session-list-card">
             <div className="session-list-head">
-              <h2>{t.kiosk.returnProgressTitle.replace('{done}', String(barcodes.length)).replace('{total}', String(userBorrowedDevices.length))}</h2>
+              <h2>{countLabel}</h2>
               <span>{barcodes.length}</span>
             </div>
-            <ul className="session-list">
+            <ul className={`session-list session-checkout-scanned-list ${barcodes.length > 8 ? 'session-checkout-scanned-list-two-columns' : 'session-checkout-scanned-list-single-column'}`}>
               {barcodes.map((barcode, index) => (
                 <li key={barcode} className="session-list-item">
                   <span>{index + 1}. {barcode}</span>
@@ -510,25 +532,16 @@ export function KioskSessionView({
               {!barcodes.length ? <li className="session-list-empty">{t.kiosk.noDevicesScanned}</li> : null}
             </ul>
           </section>
+
+          <aside className="session-guide-card session-guide-card-take">
+            <h2>{t.kiosk.checkoutGuideTitle}</h2>
+            <img
+              src={KIOSK_IMAGES.comingSoonGif}
+              alt={t.kiosk.checkoutGuideAlt}
+              className="session-guide-image"
+            />
+          </aside>
         </div>
-      ) : (
-        <section className="session-list-card">
-          <div className="session-list-head">
-            <h2>{countLabel}</h2>
-            <span>{barcodes.length}</span>
-          </div>
-          <ul className="session-list">
-            {barcodes.map((barcode, index) => (
-              <li key={barcode} className="session-list-item">
-                <span>{index + 1}. {barcode}</span>
-                <button type="button" className="chip-button" onClick={() => removeBarcode(barcode)}>
-                  {t.common.remove}
-                </button>
-              </li>
-            ))}
-            {!barcodes.length ? <li className="session-list-empty">{t.kiosk.noDevicesScanned}</li> : null}
-          </ul>
-        </section>
       )}
 
       <div className="session-actions">

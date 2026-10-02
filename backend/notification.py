@@ -13,6 +13,7 @@ SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
 SMTP_USER = os.getenv('SMTP_USER', '').strip()
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '').strip()
 SMTP_FROM = os.getenv('SMTP_FROM', 'noreply@smart-box.local').strip()
+ENABLE_USER_REMINDERS = os.getenv('ENABLE_USER_REMINDERS', 'false').lower() == 'true'
 
 logger = logging.getLogger('reminder')
 
@@ -105,11 +106,16 @@ def run_daily_reminder():
                 f'Please return the devices within the specified time.\n'
                 f'SmartBox'
             )
-            send_email(
-                [info['email']],
-                'SmartBox — напоминание о возврате устройств',
-                body
-            )
+
+            if ENABLE_USER_REMINDERS:
+                send_email(
+                    [info['email']],
+                    'SmartBox – Напоминание о возврате оборудования',
+                    body
+                )
+            else:
+                logger.info(f'[TEST MODE] Skipped sending reminder to user {info["email"]}')
+
             device_ids = ', '.join(
                 f'MacBook * {d["barcode"] or d["device_number"] or d["device_name"]}'
                 for d in info['devices']

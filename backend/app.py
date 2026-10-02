@@ -698,7 +698,7 @@ def fetch_admin_dashboard_data():
             'SELECT guid, uid, uid_hex, uid_dec, name, first_name, last_name, email, description, category, role, is_admin, notify_reminder FROM users ORDER BY name, uid;'
         )
         users = [dict(row) for row in cursor.fetchall()]
-        cursor.execute('SELECT name, barcode, device_number, status FROM laptops ORDER BY name;')
+        cursor.execute('SELECT name, barcode, device_number, status, created_at FROM laptops ORDER BY name;')
         laptops = [dict(row) for row in cursor.fetchall()]
         cursor.execute(
             '''
@@ -886,7 +886,10 @@ def seed_database(connection):
             if name:
                 laptops.append((name, barcode or name, device_number or barcode or name, status))
         if laptops:
-            cursor.executemany('INSERT INTO laptops (name, barcode, device_number, status) VALUES (?, ?, ?, ?);', laptops)
+            cursor.executemany(
+                'INSERT INTO laptops (name, barcode, device_number, status, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP);',
+                laptops
+            )
 
 
 def init_db():
@@ -961,7 +964,8 @@ def init_db():
                 name TEXT PRIMARY KEY,
                 barcode TEXT UNIQUE,
                 device_number TEXT UNIQUE,
-                status TEXT NOT NULL CHECK(status IN ('available', 'unavailable'))
+                status TEXT NOT NULL CHECK(status IN ('available', 'unavailable')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             '''
         )
@@ -970,6 +974,12 @@ def init_db():
         pass
     try:
         cursor.execute('ALTER TABLE laptops ADD COLUMN device_number TEXT;')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        # Existing databases keep NULL here because their historical creation
+        # time is unknown; new devices receive an explicit UTC timestamp.
+        cursor.execute('ALTER TABLE laptops ADD COLUMN created_at TEXT;')
     except sqlite3.OperationalError:
         pass
     try:
@@ -2024,7 +2034,7 @@ def admin_add_laptop():
     connection = get_db_connection()
     try:
         connection.execute(
-            'INSERT INTO laptops (name, barcode, device_number, status) VALUES (?, ?, ?, ?);',
+            'INSERT INTO laptops (name, barcode, device_number, status, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP);',
             (name, barcode, device_number, status)
         )
         connection.commit()
@@ -2180,10 +2190,10 @@ def check_user_laptops():
     if not current_user_uid:
         return error_response(SCAN_CARD_MESSAGE)
 
-    # Debug: mock 10 devices for return panel testing
+    # Debug: mock 15 devices for return panel testing
     if current_user_uid == 'DEBUG-UID':
         mock_devices = []
-        for i in range(10):
+        for i in range(15):
             mock_devices.append({
                 'barcode': f'20000000472{i:02d}',
                 'device_number': f'20000000472{i:02d}',

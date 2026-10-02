@@ -40,6 +40,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      ENABLE_USER_REMINDERS: ${ENABLE_USER_REMINDERS:-false}
       DOOR_HTTP_URL: ${DOOR_HTTP_URL:-http://host.docker.internal:5100}
     group_add:
       - "${GPIO_GROUP_ID:-997}"

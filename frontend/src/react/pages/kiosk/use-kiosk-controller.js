@@ -329,11 +329,17 @@ export function useKioskController(showToast, playSound) {
       const availableLaptops = Number.parseInt((data.laptop_count || '0/0').split('/')[0], 10);
 
       if (availableLaptops > 0) {
+        const isDebugCheckout = typeof window !== 'undefined'
+          && new URLSearchParams(window.location.search).get('panel') === 'checkout';
+        const checkoutBarcodes = isDebugCheckout
+          ? Array.from({ length: 15 }, (_, index) => `20000000473${String(index).padStart(2, '0')}`)
+          : readStoredArray(TAKE_BARCODES_STORAGE_KEY);
+
         fetch('/send_arduino_signal', { method: 'POST' });
         window.setTimeout(() => {
           fetch('/send_arduino_signal_on', { method: 'POST' });
         }, 2000);
-        setTakeBarcodes(readStoredArray(TAKE_BARCODES_STORAGE_KEY));
+        setTakeBarcodes(checkoutBarcodes);
         setView('checkout');
         return;
       }
@@ -347,12 +353,20 @@ export function useKioskController(showToast, playSound) {
   async function goToReturn() {
     try {
       const data = await postJson('/check_user_laptops', {});
-      const isDebugReturn = typeof window !== 'undefined'
-        && new URLSearchParams(window.location.search).get('panel') === 'return';
-      const debugReturnDevices = Array.from({ length: 5 }, (_, index) => ({
-        barcode: `2000000048${String(index + 1).padStart(4, '0')}`,
+      const debugPanel = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('panel')
+        : '';
+      const isDebugReturn = debugPanel === 'return';
+      const isDebugActions = debugPanel === 'actions';
+      const debugReturnDevices = Array.from({ length: 15 }, (_, index) => ({
+        barcode: `20000000472${String(index).padStart(2, '0')}`,
         device_number: `MacBook ${index + 1}`
       }));
+      const debugReturnedBarcodes = new Set([
+        '2000000047200',
+        '2000000047201',
+        '2000000047206'
+      ]);
       const returnDevices = isDebugReturn ? debugReturnDevices : (data.devices || []);
 
       setUserBorrowedDevices(returnDevices);
@@ -361,8 +375,10 @@ export function useKioskController(showToast, playSound) {
         fetch('/send_arduino_signal_on', { method: 'POST' });
       }, 2000);
 
-      if (isDebugReturn) {
-        const preScanned = returnDevices.map((device) => device.barcode);
+      if (isDebugReturn || isDebugActions) {
+        const preScanned = returnDevices
+          .filter((device) => debugReturnedBarcodes.has(device.barcode))
+          .map((device) => device.barcode);
         setReturnBarcodes(preScanned);
         writeStoredArray(RETURN_BARCODES_STORAGE_KEY, preScanned);
       } else {

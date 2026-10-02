@@ -2,6 +2,7 @@ import argparse
 import csv
 import os
 import sqlite3
+import sys
 import uuid
 
 from ldap3 import ALL, SUBTREE, Connection, Server
@@ -281,7 +282,7 @@ def check_ad_connection():
     print('[*] Проверка соединения с AD...')
     try:
         server = Server(AD_SERVER, get_info=ALL, connect_timeout=5)
-        conn = Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True, timeout=5)
+        conn = Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True)
         conn.unbind()
         print('[+] AD доступен.')
         return True
@@ -300,6 +301,7 @@ def build_parser():
         action='store_true',
         help='Only delete non-admin users without active booked equipment, without connecting to AD.'
     )
+    return parser
 
 
 def main():
@@ -325,15 +327,15 @@ def main():
             print(
                 f'[+] Очистка завершена. Удалено: {deleted_count}. База: {target_db_path}'
             )
-            return
+            return 0
 
         if not check_ad_connection():
             connection.rollback()
-            return
+            return 1
 
         server = Server(AD_SERVER, get_info=ALL, connect_timeout=5)
 
-        with Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True, timeout=5) as conn:
+        with Connection(server, user=AD_USER, password=AD_PASSWORD, auto_bind=True) as conn:
             search_filter = '(&(objectClass=user)(objectCategory=person)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
             attrs = [
                 'givenName', 'sn', 'mail', 'description', 'homePhone', 'distinguishedName', 'objectGUID'
@@ -404,19 +406,17 @@ def main():
         if args.csv:
             write_csv(export_records, args.csv or EXPORT_CSV_PATH)
         else:
-            if (inserted_count + updated_count) > 0:
-                deleted_count = prune_unassigned_users(connection)
-            else:
-                print('[!] AD не вернул пользователей — prune пропущен для сохранения данных.')
             connection.commit()
         print(
             f'[+] Импорт завершен. Добавлено: {inserted_count}, обновлено: {updated_count}, '
             f'пропущено: {skipped_count}, удалено: {deleted_count if not args.csv else 0}. База: {target_db_path}'
         )
+    return 0
 
 
 if __name__ == '__main__':
     try:
-        main()
+        sys.exit(main())
     except Exception as error:
         print(f'[!] Ошибка: {error}')
+        sys.exit(1)

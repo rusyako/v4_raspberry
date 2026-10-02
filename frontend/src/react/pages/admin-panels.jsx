@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useMemo, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { IconTransfer, IconWarning } from '../shared/admin-icons';
 
 function reverseUidHexBytes(hexUid) {
   const pairs = [];
@@ -192,65 +193,72 @@ export const UsersPanel = memo(function UsersPanel({
   );
 });
 
-export const UsersTable = memo(function UsersTable({ users, t, onRemove, onToggleNotify }) {
+export const UsersTable = memo(function UsersTable({ users, t, getWarning, emptyText }) {
   return (
-    <section className="admin-panel users-table-panel">
-      <div className="admin-panel-head">
-        <h2>{t.admin.registeredUsers}</h2>
-      </div>
-      <div className="admin-table-wrap users-table-wrap">
-        <table className="admin-table users-table">
-          <thead>
+    <div className="admin-table-wrap users-table-wrap">
+      <table className="admin-table users-table users-table-people">
+        <thead>
             <tr>
-              <th>{t.admin.columns.name}</th>
-              <th>GUID</th>
-              <th>RFID HEX</th>
-              <th>RFID DEC</th>
-              <th>{t.admin.categoryLabel}</th>
+              <th>
+                <span className="users-name-head">
+                  {t.admin.fullNameLabel}
+                  <span className="users-role-legend">
+                    <span className="users-role-dot users-role-dot-admin" aria-hidden="true" />
+                    {t.admin.roleLegendAdmin}
+                    <span className="users-role-dot users-role-dot-user" aria-hidden="true" />
+                    {t.admin.roleLegendUser}
+                  </span>
+                </span>
+              </th>
+              <th className="users-col-rfid">HEX</th>
+              <th className="users-col-rfid">DEC</th>
               <th>{t.admin.emailLabel}</th>
-              <th></th>
-              <th>{t.admin.notifyLabel}</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
-            {users.length ? users.map((user) => (
-              <tr key={user.guid || user.uid}>
+            {users.length ? users.map((user) => {
+              const warning = getWarning ? getWarning(user) : '';
+              const hexValue = user.uid_hex || user.uid || '';
+              return (
+              <tr key={user.guid || user.uid} className={warning ? 'users-row-warn' : ''}>
                 <td>
-                  <strong>{user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || '-'}</strong>
-                  <small>{[user.first_name, user.last_name].filter(Boolean).join(' ') || '-'}</small>
+                  <span className="users-name-cell">
+                    {warning ? (
+                      <IconWarning
+                        className="users-warn-icon"
+                        size={15}
+                        title={warning}
+                        aria-label={warning}
+                      />
+                    ) : (
+                      <span
+                        className={`users-role-dot ${user.is_admin ? 'users-role-dot-admin' : 'users-role-dot-user'}`}
+                        title={user.is_admin ? t.admin.adminBadge : t.admin.userBadge}
+                        aria-label={user.is_admin ? t.admin.adminBadge : t.admin.userBadge}
+                      />
+                    )}
+                    <strong>{user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || '-'}</strong>
+                  </span>
                 </td>
-                <td><code>{user.guid || '-'}</code></td>
-                <td><code>{user.uid_hex || user.uid || '-'}</code></td>
-                <td><code>{user.uid_dec || '-'}</code></td>
-                <td>{user.description || user.category || '-'}</td>
-                <td>{user.email || '-'}</td>
-                <td>
-                  {user.is_admin ? <span className="status-badge status-admin">{t.admin.adminBadge}</span> : <span style={{ color: '#6a8a9e', fontSize: '12px' }}>{t.admin.userBadge}</span>}
+                <td className="users-col-rfid">
+                  {hexValue ? <code>{hexValue}</code> : <span className="users-cell-empty">—</span>}
                 </td>
-                <td>
-                  {user.email ? (
-                    <input
-                      type="checkbox"
-                      checked={Boolean(user.notify_reminder)}
-                      onChange={() => onToggleNotify && onToggleNotify(user)}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                  ) : <span style={{ color: '#6a8a9e', fontSize: '12px' }}>—</span>}
+                <td className="users-col-rfid">
+                  {user.uid_dec ? <code>{user.uid_dec}</code> : <span className="users-cell-empty">—</span>}
                 </td>
-                <td>
-                  <button type="button" className="danger-button small" onClick={() => onRemove(user)}>{t.common.remove}</button>
+                <td className="users-col-email">
+                  {user.email ? user.email : <span className="users-cell-empty">—</span>}
                 </td>
               </tr>
-            )) : (
+              );
+            }) : (
               <tr>
-                <td colSpan="8" className="admin-empty">{t.admin.noUsers}</td>
+                <td colSpan="4" className="admin-empty">{emptyText || t.admin.noUsers}</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </section>
   );
 });
 
@@ -594,51 +602,68 @@ export const AnalysisPanel = memo(function AnalysisPanel({ users, laptops, borro
   );
 });
 
-export const LaptopsTable = memo(function LaptopsTable({ laptops, t, onRemove, onAction, onSort, sortKey, sortDir }) {
+export const LaptopsTable = memo(function LaptopsTable({ laptops, t, onRemove, onAction, onSort, sortKey, sortDir, emptyText }) {
   const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
 
   return (
-    <section className="admin-panel users-table-panel">
-      <div className="admin-panel-head">
-        <h2>{t.admin.registeredDevices}</h2>
-      </div>
-      <div className="admin-table-wrap users-table-wrap">
-        <table className="admin-table users-table">
-          <thead>
+    <div className="admin-table-wrap users-table-wrap">
+      <table className="admin-table users-table">
+        <thead>
             <tr>
-              <th onClick={() => onSort && onSort('device_number')} style={{ cursor: 'pointer' }}>{t.admin.columns.id}{sortArrow('device_number')}</th>
+              <th className="devices-col-num" onClick={() => onSort && onSort('device_number')} style={{ cursor: 'pointer' }}>{t.admin.deviceNumberLabel}{sortArrow('device_number')}</th>
               <th onClick={() => onSort && onSort('barcode')} style={{ cursor: 'pointer' }}>{t.admin.barcodeLabel}{sortArrow('barcode')}</th>
-              <th onClick={() => onSort && onSort('bookingStatus')} style={{ cursor: 'pointer' }}>{t.admin.columns.status}{sortArrow('bookingStatus')}</th>
+              <th onClick={() => onSort && onSort('bookingStatus')} style={{ cursor: 'pointer' }}>
+                <span className="users-name-head">
+                  {t.admin.columns.status}{sortArrow('bookingStatus')}
+                  <span className="users-role-legend">
+                    <span className="device-status-dot device-status-dot-available" aria-hidden="true" />
+                    {t.admin.deviceLegendAvailable}
+                    <span className="device-status-dot device-status-dot-busy device-legend-busy" aria-hidden="true" />
+                    {t.admin.deviceLegendBusy}
+                  </span>
+                </span>
+              </th>
               <th onClick={() => onSort && onSort('borrowerName')} style={{ cursor: 'pointer' }}>{t.admin.columns.name}{sortArrow('borrowerName')}</th>
-              <th>{t.admin.actionLabel}</th>
+              <th className="devices-col-action">{t.admin.actionLabel}</th>
             </tr>
           </thead>
           <tbody>
             {laptops.length ? laptops.map((laptop) => (
               <tr key={`${laptop.name}:${laptop.barcode}`}>
-                <td><strong>{laptop.device_number || laptop.name || '-'}</strong></td>
+                <td className="devices-col-num"><strong>{laptop.device_number || laptop.name || '-'}</strong></td>
                 <td><code>{laptop.barcode || '-'}</code></td>
                 <td>
-                  <span className={`status-badge ${laptop.canAssign ? 'status-active' : 'status-available'}`}>
+                  <span className="device-status-cell">
+                    <span
+                      className={`device-status-dot ${laptop.canAssign ? 'device-status-dot-busy' : 'device-status-dot-available'}`}
+                      aria-hidden="true"
+                    />
                     {laptop.bookingStatus}
                   </span>
                 </td>
-                <td>{laptop.borrowerName || '-'}</td>
-                <td>
-                  <button type="button" className={`ghost-button small ${!laptop.canAssign ? 'button-disabled' : ''}`} onClick={() => onAction(laptop)} disabled={!laptop.canAssign}>
-                    {laptop.canAssign ? t.admin.actionLabel : t.admin.noBookingActionLabel}
-                  </button>
+                <td>{laptop.canAssign ? laptop.borrowerName : <span className="users-cell-empty">—</span>}</td>
+                <td className="devices-col-action">
+                  {laptop.canAssign ? (
+                    <button
+                      type="button"
+                      className="device-transfer-btn"
+                      onClick={() => onAction(laptop)}
+                      title={t.admin.transferActionTitle}
+                      aria-label={t.admin.transferActionTitle}
+                    >
+                      <IconTransfer size={17} />
+                    </button>
+                  ) : <span className="users-cell-empty">—</span>}
                 </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan="5" className="admin-empty">{t.admin.noDevices}</td>
+                <td colSpan="5" className="admin-empty">{emptyText || t.admin.noDevices}</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </section>
   );
 });
 
